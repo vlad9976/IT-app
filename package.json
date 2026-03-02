@@ -29,9 +29,10 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico",
       "publisherName": "IT Admin Tools",
-      "verifyUpdateCodeSignature": false
+      "verifyUpdateCodeSignature": false,
+      "sign": null,
+      "signingHashAlgorithms": null
     },
     "nsis": {
       "oneClick": false,
