@@ -1,0 +1,8 @@
+# Development Update Configuration
+# This file is used for testing auto-updates locally
+# Place this in the same directory as your app executable for testing
+
+provider: github
+owner: YOUR_GITHUB_USERNAME
+repo: YOUR_REPO_NAME
+updaterCacheDirName: it-script-generator-updater

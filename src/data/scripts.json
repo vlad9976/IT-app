@@ -179,8 +179,14 @@
           "label": "Disable LLMNR",
           "type": "select",
           "options": [
-            { "value": "true", "label": "Yes (Recommended)" },
-            { "value": "false", "label": "No" }
+            {
+              "value": "true",
+              "label": "Yes (Recommended)"
+            },
+            {
+              "value": "false",
+              "label": "No"
+            }
           ],
           "defaultValue": "true",
           "required": true
@@ -190,8 +196,14 @@
           "label": "Disable NetBIOS",
           "type": "select",
           "options": [
-            { "value": "true", "label": "Yes (Recommended)" },
-            { "value": "false", "label": "No" }
+            {
+              "value": "true",
+              "label": "Yes (Recommended)"
+            },
+            {
+              "value": "false",
+              "label": "No"
+            }
           ],
           "defaultValue": "true",
           "required": true
@@ -201,8 +213,14 @@
           "label": "Disable Windows Script Host",
           "type": "select",
           "options": [
-            { "value": "true", "label": "Yes (Recommended)" },
-            { "value": "false", "label": "No" }
+            {
+              "value": "true",
+              "label": "Yes (Recommended)"
+            },
+            {
+              "value": "false",
+              "label": "No"
+            }
           ],
           "defaultValue": "true",
           "required": true
@@ -212,8 +230,14 @@
           "label": "Controlled Folder Access",
           "type": "select",
           "options": [
-            { "value": "true", "label": "Enable (Recommended)" },
-            { "value": "false", "label": "Disable" }
+            {
+              "value": "true",
+              "label": "Enable (Recommended)"
+            },
+            {
+              "value": "false",
+              "label": "Disable"
+            }
           ],
           "defaultValue": "true",
           "required": true
@@ -364,8 +388,14 @@
           "label": "Disable RDP",
           "type": "select",
           "options": [
-            { "value": "true", "label": "Yes (Recommended)" },
-            { "value": "false", "label": "No" }
+            {
+              "value": "true",
+              "label": "Yes (Recommended)"
+            },
+            {
+              "value": "false",
+              "label": "No"
+            }
           ],
           "defaultValue": "true",
           "required": true
@@ -375,8 +405,14 @@
           "label": "Controlled Folder Access",
           "type": "select",
           "options": [
-            { "value": "true", "label": "Enable (Recommended)" },
-            { "value": "false", "label": "Disable" }
+            {
+              "value": "true",
+              "label": "Enable (Recommended)"
+            },
+            {
+              "value": "false",
+              "label": "Disable"
+            }
           ],
           "defaultValue": "true",
           "required": true
@@ -425,48 +461,6 @@
       "type": "powershell",
       "inputs": [],
       "template": "# Clear Print Queue & Restart Spooler\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== STOP RUNAWAY PRINTING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if running as administrator\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n\nif (-not $IsAdmin) {\n    Write-Host \"[!] WARNING: This script is not running as Administrator\" -ForegroundColor Red\n    Write-Host \"    This operation requires admin privileges to work properly\" -ForegroundColor Yellow\n    Write-Host \"\"\n}\n\ntry {\n    # Stop Print Spooler\n    Write-Host \"Stopping Print Spooler service...\" -ForegroundColor Yellow\n    Stop-Service Spooler -Force -ErrorAction Stop\n    Write-Host \"  [OK] Print Spooler stopped\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Clear print queue files\n    Write-Host \"Clearing print queue files...\" -ForegroundColor Yellow\n    $SpoolPath = \"$env:SystemRoot\\System32\\spool\\PRINTERS\\*\"\n    $FilesRemoved = (Get-ChildItem -Path \"$env:SystemRoot\\System32\\spool\\PRINTERS\" -ErrorAction SilentlyContinue | Measure-Object).Count\n    Remove-Item $SpoolPath -Force -ErrorAction SilentlyContinue\n    Write-Host \"  [OK] Removed $FilesRemoved file(s) from spool folder\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Start Print Spooler\n    Write-Host \"Starting Print Spooler service...\" -ForegroundColor Yellow\n    Start-Service Spooler -ErrorAction Stop\n    Write-Host \"  [OK] Print Spooler started\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Remove any remaining print jobs\n    Write-Host \"Removing any remaining print jobs...\" -ForegroundColor Yellow\n    $JobsCleared = 0\n    Get-Printer -ErrorAction SilentlyContinue | ForEach-Object {\n        $PrinterName = $_.Name\n        $Jobs = Get-PrintJob -PrinterName $PrinterName -ErrorAction SilentlyContinue\n        if ($Jobs) {\n            $Jobs | Remove-PrintJob -ErrorAction SilentlyContinue\n            $JobsCleared += ($Jobs | Measure-Object).Count\n            Write-Host \"  Cleared jobs from: $PrinterName\" -ForegroundColor Gray\n        }\n    }\n    Write-Host \"  [OK] Cleared $JobsCleared print job(s)\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    Write-Host \"✅ SUCCESS: Print queues cleared, Spooler restarted\" -ForegroundColor Green\n    Write-Host \"All print jobs have been stopped and removed.\" -ForegroundColor Cyan\n}\ncatch {\n    Write-Host \"[ERROR] Failed to clear print queue: $_\" -ForegroundColor Red\n    Write-Host \"Make sure you are running PowerShell as Administrator\" -ForegroundColor Yellow\n}"
-    },
-    {
-      "id": "update-browser",
-      "name": "Update Browser",
-      "description": "Update web browsers using winget package manager",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "browser",
-          "label": "Browser",
-          "type": "select",
-          "placeholder": "Select a browser",
-          "required": true,
-          "options": [
-            {
-              "value": "Google.Chrome",
-              "label": "Google Chrome"
-            },
-            {
-              "value": "Mozilla.Firefox",
-              "label": "Mozilla Firefox"
-            },
-            {
-              "value": "Microsoft.Edge",
-              "label": "Microsoft Edge"
-            },
-            {
-              "value": "BraveSoftware.BraveBrowser",
-              "label": "Brave Browser"
-            },
-            {
-              "value": "Opera.Opera",
-              "label": "Opera"
-            },
-            {
-              "value": "Vivaldi.Vivaldi",
-              "label": "Vivaldi"
-            }
-          ]
-        }
-      ],
-      "template": "# Update Browser using Winget\n# Generated: $(Get-Date)\n\n$Browser = \"{{browser}}\"\n\nWrite-Host \"=== UPDATE BROWSER ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if winget is available\ntry {\n    $WingetVersion = winget --version\n    Write-Host \"Winget version: $WingetVersion\" -ForegroundColor Gray\n    Write-Host \"\"\n}\ncatch {\n    Write-Host \"[ERROR] Winget is not installed or not available\" -ForegroundColor Red\n    Write-Host \"Please install Windows Package Manager (winget) first\" -ForegroundColor Yellow\n    exit 1\n}\n\n# Get browser name for display\n$BrowserName = switch ($Browser) {\n    \"Google.Chrome\" { \"Google Chrome\" }\n    \"Mozilla.Firefox\" { \"Mozilla Firefox\" }\n    \"Microsoft.Edge\" { \"Microsoft Edge\" }\n    \"BraveSoftware.BraveBrowser\" { \"Brave Browser\" }\n    \"Opera.Opera\" { \"Opera\" }\n    \"Vivaldi.Vivaldi\" { \"Vivaldi\" }\n    default { $Browser }\n}\n\nWrite-Host \"Updating $BrowserName...\" -ForegroundColor Yellow\nWrite-Host \"Package ID: $Browser\" -ForegroundColor Gray\nWrite-Host \"\"\n\ntry {\n    # Check if browser is installed\n    Write-Host \"Checking if $BrowserName is installed...\" -ForegroundColor Cyan\n    $InstalledApp = winget list --id $Browser --exact 2>$null\n    \n    if ($LASTEXITCODE -ne 0) {\n        Write-Host \"[NOT FOUND] $BrowserName is not installed\" -ForegroundColor Yellow\n        Write-Host \"Would you like to install it instead? Run: winget install $Browser\" -ForegroundColor Gray\n        exit 0\n    }\n    \n    Write-Host \"[FOUND] $BrowserName is installed\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Upgrade the browser\n    Write-Host \"Starting upgrade process...\" -ForegroundColor Cyan\n    Write-Host \"This may take a few minutes...\" -ForegroundColor Gray\n    Write-Host \"\"\n    \n    winget upgrade $Browser --silent --accept-source-agreements --accept-package-agreements\n    \n    if ($LASTEXITCODE -eq 0) {\n        Write-Host \"\"\n        Write-Host \"✅ SUCCESS: $BrowserName has been updated!\" -ForegroundColor Green\n    } elseif ($LASTEXITCODE -eq -1978335189) {\n        Write-Host \"\"\n        Write-Host \"[INFO] $BrowserName is already up to date\" -ForegroundColor Cyan\n    } else {\n        Write-Host \"\"\n        Write-Host \"[WARNING] Update completed with exit code: $LASTEXITCODE\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] Failed to update $BrowserName: $_\" -ForegroundColor Red\n}"
     },
     {
       "id": "restart-scanner-service",
@@ -607,8 +601,14 @@
           "label": "Direction",
           "type": "select",
           "options": [
-            { "value": "Inbound", "label": "Inbound" },
-            { "value": "Outbound", "label": "Outbound" }
+            {
+              "value": "Inbound",
+              "label": "Inbound"
+            },
+            {
+              "value": "Outbound",
+              "label": "Outbound"
+            }
           ],
           "required": true
         }
@@ -861,200 +861,44 @@
     {
       "id": "update-browser",
       "name": "Update Browser",
-      "description": "Essential security configurations for Domain Controllers",
+      "description": "Update web browsers using winget package manager",
       "type": "powershell",
       "inputs": [
         {
-          "variable": "lockout_threshold",
-          "label": "Account Lockout Threshold (attempts)",
-          "type": "text",
-          "placeholder": "5",
-          "defaultValue": "5",
-          "description": "Number of failed login attempts before lockout (recommended: 3-5)",
-          "required": true
-        },
-        {
-          "variable": "lockout_duration",
-          "label": "Lockout Duration (minutes)",
-          "type": "text",
-          "placeholder": "30",
-          "defaultValue": "30",
-          "description": "How long account stays locked (recommended: 15-30 min)",
-          "required": true
-        },
-        {
-          "variable": "min_password_length",
-          "label": "Minimum Password Length",
-          "type": "text",
-          "placeholder": "14",
-          "defaultValue": "14",
-          "description": "Minimum characters required (recommended: 12-16)",
-          "required": true
-        },
-        {
-          "variable": "max_password_age",
-          "label": "Maximum Password Age (days)",
-          "type": "text",
-          "placeholder": "90",
-          "defaultValue": "90",
-          "description": "Force password change after X days (recommended: 60-90)",
-          "required": true
-        },
-        {
-          "variable": "password_history",
-          "label": "Password History Count",
-          "type": "text",
-          "placeholder": "24",
-          "defaultValue": "24",
-          "description": "Remember last X passwords (recommended: 12-24)",
-          "required": true
+          "variable": "browser",
+          "label": "Browser",
+          "type": "select",
+          "placeholder": "Select a browser",
+          "required": true,
+          "options": [
+            {
+              "value": "Google.Chrome",
+              "label": "Google Chrome"
+            },
+            {
+              "value": "Mozilla.Firefox",
+              "label": "Mozilla Firefox"
+            },
+            {
+              "value": "Microsoft.Edge",
+              "label": "Microsoft Edge"
+            },
+            {
+              "value": "BraveSoftware.BraveBrowser",
+              "label": "Brave Browser"
+            },
+            {
+              "value": "Opera.Opera",
+              "label": "Opera"
+            },
+            {
+              "value": "Vivaldi.Vivaldi",
+              "label": "Vivaldi"
+            }
+          ]
         }
       ],
-      "template": "# Domain Controller Basic Hardening\n# Generated: $(Get-Date)\n# NOTE: This script requires Domain Admin privileges and should be run on a DC\n\n$LockoutThreshold = {{lockout_threshold}}\n$LockoutDuration = {{lockout_duration}}\n$MinPasswordLength = {{min_password_length}}\n$MaxPasswordAge = {{max_password_age}}\n$PasswordHistory = {{password_history}}\n\nWrite-Host \"=== DOMAIN CONTROLLER BASIC HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Configuration Parameters:\" -ForegroundColor Yellow\nWrite-Host \"  Lockout Threshold: $LockoutThreshold attempts\" -ForegroundColor Gray\nWrite-Host \"  Lockout Duration: $LockoutDuration minutes\" -ForegroundColor Gray\nWrite-Host \"  Min Password Length: $MinPasswordLength characters\" -ForegroundColor Gray\nWrite-Host \"  Max Password Age: $MaxPasswordAge days\" -ForegroundColor Gray\nWrite-Host \"  Password History: $PasswordHistory passwords\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# Check if running on a Domain Controller\n$IsDC = (Get-WmiObject -Class Win32_ComputerSystem).DomainRole -ge 4\nif (-not $IsDC) {\n    Write-Host \"[!] WARNING: This machine is not a Domain Controller\" -ForegroundColor Red\n    Write-Host \"This script should only be run on Domain Controllers\" -ForegroundColor Yellow\n    $continue = Read-Host \"Continue anyway? (y/N)\"\n    if ($continue -ne 'y') { exit }\n}\n\nWrite-Host \"[1/8] Configuring Account Lockout Policy...\" -ForegroundColor Cyan\ntry {\n    # Set account lockout threshold\n    net accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\n    Write-Host \"  ✅ Account lockout: $LockoutThreshold attempts, $LockoutDuration min duration\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to set account lockout policy\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[2/8] Configuring Password Policy...\" -ForegroundColor Cyan\ntry {\n    # Set minimum password length and complexity\n    net accounts /minpwlen:$MinPasswordLength /maxpwage:$MaxPasswordAge /minpwage:1 /uniquepw:$PasswordHistory\n    Write-Host \"  ✅ Min password length: $MinPasswordLength characters\" -ForegroundColor Green\n    Write-Host \"  ✅ Max password age: $MaxPasswordAge days\" -ForegroundColor Green\n    Write-Host \"  ✅ Password history: $PasswordHistory passwords\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to set password policy\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[3/8] Disabling SMBv1 Protocol...\" -ForegroundColor Cyan\ntry {\n    Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force\n    Write-Host \"  ✅ SMBv1 disabled (protects against WannaCry/EternalBlue)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable SMBv1\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[4/8] Enabling Windows Firewall...\" -ForegroundColor Cyan\ntry {\n    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\n    Write-Host \"  ✅ Firewall enabled on all profiles\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to enable firewall\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[5/8] Configuring Audit Policies...\" -ForegroundColor Cyan\ntry {\n    # Enable critical audit policies\n    auditpol /set /category:\"Account Logon\" /success:enable /failure:enable\n    auditpol /set /category:\"Account Management\" /success:enable /failure:enable\n    auditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\n    auditpol /set /category:\"Policy Change\" /success:enable /failure:enable\n    auditpol /set /category:\"Privilege Use\" /success:enable /failure:enable\n    Write-Host \"  ✅ Critical audit policies enabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure audit policies\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[6/8] Disabling Guest Account...\" -ForegroundColor Cyan\ntry {\n    net user guest /active:no\n    Write-Host \"  ✅ Guest account disabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable guest account\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[7/8] Configuring RDP Security...\" -ForegroundColor Cyan\ntry {\n    # Require NLA for RDP\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1\n    # Set encryption level to high\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'MinEncryptionLevel' -Value 3\n    Write-Host \"  ✅ RDP requires Network Level Authentication\" -ForegroundColor Green\n    Write-Host \"  ✅ RDP encryption set to High\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure RDP security\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[8/8] Disabling Unnecessary Services...\" -ForegroundColor Cyan\n$ServicesToDisable = @('RemoteRegistry', 'SSDPSRV', 'upnphost')\nforeach ($Service in $ServicesToDisable) {\n    try {\n        $Svc = Get-Service -Name $Service -ErrorAction SilentlyContinue\n        if ($Svc) {\n            Stop-Service -Name $Service -Force -ErrorAction SilentlyContinue\n            Set-Service -Name $Service -StartupType Disabled\n            Write-Host \"  ✅ Disabled: $Service\" -ForegroundColor Green\n        }\n    } catch {\n        Write-Host \"  ⚠ Could not disable: $Service\" -ForegroundColor Yellow\n    }\n}\n\nWrite-Host \"\"\nWrite-Host \"=== BASIC HARDENING COMPLETE ===\" -ForegroundColor Green\nWrite-Host \"\"\nWrite-Host \"Additional Recommendations:\" -ForegroundColor Yellow\nWrite-Host \"  • Run Windows Update regularly\" -ForegroundColor Gray\nWrite-Host \"  • Enable BitLocker on system drives\" -ForegroundColor Gray\nWrite-Host \"  • Implement least privilege access\" -ForegroundColor Gray\nWrite-Host \"  • Use separate admin accounts\" -ForegroundColor Gray\nWrite-Host \"  • Enable Advanced Threat Protection\" -ForegroundColor Gray\nWrite-Host \"\"\nWrite-Host \"[!] IMPORTANT: Test these changes in a non-production environment first\" -ForegroundColor Red"
-    },
-    {
-      "id": "dc-hardening-advanced",
-      "name": "Domain Controller - Advanced Hardening",
-      "description": "Advanced security configurations including LDAP signing, Kerberos, and more",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Domain Controller Advanced Hardening\n# Generated: $(Get-Date)\n# NOTE: Requires Domain Admin privileges\n\nWrite-Host \"=== DOMAIN CONTROLLER ADVANCED HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"[1/10] Enforcing LDAP Signing...\" -ForegroundColor Cyan\ntry {\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LDAPServerIntegrity' -Value 2 -Type DWord\n    Write-Host \"  ✅ LDAP signing required (protects against MITM attacks)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to enforce LDAP signing\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[2/10] Enforcing LDAP Channel Binding...\" -ForegroundColor Cyan\ntry {\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LdapEnforceChannelBinding' -Value 2 -Type DWord\n    Write-Host \"  ✅ LDAP channel binding enforced\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to enforce LDAP channel binding\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[3/10] Configuring Kerberos Encryption...\" -ForegroundColor Cyan\ntry {\n    # Disable weak Kerberos encryption (DES, RC4)\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\Kerberos\\Parameters' -Name 'SupportedEncryptionTypes' -Value 0x18 -Type DWord -Force\n    Write-Host \"  ✅ Weak Kerberos encryption disabled (DES, RC4)\" -ForegroundColor Green\n    Write-Host \"  ✅ Using AES128 and AES256 only\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure Kerberos encryption\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[4/10] Disabling NTLM Authentication...\" -ForegroundColor Cyan\ntry {\n    # Set NTLM to Deny all (requires Kerberos)\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictSendingNTLMTraffic' -Value 2 -Type DWord\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LmCompatibilityLevel' -Value 5 -Type DWord\n    Write-Host \"  ✅ NTLM authentication restricted\" -ForegroundColor Green\n    Write-Host \"  ⚠ WARNING: Ensure all systems support Kerberos\" -ForegroundColor Yellow\n} catch {\n    Write-Host \"  ❌ Failed to restrict NTLM\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[5/10] Enabling Protected Users Group...\" -ForegroundColor Cyan\ntry {\n    # Add Domain Admins to Protected Users (requires 2012 R2+)\n    $ProtectedUsers = Get-ADGroup -Identity 'Protected Users'\n    Write-Host \"  ✅ Protected Users group available\" -ForegroundColor Green\n    Write-Host \"  💡 Manually add privileged accounts to this group\" -ForegroundColor Cyan\n} catch {\n    Write-Host \"  ⚠ Protected Users group not available (requires 2012 R2+)\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"[6/10] Configuring AdminSDHolder...\" -ForegroundColor Cyan\ntry {\n    # Reduce AdminSDHolder propagation interval (default 60 min)\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'AdminSDProtectFrequency' -Value 600 -Type DWord\n    Write-Host \"  ✅ AdminSDHolder check interval: 10 minutes\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure AdminSDHolder\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[7/10] Disabling Print Spooler on DC...\" -ForegroundColor Cyan\ntry {\n    Stop-Service -Name Spooler -Force -ErrorAction SilentlyContinue\n    Set-Service -Name Spooler -StartupType Disabled\n    Write-Host \"  ✅ Print Spooler disabled (PrintNightmare protection)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable Print Spooler\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[8/10] Configuring Security Event Log Size...\" -ForegroundColor Cyan\ntry {\n    # Increase Security log to 4 GB\n    wevtutil sl Security /ms:4194304000\n    Write-Host \"  ✅ Security event log size: 4 GB\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure event log size\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[9/10] Enabling Credential Guard...\" -ForegroundColor Cyan\ntry {\n    # Enable Credential Guard (requires UEFI, TPM 2.0)\n    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\DeviceGuard' -Name 'EnableVirtualizationBasedSecurity' -Value 1 -PropertyType DWord -Force | Out-Null\n    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\DeviceGuard' -Name 'RequirePlatformSecurityFeatures' -Value 1 -PropertyType DWord -Force | Out-Null\n    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\n    Write-Host \"  ✅ Credential Guard enabled (requires reboot)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ⚠ Credential Guard may not be supported on this hardware\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"[10/10] Configuring Anonymous Access Restrictions...\" -ForegroundColor Cyan\ntry {\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymous' -Value 1 -Type DWord\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymousSAM' -Value 1 -Type DWord\n    Write-Host \"  ✅ Anonymous access restricted\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to restrict anonymous access\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"=== ADVANCED HARDENING COMPLETE ===\" -ForegroundColor Green\nWrite-Host \"\"\nWrite-Host \"Critical Next Steps:\" -ForegroundColor Yellow\nWrite-Host \"  1. REBOOT the Domain Controller\" -ForegroundColor Red\nWrite-Host \"  2. Test authentication from client machines\" -ForegroundColor Gray\nWrite-Host \"  3. Monitor Security event logs for issues\" -ForegroundColor Gray\nWrite-Host \"  4. Add privileged accounts to Protected Users group\" -ForegroundColor Gray\nWrite-Host \"  5. Implement tiered admin model\" -ForegroundColor Gray\nWrite-Host \"\"\nWrite-Host \"[!] Some changes may break legacy applications\" -ForegroundColor Red\nWrite-Host \"[!] Test thoroughly before production deployment\" -ForegroundColor Red"
-    },
-    {
-      "id": "ad-endpoint-hardening",
-      "name": "Active Directory Endpoint Hardening",
-      "description": "Harden domain-joined workstations and servers",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "disable_llmnr",
-          "label": "Disable LLMNR",
-          "type": "select",
-          "options": [
-            { "value": "true", "label": "Yes - Disable (Recommended)" },
-            { "value": "false", "label": "No - Keep Enabled" }
-          ],
-          "defaultValue": "true",
-          "description": "Prevents LLMNR poisoning attacks",
-          "required": true
-        },
-        {
-          "variable": "disable_netbios",
-          "label": "Disable NetBIOS",
-          "type": "select",
-          "options": [
-            { "value": "true", "label": "Yes - Disable (Recommended)" },
-            { "value": "false", "label": "No - Keep Enabled" }
-          ],
-          "defaultValue": "true",
-          "description": "Disables legacy NetBIOS protocol",
-          "required": true
-        },
-        {
-          "variable": "disable_wsh",
-          "label": "Disable Windows Script Host",
-          "type": "select",
-          "options": [
-            { "value": "true", "label": "Yes - Disable (Recommended)" },
-            { "value": "false", "label": "No - Keep Enabled" }
-          ],
-          "defaultValue": "true",
-          "description": "Prevents .vbs and .js malware execution",
-          "required": true
-        },
-        {
-          "variable": "enable_controlled_folder",
-          "label": "Enable Controlled Folder Access",
-          "type": "select",
-          "options": [
-            { "value": "true", "label": "Yes - Enable (Recommended)" },
-            { "value": "false", "label": "No - Keep Disabled" }
-          ],
-          "defaultValue": "true",
-          "description": "Ransomware protection for important folders",
-          "required": true
-        }
-      ],
-      "template": "# Active Directory Endpoint Hardening\n# Generated: $(Get-Date)\n# NOTE: Run with Administrator privileges on domain-joined machines\n\n$DisableLLMNR = [System.Convert]::ToBoolean(\"{{disable_llmnr}}\")\n$DisableNetBIOS = [System.Convert]::ToBoolean(\"{{disable_netbios}}\")\n$DisableWSH = [System.Convert]::ToBoolean(\"{{disable_wsh}}\")\n$EnableControlledFolder = [System.Convert]::ToBoolean(\"{{enable_controlled_folder}}\")\n\nWrite-Host \"=== AD ENDPOINT HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Configuration:\" -ForegroundColor Yellow\nWrite-Host \"  Disable LLMNR: $DisableLLMNR\" -ForegroundColor Gray\nWrite-Host \"  Disable NetBIOS: $DisableNetBIOS\" -ForegroundColor Gray\nWrite-Host \"  Disable WSH: $DisableWSH\" -ForegroundColor Gray\nWrite-Host \"  Enable Controlled Folder Access: $EnableControlledFolder\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# Check if domain-joined\n$IsDomainJoined = (Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain\nif (-not $IsDomainJoined) {\n    Write-Host \"[!] WARNING: This machine is not domain-joined\" -ForegroundColor Yellow\n    Write-Host \"Some configurations may not apply\" -ForegroundColor Gray\n    Write-Host \"\"\n}\n\nif ($DisableLLMNR) {\n    Write-Host \"[1/12] Disabling LLMNR (Link-Local Multicast Name Resolution)...\" -ForegroundColor Cyan\n    try {\n        New-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Force | Out-Null\n        Set-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Name 'EnableMulticast' -Value 0 -Type DWord\n        Write-Host \"  ✅ LLMNR disabled (prevents LLMNR poisoning attacks)\" -ForegroundColor Green\n    } catch {\n        Write-Host \"  ❌ Failed to disable LLMNR\" -ForegroundColor Red\n    }\n} else {\n    Write-Host \"[1/12] Skipping LLMNR (user choice)...\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nif ($DisableNetBIOS) {\n    Write-Host \"[2/12] Disabling NetBIOS over TCP/IP...\" -ForegroundColor Cyan\n    try {\n        $adapters = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true}\n        foreach ($adapter in $adapters) {\n            $adapter.SetTcpipNetbios(2) | Out-Null\n        }\n        Write-Host \"  ✅ NetBIOS disabled on all adapters\" -ForegroundColor Green\n    } catch {\n        Write-Host \"  ❌ Failed to disable NetBIOS\" -ForegroundColor Red\n    }\n} else {\n    Write-Host \"[2/12] Skipping NetBIOS (user choice)...\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"[3/12] Disabling WPAD (Web Proxy Auto-Discovery)...\" -ForegroundColor Cyan\ntry {\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Wpad' -Name 'WpadOverride' -Value 1 -Type DWord -Force\n    Write-Host \"  ✅ WPAD disabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable WPAD\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[4/12] Enabling Credential Guard...\" -ForegroundColor Cyan\ntry {\n    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\n    Write-Host \"  ✅ Credential Guard enabled (requires reboot)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ⚠ Credential Guard may not be supported\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nif ($DisableWSH) {\n    Write-Host \"[5/12] Disabling Windows Script Host...\" -ForegroundColor Cyan\n    try {\n        New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Force | Out-Null\n        Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Name 'Enabled' -Value 0 -Type DWord\n        Write-Host \"  ✅ WSH disabled (prevents .vbs, .js malware)\" -ForegroundColor Green\n    } catch {\n        Write-Host \"  ❌ Failed to disable WSH\" -ForegroundColor Red\n    }\n} else {\n    Write-Host \"[5/12] Skipping WSH (user choice)...\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"[6/12] Configuring PowerShell Execution Policy...\" -ForegroundColor Cyan\ntry {\n    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force\n    Write-Host \"  ✅ PowerShell execution policy: RemoteSigned\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to set execution policy\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[7/12] Enabling PowerShell Logging...\" -ForegroundColor Cyan\ntry {\n    # Enable ScriptBlock logging\n    New-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Name 'EnableScriptBlockLogging' -Value 1 -Type DWord\n    # Enable Module logging\n    New-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ModuleLogging' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ModuleLogging' -Name 'EnableModuleLogging' -Value 1 -Type DWord\n    Write-Host \"  ✅ PowerShell logging enabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to enable PowerShell logging\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[8/12] Disabling SMBv1...\" -ForegroundColor Cyan\ntry {\n    Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart\n    Write-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable SMBv1\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[9/12] Configuring Windows Defender...\" -ForegroundColor Cyan\ntry {\n    Set-MpPreference -DisableRealtimeMonitoring $false\n    Set-MpPreference -DisableBehaviorMonitoring $false\n    Set-MpPreference -DisableIOAVProtection $false\n    Set-MpPreference -DisableScriptScanning $false\n    if ($EnableControlledFolder) {\n        Set-MpPreference -EnableControlledFolderAccess Enabled\n        Write-Host \"  ✅ Controlled Folder Access enabled (ransomware protection)\" -ForegroundColor Green\n    }\n    Write-Host \"  ✅ Windows Defender fully enabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure Windows Defender\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[10/12] Disabling AutoRun/AutoPlay...\" -ForegroundColor Cyan\ntry {\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoDriveTypeAutoRun' -Value 255 -Type DWord\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoAutorun' -Value 1 -Type DWord\n    Write-Host \"  ✅ AutoRun/AutoPlay disabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable AutoRun\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[11/12] Configuring UAC (User Account Control)...\" -ForegroundColor Cyan\ntry {\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableLUA' -Value 1 -Type DWord\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'ConsentPromptBehaviorAdmin' -Value 2 -Type DWord\n    Write-Host \"  ✅ UAC enabled and configured\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure UAC\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[12/12] Enabling Windows Firewall...\" -ForegroundColor Cyan\ntry {\n    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\n    Set-NetFirewallProfile -Profile Public -DefaultInboundAction Block\n    Write-Host \"  ✅ Firewall enabled on all profiles\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to enable firewall\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"=== AD ENDPOINT HARDENING COMPLETE ===\" -ForegroundColor Green\nWrite-Host \"\"\nWrite-Host \"Additional Recommendations:\" -ForegroundColor Yellow\nWrite-Host \"  • Deploy via Group Policy for all endpoints\" -ForegroundColor Gray\nWrite-Host \"  • Enable BitLocker encryption\" -ForegroundColor Gray\nWrite-Host \"  • Implement application whitelisting (AppLocker)\" -ForegroundColor Gray\nWrite-Host \"  • Use LAPS for local admin passwords\" -ForegroundColor Gray\nWrite-Host \"  • Deploy EDR solution\" -ForegroundColor Gray\nWrite-Host \"\"\nWrite-Host \"[!] REBOOT REQUIRED for some changes to take effect\" -ForegroundColor Red"
-    }
-  ],
-  "m365": [
-    {
-      "id": "m365-connect",
-      "description": "Harden standalone/workgroup Windows PCs",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "min_password_length",
-          "label": "Minimum Password Length",
-          "type": "text",
-          "placeholder": "12",
-          "defaultValue": "12",
-          "description": "Minimum characters required (recommended: 10-14)",
-          "required": true
-        },
-        {
-          "variable": "lockout_threshold",
-          "label": "Account Lockout Threshold (attempts)",
-          "type": "text",
-          "placeholder": "5",
-          "defaultValue": "5",
-          "description": "Failed login attempts before lockout (recommended: 3-10)",
-          "required": true
-        },
-        {
-          "variable": "lockout_duration",
-          "label": "Lockout Duration (minutes)",
-          "type": "text",
-          "placeholder": "30",
-          "defaultValue": "30",
-          "description": "How long account stays locked (recommended: 15-60 min)",
-          "required": true
-        },
-        {
-          "variable": "disable_rdp",
-          "label": "Disable Remote Desktop",
-          "type": "select",
-          "options": [
-            { "value": "true", "label": "Yes - Disable (Recommended for home PCs)" },
-            { "value": "false", "label": "No - Keep Enabled" }
-          ],
-          "defaultValue": "true",
-          "description": "Disables RDP for security",
-          "required": true
-        },
-        {
-          "variable": "enable_controlled_folder",
-          "label": "Enable Controlled Folder Access",
-          "type": "select",
-          "options": [
-            { "value": "true", "label": "Yes - Enable (Ransomware Protection)" },
-            { "value": "false", "label": "No - Keep Disabled" }
-          ],
-          "defaultValue": "true",
-          "description": "Protects Documents, Pictures, etc. from ransomware",
-          "required": true
-        }
-      ],
-      "template": "# Local PC Hardening (Standalone)\n# Generated: $(Get-Date)\n# NOTE: For standalone/workgroup computers\n\n$MinPasswordLength = {{min_password_length}}\n$LockoutThreshold = {{lockout_threshold}}\n$LockoutDuration = {{lockout_duration}}\n$DisableRDP = [System.Convert]::ToBoolean(\"{{disable_rdp}}\")\n$EnableControlledFolder = [System.Convert]::ToBoolean(\"{{enable_controlled_folder}}\")\n\nWrite-Host \"=== LOCAL PC HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Configuration:\" -ForegroundColor Yellow\nWrite-Host \"  Min Password Length: $MinPasswordLength characters\" -ForegroundColor Gray\nWrite-Host \"  Lockout Threshold: $LockoutThreshold attempts\" -ForegroundColor Gray\nWrite-Host \"  Lockout Duration: $LockoutDuration minutes\" -ForegroundColor Gray\nWrite-Host \"  Disable RDP: $DisableRDP\" -ForegroundColor Gray\nWrite-Host \"  Enable Controlled Folder Access: $EnableControlledFolder\" -ForegroundColor Gray\nWrite-Host \"\"\n\nWrite-Host \"[1/15] Enabling Windows Defender...\" -ForegroundColor Cyan\ntry {\n    Set-MpPreference -DisableRealtimeMonitoring $false\n    Set-MpPreference -DisableBehaviorMonitoring $false\n    Set-MpPreference -DisableIOAVProtection $false\n    Set-MpPreference -DisableScriptScanning $false\n    Set-MpPreference -PUAProtection Enabled\n    if ($EnableControlledFolder) {\n        Set-MpPreference -EnableControlledFolderAccess Enabled\n        Write-Host \"  ✅ Controlled Folder Access enabled (ransomware protection)\" -ForegroundColor Green\n    }\n    Write-Host \"  ✅ Windows Defender fully enabled\" -ForegroundColor Green\n    Write-Host \"  ✅ PUA (Potentially Unwanted Apps) protection enabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure Windows Defender\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[2/15] Enabling Windows Firewall...\" -ForegroundColor Cyan\ntry {\n    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\n    Set-NetFirewallProfile -Profile Public,Private -DefaultInboundAction Block\n    Set-NetFirewallProfile -Profile Public,Private -DefaultOutboundAction Allow\n    Write-Host \"  ✅ Firewall enabled (blocking inbound, allowing outbound)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to enable firewall\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nif ($DisableRDP) {\n    Write-Host \"[3/15] Disabling Remote Desktop...\" -ForegroundColor Cyan\n    try {\n        Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 1\n        Disable-NetFirewallRule -DisplayGroup 'Remote Desktop'\n        Write-Host \"  ✅ Remote Desktop disabled\" -ForegroundColor Green\n    } catch {\n        Write-Host \"  ❌ Failed to disable RDP\" -ForegroundColor Red\n    }\n} else {\n    Write-Host \"[3/15] Keeping Remote Desktop enabled (user choice)...\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"[4/15] Disabling Remote Assistance...\" -ForegroundColor Cyan\ntry {\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Remote Assistance' -Name 'fAllowToGetHelp' -Value 0\n    Write-Host \"  ✅ Remote Assistance disabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable Remote Assistance\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[5/15] Disabling SMBv1...\" -ForegroundColor Cyan\ntry {\n    Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart\n    Write-Host \"  ✅ SMBv1 disabled (WannaCry protection)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable SMBv1\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[6/15] Disabling AutoRun/AutoPlay...\" -ForegroundColor Cyan\ntry {\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoDriveTypeAutoRun' -Value 255 -Type DWord\n    Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoDriveTypeAutoRun' -Value 255 -Type DWord\n    Write-Host \"  ✅ AutoRun disabled (prevents USB malware)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable AutoRun\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[7/15] Configuring UAC (Maximum)...\" -ForegroundColor Cyan\ntry {\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableLUA' -Value 1\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'ConsentPromptBehaviorAdmin' -Value 2\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'PromptOnSecureDesktop' -Value 1\n    Write-Host \"  ✅ UAC set to maximum security\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure UAC\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[8/15] Disabling Guest Account...\" -ForegroundColor Cyan\ntry {\n    net user guest /active:no\n    Write-Host \"  ✅ Guest account disabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable guest account\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[9/15] Configuring Password Policy...\" -ForegroundColor Cyan\ntry {\n    net accounts /minpwlen:$MinPasswordLength /maxpwage:90 /minpwage:1 /uniquepw:5\n    Write-Host \"  ✅ Min password length: $MinPasswordLength characters\" -ForegroundColor Green\n    Write-Host \"  ✅ Max password age: 90 days\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to set password policy\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[10/15] Configuring Account Lockout...\" -ForegroundColor Cyan\ntry {\n    net accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\n    Write-Host \"  ✅ Account lockout: $LockoutThreshold attempts, $LockoutDuration min duration\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to set lockout policy\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[11/15] Disabling Windows Script Host...\" -ForegroundColor Cyan\ntry {\n    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Name 'Enabled' -Value 0\n    Write-Host \"  ✅ WSH disabled (prevents .vbs, .js malware)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable WSH\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[12/15] Enabling BitLocker (if available)...\" -ForegroundColor Cyan\ntry {\n    $BitLockerVolume = Get-BitLockerVolume -MountPoint 'C:' -ErrorAction SilentlyContinue\n    if ($BitLockerVolume -and $BitLockerVolume.ProtectionStatus -eq 'Off') {\n        Write-Host \"  💡 BitLocker available but not enabled\" -ForegroundColor Yellow\n        Write-Host \"     Run 'Enable-BitLocker -MountPoint C:' to encrypt\" -ForegroundColor Gray\n    } elseif ($BitLockerVolume -and $BitLockerVolume.ProtectionStatus -eq 'On') {\n        Write-Host \"  ✅ BitLocker already enabled\" -ForegroundColor Green\n    } else {\n        Write-Host \"  ⚠ BitLocker not available on this system\" -ForegroundColor Yellow\n    }\n} catch {\n    Write-Host \"  ⚠ Could not check BitLocker status\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"[13/15] Disabling Unnecessary Services...\" -ForegroundColor Cyan\n$ServicesToDisable = @('RemoteRegistry', 'SSDPSRV', 'upnphost', 'WMPNetworkSvc', 'XblAuthManager', 'XblGameSave')\nforeach ($Service in $ServicesToDisable) {\n    try {\n        $Svc = Get-Service -Name $Service -ErrorAction SilentlyContinue\n        if ($Svc) {\n            Stop-Service -Name $Service -Force -ErrorAction SilentlyContinue\n            Set-Service -Name $Service -StartupType Disabled\n            Write-Host \"  ✅ Disabled: $Service\" -ForegroundColor Green\n        }\n    } catch {}\n}\n\nWrite-Host \"\"\nWrite-Host \"[14/15] Configuring Windows Update...\" -ForegroundColor Cyan\ntry {\n    # Enable automatic updates\n    Set-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'NoAutoUpdate' -Value 0 -Force\n    Write-Host \"  ✅ Automatic updates enabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ⚠ Could not configure Windows Update\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"[15/15] Enabling Audit Policies...\" -ForegroundColor Cyan\ntry {\n    auditpol /set /category:\"Account Logon\" /success:enable /failure:enable\n    auditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\n    auditpol /set /category:\"Object Access\" /failure:enable\n    Write-Host \"  ✅ Security auditing enabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to enable auditing\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"=== LOCAL PC HARDENING COMPLETE ===\" -ForegroundColor Green\nWrite-Host \"\"\nWrite-Host \"Security Score Summary:\" -ForegroundColor Cyan\nWrite-Host \"  ✅ Malware Protection: Enabled\" -ForegroundColor Green\nWrite-Host \"  ✅ Firewall: Enabled\" -ForegroundColor Green\nWrite-Host \"  ✅ Remote Access: Disabled\" -ForegroundColor Green\nWrite-Host \"  ✅ USB AutoRun: Disabled\" -ForegroundColor Green\nWrite-Host \"  ✅ Account Security: Configured\" -ForegroundColor Green\nWrite-Host \"\"\nWrite-Host \"Additional Recommendations:\" -ForegroundColor Yellow\nWrite-Host \"  • Keep Windows and applications updated\" -ForegroundColor Gray\nWrite-Host \"  • Use a standard user account for daily work\" -ForegroundColor Gray\nWrite-Host \"  • Enable BitLocker disk encryption\" -ForegroundColor Gray\nWrite-Host \"  • Use strong, unique passwords\" -ForegroundColor Gray\nWrite-Host \"  • Enable two-factor authentication where possible\" -ForegroundColor Gray\nWrite-Host \"  • Regular backups to external drive or cloud\" -ForegroundColor Gray\nWrite-Host \"\"\nWrite-Host \"[!] REBOOT RECOMMENDED to apply all changes\" -ForegroundColor Yellow"
-    }
-  ],
-  "troubleshooting": [
-    {
-      "id": "reset-windows-store",
-      "name": "Reset Windows Store",
-      "description": "Reset and repair Windows Store app",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Reset Windows Store\n# Generated: $(Get-Date)\n\nWrite-Host \"=== RESET WINDOWS STORE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Resetting Windows Store...\" -ForegroundColor Yellow\nWrite-Host \"This may take a few moments...\" -ForegroundColor Gray\nWrite-Host \"\"\n\nwsreset.exe\n\nWrite-Host \"✅ Windows Store has been reset\" -ForegroundColor Green\nWrite-Host \"The Store app should open automatically\" -ForegroundColor Cyan"
-    },
-    {
-      "id": "rebuild-icon-cache",
-      "name": "Rebuild Icon Cache",
-      "description": "Clear and rebuild Windows icon cache",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Rebuild Icon Cache\n# Generated: $(Get-Date)\n\nWrite-Host \"=== REBUILD ICON CACHE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Stopping Explorer...\" -ForegroundColor Yellow\nStop-Process -Name explorer -Force\n\nWrite-Host \"Clearing icon cache...\" -ForegroundColor Yellow\nRemove-Item \"$env:LOCALAPPDATA\\IconCache.db\" -Force -ErrorAction SilentlyContinue\nRemove-Item \"$env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer\\iconcache*\" -Force -ErrorAction SilentlyContinue\n\nWrite-Host \"Restarting Explorer...\" -ForegroundColor Yellow\nStart-Process explorer.exe\n\nWrite-Host \"\"\nWrite-Host \"✅ Icon cache rebuilt\" -ForegroundColor Green\nWrite-Host \"Icons should refresh shortly\" -ForegroundColor Cyan"
+      "template": "# Update Browser using Winget\n# Generated: $(Get-Date)\n\n$Browser = \"{{browser}}\"\n\nWrite-Host \"=== UPDATE BROWSER ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if winget is available\ntry {\n    $WingetVersion = winget --version\n    Write-Host \"Winget version: $WingetVersion\" -ForegroundColor Gray\n    Write-Host \"\"\n}\ncatch {\n    Write-Host \"[ERROR] Winget is not installed or not available\" -ForegroundColor Red\n    Write-Host \"Please install Windows Package Manager (winget) first\" -ForegroundColor Yellow\n    exit 1\n}\n\n# Get browser name for display\n$BrowserName = switch ($Browser) {\n    \"Google.Chrome\" { \"Google Chrome\" }\n    \"Mozilla.Firefox\" { \"Mozilla Firefox\" }\n    \"Microsoft.Edge\" { \"Microsoft Edge\" }\n    \"BraveSoftware.BraveBrowser\" { \"Brave Browser\" }\n    \"Opera.Opera\" { \"Opera\" }\n    \"Vivaldi.Vivaldi\" { \"Vivaldi\" }\n    default { $Browser }\n}\n\nWrite-Host \"Updating $BrowserName...\" -ForegroundColor Yellow\nWrite-Host \"Package ID: $Browser\" -ForegroundColor Gray\nWrite-Host \"\"\n\ntry {\n    # Check if browser is installed\n    Write-Host \"Checking if $BrowserName is installed...\" -ForegroundColor Cyan\n    $InstalledApp = winget list --id $Browser --exact 2>$null\n    \n    if ($LASTEXITCODE -ne 0) {\n        Write-Host \"[NOT FOUND] $BrowserName is not installed\" -ForegroundColor Yellow\n        Write-Host \"Would you like to install it instead? Run: winget install $Browser\" -ForegroundColor Gray\n        exit 0\n    }\n    \n    Write-Host \"[FOUND] $BrowserName is installed\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Upgrade the browser\n    Write-Host \"Starting upgrade process...\" -ForegroundColor Cyan\n    Write-Host \"This may take a few minutes...\" -ForegroundColor Gray\n    Write-Host \"\"\n    \n    winget upgrade $Browser --silent --accept-source-agreements --accept-package-agreements\n    \n    if ($LASTEXITCODE -eq 0) {\n        Write-Host \"\"\n        Write-Host \"✅ SUCCESS: $BrowserName has been updated!\" -ForegroundColor Green\n    } elseif ($LASTEXITCODE -eq -1978335189) {\n        Write-Host \"\"\n        Write-Host \"[INFO] $BrowserName is already up to date\" -ForegroundColor Cyan\n    } else {\n        Write-Host \"\"\n        Write-Host \"[WARNING] Update completed with exit code: $LASTEXITCODE\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] Failed to update $BrowserName: $_\" -ForegroundColor Red\n}"
     },
     {
       "id": "clear-all-browser-cache",
@@ -1062,7 +906,7 @@
       "description": "Clear cache for Chrome, Edge, and Firefox",
       "type": "powershell",
       "inputs": [],
-      "template": "# Clear All Browser Caches\n# Generated: $(Get-Date)\n\nWrite-Host \"=== CLEAR ALL BROWSER CACHES ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Stop browsers\nWrite-Host \"Stopping browsers...\" -ForegroundColor Yellow\n$Browsers = @(\"chrome\", \"msedge\", \"firefox\")\nforeach ($Browser in $Browsers) {\n    Stop-Process -Name $Browser -Force -ErrorAction SilentlyContinue\n}\n\nStart-Sleep -Seconds 2\n\n# Chrome\n$ChromeCache = \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Cache\"\nif (Test-Path $ChromeCache) {\n    Write-Host \"Clearing Chrome cache...\" -ForegroundColor Yellow\n    Remove-Item \"$ChromeCache\\*\" -Recurse -Force -ErrorAction SilentlyContinue\n    Write-Host \"  ✅ Chrome cache cleared\" -ForegroundColor Green\n}\n\n# Edge\n$EdgeCache = \"$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default\\Cache\"\nif (Test-Path $EdgeCache) {\n    Write-Host \"Clearing Edge cache...\" -ForegroundColor Yellow\n    Remove-Item \"$EdgeCache\\*\" -Recurse -Force -ErrorAction SilentlyContinue\n    Write-Host \"  ✅ Edge cache cleared\" -ForegroundColor Green\n}\n\n# Firefox\n$FirefoxProfiles = \"$env:APPDATA\\Mozilla\\Firefox\\Profiles\"\nif (Test-Path $FirefoxProfiles) {\n    Write-Host \"Clearing Firefox cache...\" -ForegroundColor Yellow\n    Get-ChildItem $FirefoxProfiles -Directory | ForEach-Object {\n        $CachePath = Join-Path $_.FullName \"cache2\"\n        if (Test-Path $CachePath) {\n            Remove-Item \"$CachePath\\*\" -Recurse -Force -ErrorAction SilentlyContinue\n        }\n    }\n    Write-Host \"  ✅ Firefox cache cleared\" -ForegroundColor Green\n}\n\nWrite-Host \"\"\nWrite-Host \"=== BROWSER CACHES CLEARED ===\" -ForegroundColor Green"
+      "template": "# Clear All Browser Caches\n# Generated: $(Get-Date)\n\nWrite-Host \"=== CLEAR ALL BROWSER CACHES ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Stopping browsers...\" -ForegroundColor Yellow\nWrite-Host \"  Lockout Threshold: $LockoutThreshold attempts\" -ForegroundColor Gray\nWrite-Host \"  Lockout Duration: $LockoutDuration minutes\" -ForegroundColor Gray\nWrite-Host \"  Min Password Length: $MinPasswordLength characters\" -ForegroundColor Gray\nWrite-Host \"  Max Password Age: $MaxPasswordAge days\" -ForegroundColor Gray\nWrite-Host \"  Password History: $PasswordHistory passwords\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# Check if running on a Domain Controller\n$IsDC = (Get-WmiObject -Class Win32_ComputerSystem).DomainRole -ge 4\nif (-not $IsDC) {\n    Write-Host \"[!] WARNING: This machine is not a Domain Controller\" -ForegroundColor Red\n    Write-Host \"This script should only be run on Domain Controllers\" -ForegroundColor Yellow\n    $continue = Read-Host \"Continue anyway? (y/N)\"\n    if ($continue -ne 'y') { exit }\n}\n\nWrite-Host \"[1/8] Configuring Account Lockout Policy...\" -ForegroundColor Cyan\ntry {\n    # Set account lockout threshold\n    net accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\n    Write-Host \"  ✅ Account lockout: $LockoutThreshold attempts, $LockoutDuration min duration\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to set account lockout policy\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[2/8] Configuring Password Policy...\" -ForegroundColor Cyan\ntry {\n    # Set minimum password length and complexity\n    net accounts /minpwlen:$MinPasswordLength /maxpwage:$MaxPasswordAge /minpwage:1 /uniquepw:$PasswordHistory\n    Write-Host \"  ✅ Min password length: $MinPasswordLength characters\" -ForegroundColor Green\n    Write-Host \"  ✅ Max password age: $MaxPasswordAge days\" -ForegroundColor Green\n    Write-Host \"  ✅ Password history: $PasswordHistory passwords\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to set password policy\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[3/8] Disabling SMBv1 Protocol...\" -ForegroundColor Cyan\ntry {\n    Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force\n    Write-Host \"  ✅ SMBv1 disabled (protects against WannaCry/EternalBlue)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable SMBv1\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[4/8] Enabling Windows Firewall...\" -ForegroundColor Cyan\ntry {\n    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\n    Write-Host \"  ✅ Firewall enabled on all profiles\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to enable firewall\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[5/8] Configuring Audit Policies...\" -ForegroundColor Cyan\ntry {\n    # Enable critical audit policies\n    auditpol /set /category:\"Account Logon\" /success:enable /failure:enable\n    auditpol /set /category:\"Account Management\" /success:enable /failure:enable\n    auditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\n    auditpol /set /category:\"Policy Change\" /success:enable /failure:enable\n    auditpol /set /category:\"Privilege Use\" /success:enable /failure:enable\n    Write-Host \"  ✅ Critical audit policies enabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure audit policies\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[6/8] Disabling Guest Account...\" -ForegroundColor Cyan\ntry {\n    net user guest /active:no\n    Write-Host \"  ✅ Guest account disabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable guest account\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[7/8] Configuring RDP Security...\" -ForegroundColor Cyan\ntry {\n    # Require NLA for RDP\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1\n    # Set encryption level to high\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'MinEncryptionLevel' -Value 3\n    Write-Host \"  ✅ RDP requires Network Level Authentication\" -ForegroundColor Green\n    Write-Host \"  ✅ RDP encryption set to High\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure RDP security\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[8/8] Disabling Unnecessary Services...\" -ForegroundColor Cyan\n$ServicesToDisable = @('RemoteRegistry', 'SSDPSRV', 'upnphost')\nforeach ($Service in $ServicesToDisable) {\n    try {\n        $Svc = Get-Service -Name $Service -ErrorAction SilentlyContinue\n        if ($Svc) {\n            Stop-Service -Name $Service -Force -ErrorAction SilentlyContinue\n            Set-Service -Name $Service -StartupType Disabled\n            Write-Host \"  ✅ Disabled: $Service\" -ForegroundColor Green\n        }\n    } catch {\n        Write-Host \"  ⚠ Could not disable: $Service\" -ForegroundColor Yellow\n    }\n}\n\nWrite-Host \"\"\nWrite-Host \"=== BASIC HARDENING COMPLETE ===\" -ForegroundColor Green\nWrite-Host \"\"\nWrite-Host \"Additional Recommendations:\" -ForegroundColor Yellow\nWrite-Host \"  • Run Windows Update regularly\" -ForegroundColor Gray\nWrite-Host \"  • Enable BitLocker on system drives\" -ForegroundColor Gray\nWrite-Host \"  • Implement least privilege access\" -ForegroundColor Gray\nWrite-Host \"  • Use separate admin accounts\" -ForegroundColor Gray\nWrite-Host \"  • Enable Advanced Threat Protection\" -ForegroundColor Gray\nWrite-Host \"\"\nWrite-Host \"[!] IMPORTANT: Test these changes in a non-production environment first\" -ForegroundColor Red"
     }
   ],
   "m365": [
@@ -1123,8 +967,14 @@
           "label": "Force Change at Next Login",
           "type": "select",
           "options": [
-            { "value": "true", "label": "Yes - User must change password" },
-            { "value": "false", "label": "No - Keep this password" }
+            {
+              "value": "true",
+              "label": "Yes - User must change password"
+            },
+            {
+              "value": "false",
+              "label": "No - Keep this password"
+            }
           ],
           "defaultValue": "true",
           "required": true
@@ -1157,9 +1007,18 @@
           "label": "Permission Type",
           "type": "select",
           "options": [
-            { "value": "FullAccess", "label": "Full Access" },
-            { "value": "SendAs", "label": "Send As" },
-            { "value": "SendOnBehalf", "label": "Send on Behalf" }
+            {
+              "value": "FullAccess",
+              "label": "Full Access"
+            },
+            {
+              "value": "SendAs",
+              "label": "Send As"
+            },
+            {
+              "value": "SendOnBehalf",
+              "label": "Send on Behalf"
+            }
           ],
           "defaultValue": "FullAccess",
           "required": true
@@ -1193,8 +1052,14 @@
           "label": "Action",
           "type": "select",
           "options": [
-            { "value": "Block", "label": "Block Sign-In" },
-            { "value": "Unblock", "label": "Unblock Sign-In" }
+            {
+              "value": "Block",
+              "label": "Block Sign-In"
+            },
+            {
+              "value": "Unblock",
+              "label": "Unblock Sign-In"
+            }
           ],
           "defaultValue": "Block",
           "required": true
@@ -1245,15 +1110,42 @@
           "label": "Mailbox Type",
           "type": "select",
           "options": [
-            { "value": "UserMailbox", "label": "User Mailboxes Only" },
-            { "value": "SharedMailbox", "label": "Shared Mailboxes Only" },
-            { "value": "All", "label": "All Mailboxes" }
+            {
+              "value": "UserMailbox",
+              "label": "User Mailboxes Only"
+            },
+            {
+              "value": "SharedMailbox",
+              "label": "Shared Mailboxes Only"
+            },
+            {
+              "value": "All",
+              "label": "All Mailboxes"
+            }
           ],
           "defaultValue": "UserMailbox",
           "required": true
         }
       ],
       "template": "# Export All Active Mailboxes to CSV\n# Generated: $(Get-Date)\n# NOTE: Must be connected to Exchange Online and Azure AD\n\n$ExportPath = \"{{export_path}}\"\n$MailboxType = \"{{mailbox_type}}\"\n\nWrite-Host \"=== EXPORT M365 MAILBOXES ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Export Path: $ExportPath\" -ForegroundColor Yellow\nWrite-Host \"Mailbox Type: $MailboxType\" -ForegroundColor Yellow\nWrite-Host \"\"\n\n# Ensure export directory exists\n$ExportDir = Split-Path $ExportPath -Parent\nif (!(Test-Path $ExportDir)) {\n    Write-Host \"Creating directory: $ExportDir\" -ForegroundColor Yellow\n    New-Item -ItemType Directory -Path $ExportDir -Force | Out-Null\n}\n\ntry {\n    Write-Host \"Retrieving mailboxes...\" -ForegroundColor Cyan\n    Write-Host \"This may take several minutes for large organizations...\" -ForegroundColor Gray\n    Write-Host \"\"\n    \n    # Get mailboxes based on type\n    if ($MailboxType -eq \"All\") {\n        $Mailboxes = Get-Mailbox -ResultSize Unlimited | Sort-Object DisplayName\n    } else {\n        $Mailboxes = Get-Mailbox -RecipientTypeDetails $MailboxType -ResultSize Unlimited | Sort-Object DisplayName\n    }\n    \n    if (!$Mailboxes) {\n        Write-Host \"No mailboxes found\" -ForegroundColor Yellow\n        exit\n    }\n    \n    Write-Host \"Found $($Mailboxes.Count) mailbox(es)\" -ForegroundColor Green\n    Write-Host \"Processing mailbox details...\" -ForegroundColor Cyan\n    Write-Host \"\"\n    \n    $Results = @()\n    $Counter = 0\n    \n    foreach ($Mailbox in $Mailboxes) {\n        $Counter++\n        Write-Progress -Activity \"Processing Mailboxes\" -Status \"$Counter of $($Mailboxes.Count): $($Mailbox.DisplayName)\" -PercentComplete (($Counter / $Mailboxes.Count) * 100)\n        \n        try {\n            # Get mailbox statistics\n            $Stats = Get-MailboxStatistics -Identity $Mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue\n            \n            # Get Azure AD user info for additional details\n            $AzureUser = $null\n            try {\n                $AzureUser = Get-AzureADUser -ObjectId $Mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue\n            } catch {}\n            \n            # Get licenses\n            $Licenses = \"\"\n            try {\n                $LicenseDetails = Get-AzureADUserLicenseDetail -ObjectId $Mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue\n                if ($LicenseDetails) {\n                    $Licenses = ($LicenseDetails.SkuPartNumber -join \"; \")\n                }\n            } catch {}\n            \n            # Create custom object with all info\n            $MailboxInfo = [PSCustomObject]@{\n                DisplayName = $Mailbox.DisplayName\n                UserPrincipalName = $Mailbox.UserPrincipalName\n                PrimarySmtpAddress = $Mailbox.PrimarySmtpAddress\n                MailboxType = $Mailbox.RecipientTypeDetails\n                AccountEnabled = if ($AzureUser) { $AzureUser.AccountEnabled } else { \"N/A\" }\n                Department = if ($AzureUser) { $AzureUser.Department } else { \"\" }\n                JobTitle = if ($AzureUser) { $AzureUser.JobTitle } else { \"\" }\n                Office = if ($AzureUser) { $AzureUser.PhysicalDeliveryOfficeName } else { \"\" }\n                City = if ($AzureUser) { $AzureUser.City } else { \"\" }\n                Country = if ($AzureUser) { $AzureUser.Country } else { \"\" }\n                MailboxSizeMB = if ($Stats) { [math]::Round(($Stats.TotalItemSize.ToString() -replace '.*\\(([0-9,]+).*','$1' -replace ',','' ) / 1MB, 2) } else { 0 }\n                MailboxSizeGB = if ($Stats) { [math]::Round(($Stats.TotalItemSize.ToString() -replace '.*\\(([0-9,]+).*','$1' -replace ',','' ) / 1GB, 2) } else { 0 }\n                ItemCount = if ($Stats) { $Stats.ItemCount } else { 0 }\n                DeletedItemCount = if ($Stats) { $Stats.DeletedItemCount } else { 0 }\n                LastLogonTime = if ($Stats) { $Stats.LastLogonTime } else { \"Never\" }\n                LastUserActionTime = if ($Stats) { $Stats.LastUserActionTime } else { \"Never\" }\n                Licenses = $Licenses\n                ArchiveStatus = $Mailbox.ArchiveStatus\n                LitigationHoldEnabled = $Mailbox.LitigationHoldEnabled\n                WhenCreated = $Mailbox.WhenCreated\n                EmailAddresses = ($Mailbox.EmailAddresses | Where-Object {$_ -like \"smtp:*\"}) -join \"; \"\n            }\n            \n            $Results += $MailboxInfo\n            \n        } catch {\n            Write-Host \"  Warning: Error processing $($Mailbox.DisplayName): $_\" -ForegroundColor Yellow\n        }\n    }\n    \n    Write-Progress -Activity \"Processing Mailboxes\" -Completed\n    \n    # Export to CSV\n    Write-Host \"\"\n    Write-Host \"Exporting to CSV...\" -ForegroundColor Cyan\n    $Results | Export-Csv -Path $ExportPath -NoTypeInformation -Encoding UTF8\n    \n    Write-Host \"\"\n    Write-Host \"✅ EXPORT COMPLETE!\" -ForegroundColor Green\n    Write-Host \"\"\n    Write-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\n    Write-Host \"Total Mailboxes: $($Results.Count)\" -ForegroundColor Cyan\n    Write-Host \"Export File: $ExportPath\" -ForegroundColor Cyan\n    Write-Host \"File Size: $([math]::Round((Get-Item $ExportPath).Length / 1KB, 2)) KB\" -ForegroundColor Cyan\n    Write-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\n    Write-Host \"\"\n    \n    # Summary statistics\n    $TotalSizeGB = ($Results | Measure-Object -Property MailboxSizeGB -Sum).Sum\n    $TotalItems = ($Results | Measure-Object -Property ItemCount -Sum).Sum\n    $ActiveUsers = ($Results | Where-Object {$_.LastLogonTime -ne \"Never\"}).Count\n    \n    Write-Host \"Summary Statistics:\" -ForegroundColor Yellow\n    Write-Host \"  Total Mailbox Size: $([math]::Round($TotalSizeGB, 2)) GB\" -ForegroundColor Gray\n    Write-Host \"  Total Items: $TotalItems\" -ForegroundColor Gray\n    Write-Host \"  Active Users (logged in): $ActiveUsers\" -ForegroundColor Gray\n    Write-Host \"  Inactive Users: $($Results.Count - $ActiveUsers)\" -ForegroundColor Gray\n    \n    if ($Results.Count -gt 0) {\n        $AvgSizeGB = [math]::Round($TotalSizeGB / $Results.Count, 2)\n        Write-Host \"  Average Mailbox Size: $AvgSizeGB GB\" -ForegroundColor Gray\n    }\n    \n    Write-Host \"\"\n    Write-Host \"[TIP] Open the CSV file in Excel for detailed analysis\" -ForegroundColor Cyan\n    \n} catch {\n    Write-Host \"❌ Error during export: $_\" -ForegroundColor Red\n}"
+    }
+  ],
+  "troubleshooting": [
+    {
+      "id": "reset-windows-store",
+      "name": "Reset Windows Store",
+      "description": "Reset and repair Windows Store app",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Reset Windows Store\n# Generated: $(Get-Date)\n\nWrite-Host \"=== RESET WINDOWS STORE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Resetting Windows Store...\" -ForegroundColor Yellow\nWrite-Host \"This may take a few moments...\" -ForegroundColor Gray\nWrite-Host \"\"\n\nwsreset.exe\n\nWrite-Host \"✅ Windows Store has been reset\" -ForegroundColor Green\nWrite-Host \"The Store app should open automatically\" -ForegroundColor Cyan"
+    },
+    {
+      "id": "rebuild-icon-cache",
+      "name": "Rebuild Icon Cache",
+      "description": "Clear and rebuild Windows icon cache",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Rebuild Icon Cache\n# Generated: $(Get-Date)\n\nWrite-Host \"=== REBUILD ICON CACHE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Stopping Explorer...\" -ForegroundColor Yellow\nStop-Process -Name explorer -Force\n\nWrite-Host \"Clearing icon cache...\" -ForegroundColor Yellow\nRemove-Item \"$env:LOCALAPPDATA\\IconCache.db\" -Force -ErrorAction SilentlyContinue\nRemove-Item \"$env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer\\iconcache*\" -Force -ErrorAction SilentlyContinue\n\nWrite-Host \"Restarting Explorer...\" -ForegroundColor Yellow\nStart-Process explorer.exe\n\nWrite-Host \"\"\nWrite-Host \"✅ Icon cache rebuilt\" -ForegroundColor Green\nWrite-Host \"Icons should refresh shortly\" -ForegroundColor Cyan"
     }
   ]
 }

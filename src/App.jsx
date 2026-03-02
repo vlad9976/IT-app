@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import ScriptPanel from './components/ScriptPanel';
+import UpdateNotification from './components/UpdateNotification';
 import scriptsData from './data/scripts.json';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
       <ScriptPanel 
         script={selectedScript}
       />
+      <UpdateNotification />
     </div>
   );
 }

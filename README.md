@@ -5,12 +5,15 @@ A modern Windows desktop application built with Electron, React, and Tailwind CS
 ## Features
 
 - 🎨 Modern dark IT admin-style UI
-- 📁 Organized script categories (User Management, System Maintenance, Network Tools, Security)
+- 📁 Organized script categories (Active Directory, M365, System Maintenance, Network Tools, Security, Hardening)
 - 🔧 Dynamic input fields based on script definitions
 - 🔒 Password field support with show/hide toggle
-- 📋 One-click copy to clipboard
+- 📋 One-click copy to clipboard + Save to file
 - ⚡ Real-time script generation with variable replacement
 - 🖥️ Native Windows desktop application
+- 🔄 **Automatic updates via GitHub Releases**
+- 📚 Built-in documentation for Event IDs, Services, Ports, and M365 Licenses
+- 🔍 Search functionality across all scripts
 
 ## Tech Stack
 
@@ -19,6 +22,8 @@ A modern Windows desktop application built with Electron, React, and Tailwind CS
 - **Tailwind CSS** - Styling
 - **Vite** - Build tool
 - **Lucide React** - Icons
+- **electron-updater** - Automatic updates
+- **electron-builder** - Application packaging
 
 ## Installation
 
@@ -102,11 +107,26 @@ Use `{{variableName}}` in your script templates. The app will automatically repl
 ## Building for Production
 
 ```bash
-# Build the React app
-npm run build
-
-# Build Windows executable
+# Build Windows executable (local only)
 npm run build:win
+
+# Build and publish to GitHub (with auto-update)
+npm run publish
+```
+
+**📖 For complete auto-update setup, see:**
+- `AUTO_UPDATE_GUIDE.md` - Complete setup instructions
+- `BUILD_AND_PUBLISH.md` - Build and release workflow
+- `UPDATE_FLOW.md` - Visual diagrams
+
+### Quick Setup for Auto-Updates
+
+```powershell
+# 1. Run setup script
+.\setup-github-updates.ps1
+
+# 2. Publish first release
+npm run publish
 ```
 
 ## Development

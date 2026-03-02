@@ -31,3 +31,13 @@ yarn-error.log*
 # Environment
 .env
 .env.local
+
+# Security - Never commit tokens!
+*.token
+.env.production
+GH_TOKEN.txt
+
+# Electron builder
+*.blockmap
+builder-debug.yml
+builder-effective-config.yaml
