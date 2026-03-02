@@ -1,6 +1,7 @@
 const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
+const fs = require('fs');
 
 // Configure auto-updater logging
 autoUpdater.logger = require('electron-log');
@@ -9,6 +10,26 @@ autoUpdater.logger.transports.file.level = 'info';
 // Auto-updater configuration
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
+
+// Configure for private GitHub repo
+// Token should be stored in user's home directory: ~/.github-update-token
+const tokenPath = path.join(app.getPath('home'), '.github-update-token');
+if (fs.existsSync(tokenPath)) {
+  try {
+    const token = fs.readFileSync(tokenPath, 'utf8').trim();
+    if (token) {
+      autoUpdater.requestHeaders = {
+        'Authorization': `token ${token}`
+      };
+      autoUpdater.logger.info('Using GitHub token for private repo updates');
+    }
+  } catch (error) {
+    autoUpdater.logger.error('Failed to read GitHub token:', error);
+  }
+} else {
+  autoUpdater.logger.warn('No GitHub token found. Updates from private repo will fail.');
+  autoUpdater.logger.warn(`Create token file at: ${tokenPath}`);
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
