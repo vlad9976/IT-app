@@ -18,6 +18,9 @@
     "directories": {
       "output": "dist-electron"
     },
+    "electronDownload": {
+      "cache": "node_modules/.cache/electron"
+    },
     "publish": [
       {
         "provider": "github",
@@ -31,8 +34,8 @@
       "target": "nsis",
       "publisherName": "IT Admin Tools",
       "verifyUpdateCodeSignature": false,
-      "sign": null,
-      "signingHashAlgorithms": null
+      "signAndEditExecutable": false,
+      "signDlls": false
     },
     "nsis": {
       "oneClick": false,
