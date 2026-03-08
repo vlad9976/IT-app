@@ -74,6 +74,10 @@ contextBridge.exposeInMainWorld('electron', {
     traceMessages: (options) => ipcRenderer.invoke('m365:traceMessages', options)
   },
 
+  // Scripts data (categories + scripts)
+  getScriptsData: () => ipcRenderer.invoke('scripts:getData'),
+  saveScriptsData: (data) => ipcRenderer.invoke('scripts:saveData', data),
+
   // File dialog for CSV export
   saveFileDialog: (defaultFilename, content) => ipcRenderer.invoke('dialog:saveFile', defaultFilename, content),
 

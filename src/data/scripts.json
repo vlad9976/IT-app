@@ -6,8 +6,20 @@
       "description": "Reset an Active Directory user password",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com or DOMAIN\\user", "defaultValue": "" },
-        { "variable": "new_password", "label": "New Password", "type": "password", "placeholder": "NewPassword123!", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username/UPN",
+          "type": "text",
+          "placeholder": "user@domain.com or DOMAIN\\user",
+          "defaultValue": ""
+        },
+        {
+          "variable": "new_password",
+          "label": "New Password",
+          "type": "password",
+          "placeholder": "NewPassword123!",
+          "defaultValue": ""
+        }
       ],
       "template": "# Reset AD Password\nSet-ADAccountPassword -Identity '{{username}}' -Reset -NewPassword (ConvertTo-SecureString -AsPlainText '{{new_password}}' -Force)\nSet-ADUser -Identity '{{username}}' -ChangePasswordAtLogon $true"
     },
@@ -17,7 +29,13 @@
       "description": "Unlock a locked Active Directory user account",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username/UPN",
+          "type": "text",
+          "placeholder": "user@domain.com",
+          "defaultValue": ""
+        }
       ],
       "template": "# Unlock AD Account\nUnlock-ADAccount -Identity '{{username}}'"
     },
@@ -27,7 +45,13 @@
       "description": "Disable an Active Directory user account",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username/UPN",
+          "type": "text",
+          "placeholder": "user@domain.com",
+          "defaultValue": ""
+        }
       ],
       "template": "# Disable AD User\nDisable-ADAccount -Identity '{{username}}'"
     },
@@ -37,7 +61,13 @@
       "description": "Enable a disabled Active Directory user account",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username/UPN",
+          "type": "text",
+          "placeholder": "user@domain.com",
+          "defaultValue": ""
+        }
       ],
       "template": "# Enable AD User\nEnable-ADAccount -Identity '{{username}}'"
     },
@@ -47,8 +77,20 @@
       "description": "Add a user to an Active Directory security group",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" },
-        { "variable": "group_name", "label": "Group Name", "type": "text", "placeholder": "Sales_Team", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username/UPN",
+          "type": "text",
+          "placeholder": "user@domain.com",
+          "defaultValue": ""
+        },
+        {
+          "variable": "group_name",
+          "label": "Group Name",
+          "type": "text",
+          "placeholder": "Sales_Team",
+          "defaultValue": ""
+        }
       ],
       "template": "# Add User to AD Group\nAdd-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}'"
     },
@@ -58,8 +100,20 @@
       "description": "Remove a user from an Active Directory security group",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" },
-        { "variable": "group_name", "label": "Group Name", "type": "text", "placeholder": "Sales_Team", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username/UPN",
+          "type": "text",
+          "placeholder": "user@domain.com",
+          "defaultValue": ""
+        },
+        {
+          "variable": "group_name",
+          "label": "Group Name",
+          "type": "text",
+          "placeholder": "Sales_Team",
+          "defaultValue": ""
+        }
       ],
       "template": "# Remove User from AD Group\nRemove-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}' -Confirm:$false"
     },
@@ -69,8 +123,20 @@
       "description": "Add a user or group to the local Administrators group on a computer",
       "type": "powershell",
       "inputs": [
-        { "variable": "computer_name", "label": "Computer Name", "type": "text", "placeholder": "PC001 or . for local", "defaultValue": "." },
-        { "variable": "account", "label": "Account (user or group)", "type": "text", "placeholder": "DOMAIN\\user", "defaultValue": "" }
+        {
+          "variable": "computer_name",
+          "label": "Computer Name",
+          "type": "text",
+          "placeholder": "PC001 or . for local",
+          "defaultValue": "."
+        },
+        {
+          "variable": "account",
+          "label": "Account (user or group)",
+          "type": "text",
+          "placeholder": "DOMAIN\\user",
+          "defaultValue": ""
+        }
       ],
       "template": "# Add to Local Administrators\nAdd-LocalGroupMember -Group 'Administrators' -Member '{{account}}' -ComputerName '{{computer_name}}'"
     },
@@ -80,9 +146,27 @@
       "description": "Create multiple AD users from a CSV file",
       "type": "powershell",
       "inputs": [
-        { "variable": "csv_path", "label": "CSV Path", "type": "text", "placeholder": "C:\\Data\\users.csv", "defaultValue": "" },
-        { "variable": "initial_password", "label": "Initial Password", "type": "password", "placeholder": "TempPassword123!", "defaultValue": "" },
-        { "variable": "ou_path", "label": "OU Path (optional)", "type": "text", "placeholder": "OU=Users,DC=domain,DC=com", "defaultValue": "" }
+        {
+          "variable": "csv_path",
+          "label": "CSV Path",
+          "type": "text",
+          "placeholder": "C:\\Data\\users.csv",
+          "defaultValue": ""
+        },
+        {
+          "variable": "initial_password",
+          "label": "Initial Password",
+          "type": "password",
+          "placeholder": "TempPassword123!",
+          "defaultValue": ""
+        },
+        {
+          "variable": "ou_path",
+          "label": "OU Path (optional)",
+          "type": "text",
+          "placeholder": "OU=Users,DC=domain,DC=com",
+          "defaultValue": ""
+        }
       ],
       "template": "# Bulk Create AD Users from CSV\n#Requires -Modules ActiveDirectory\n$csv = Import-Csv '{{csv_path}}'\n$securePass = ConvertTo-SecureString '{{initial_password}}' -AsPlainText -Force\nforeach ($row in $csv) {\n    $DisplayName = if ([string]::IsNullOrWhiteSpace($row.Surname)) { $row.GivenName } else { \"$($row.GivenName) $($row.Surname)\" }\n    $params = @{\n        Name = $DisplayName\n        SamAccountName = $row.SamAccountName\n        UserPrincipalName = $row.UserPrincipalName\n        GivenName = $row.GivenName\n        Surname = $row.Surname\n        AccountPassword = $securePass\n        Enabled = $true\n    }\n    if ($row.OU) { $params['Path'] = $row.OU }\n    elseif ('{{ou_path}}') { $params['Path'] = '{{ou_path}}' }\n    if ($row.Description) { $params['Description'] = $row.Description }\n    New-ADUser @params\n}"
     },
@@ -92,7 +176,13 @@
       "description": "Display detailed information for an AD user",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username/UPN",
+          "type": "text",
+          "placeholder": "user@domain.com",
+          "defaultValue": ""
+        }
       ],
       "template": "# Get AD User Info\nGet-ADUser -Identity '{{username}}' -Properties * | Format-List"
     },
@@ -102,7 +192,13 @@
       "description": "List all members of an Active Directory group",
       "type": "powershell",
       "inputs": [
-        { "variable": "group_name", "label": "Group Name", "type": "text", "placeholder": "Sales_Team", "defaultValue": "" }
+        {
+          "variable": "group_name",
+          "label": "Group Name",
+          "type": "text",
+          "placeholder": "Sales_Team",
+          "defaultValue": ""
+        }
       ],
       "template": "# List AD Group Members\nGet-ADGroupMember -Identity '{{group_name}}' | Format-Table Name, SamAccountName, objectClass -AutoSize"
     }
@@ -114,8 +210,20 @@
       "description": "Create a local user account on the computer",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username", "type": "text", "placeholder": "newuser", "defaultValue": "" },
-        { "variable": "password", "label": "Password", "type": "password", "placeholder": "Password123!", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username",
+          "type": "text",
+          "placeholder": "newuser",
+          "defaultValue": ""
+        },
+        {
+          "variable": "password",
+          "label": "Password",
+          "type": "password",
+          "placeholder": "Password123!",
+          "defaultValue": ""
+        }
       ],
       "template": "# Create Local User\nNew-LocalUser -Name '{{username}}' -Password (ConvertTo-SecureString '{{password}}' -AsPlainText -Force) -FullName '{{username}}' -Description 'Local user'"
     },
@@ -125,7 +233,13 @@
       "description": "Remove a local user account",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username", "type": "text", "placeholder": "olduser", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username",
+          "type": "text",
+          "placeholder": "olduser",
+          "defaultValue": ""
+        }
       ],
       "template": "# Delete Local User\nRemove-LocalUser -Name '{{username}}'"
     },
@@ -135,8 +249,20 @@
       "description": "Reset password for a local user account",
       "type": "powershell",
       "inputs": [
-        { "variable": "username", "label": "Username", "type": "text", "placeholder": "user", "defaultValue": "" },
-        { "variable": "new_password", "label": "New Password", "type": "password", "placeholder": "NewPassword123!", "defaultValue": "" }
+        {
+          "variable": "username",
+          "label": "Username",
+          "type": "text",
+          "placeholder": "user",
+          "defaultValue": ""
+        },
+        {
+          "variable": "new_password",
+          "label": "New Password",
+          "type": "password",
+          "placeholder": "NewPassword123!",
+          "defaultValue": ""
+        }
       ],
       "template": "# Reset Local User Password\n$user = Get-LocalUser -Name '{{username}}'\n$user | Set-LocalUser -Password (ConvertTo-SecureString '{{new_password}}' -AsPlainText -Force)"
     },
@@ -156,7 +282,13 @@
       "description": "Ping a host to check connectivity",
       "type": "cmd",
       "inputs": [
-        { "variable": "hostname", "label": "Hostname or IP", "type": "text", "placeholder": "8.8.8.8 or google.com", "defaultValue": "" }
+        {
+          "variable": "hostname",
+          "label": "Hostname or IP",
+          "type": "text",
+          "placeholder": "8.8.8.8 or google.com",
+          "defaultValue": ""
+        }
       ],
       "template": "ping {{hostname}} -n 4"
     },
@@ -166,7 +298,13 @@
       "description": "Perform DNS lookup for a hostname",
       "type": "cmd",
       "inputs": [
-        { "variable": "hostname", "label": "Hostname", "type": "text", "placeholder": "google.com", "defaultValue": "" }
+        {
+          "variable": "hostname",
+          "label": "Hostname",
+          "type": "text",
+          "placeholder": "google.com",
+          "defaultValue": ""
+        }
       ],
       "template": "nslookup {{hostname}}"
     },
@@ -176,7 +314,13 @@
       "description": "Trace the route to a host",
       "type": "cmd",
       "inputs": [
-        { "variable": "hostname", "label": "Hostname or IP", "type": "text", "placeholder": "google.com", "defaultValue": "" }
+        {
+          "variable": "hostname",
+          "label": "Hostname or IP",
+          "type": "text",
+          "placeholder": "google.com",
+          "defaultValue": ""
+        }
       ],
       "template": "tracert {{hostname}}"
     },
@@ -202,8 +346,20 @@
       "description": "Test if a port is open on a remote host",
       "type": "powershell",
       "inputs": [
-        { "variable": "hostname", "label": "Hostname or IP", "type": "text", "placeholder": "server.domain.com", "defaultValue": "" },
-        { "variable": "port", "label": "Port", "type": "text", "placeholder": "443", "defaultValue": "443" }
+        {
+          "variable": "hostname",
+          "label": "Hostname or IP",
+          "type": "text",
+          "placeholder": "server.domain.com",
+          "defaultValue": ""
+        },
+        {
+          "variable": "port",
+          "label": "Port",
+          "type": "text",
+          "placeholder": "443",
+          "defaultValue": "443"
+        }
       ],
       "template": "# Test Connection\nTest-NetConnection -ComputerName '{{hostname}}' -Port {{port}}"
     },
@@ -213,7 +369,13 @@
       "description": "Scan common ports on a host",
       "type": "powershell",
       "inputs": [
-        { "variable": "hostname", "label": "Hostname or IP", "type": "text", "placeholder": "192.168.1.1", "defaultValue": "" }
+        {
+          "variable": "hostname",
+          "label": "Hostname or IP",
+          "type": "text",
+          "placeholder": "192.168.1.1",
+          "defaultValue": ""
+        }
       ],
       "template": "# Port Scan (common ports)\n$ports = 21,22,23,25,80,443,445,3389,5985\nforeach ($p in $ports) {\n    $result = Test-NetConnection -ComputerName '{{hostname}}' -Port $p -WarningAction SilentlyContinue -ErrorAction SilentlyContinue\n    if ($result.TcpTestSucceeded) { Write-Host \"Port $p - OPEN\" -ForegroundColor Green } else { Write-Host \"Port $p - Closed\" -ForegroundColor Gray }\n}"
     }
@@ -225,9 +387,27 @@
       "description": "Search Event Log for specific Event IDs",
       "type": "powershell",
       "inputs": [
-        { "variable": "log_name", "label": "Log Name", "type": "text", "placeholder": "System or Application", "defaultValue": "System" },
-        { "variable": "event_ids", "label": "Event IDs (comma-separated)", "type": "text", "placeholder": "1000,1001", "defaultValue": "" },
-        { "variable": "hours", "label": "Hours to look back", "type": "text", "placeholder": "24", "defaultValue": "24" }
+        {
+          "variable": "log_name",
+          "label": "Log Name",
+          "type": "text",
+          "placeholder": "System or Application",
+          "defaultValue": "System"
+        },
+        {
+          "variable": "event_ids",
+          "label": "Event IDs (comma-separated)",
+          "type": "text",
+          "placeholder": "1000,1001",
+          "defaultValue": ""
+        },
+        {
+          "variable": "hours",
+          "label": "Hours to look back",
+          "type": "text",
+          "placeholder": "24",
+          "defaultValue": "24"
+        }
       ],
       "template": "# Event Log Hunter\n$ids = '{{event_ids}}' -split ',' | ForEach-Object { [int]$_.Trim() }\n$start = (Get-Date).AddHours(-[int]'{{hours}}')\nGet-WinEvent -FilterHashtable @{ LogName='{{log_name}}'; Id=$ids; StartTime=$start } -ErrorAction SilentlyContinue | Format-Table TimeCreated, Id, Message -AutoSize -Wrap"
     },
@@ -253,7 +433,13 @@
       "description": "Get last logon for domain users",
       "type": "powershell",
       "inputs": [
-        { "variable": "search_base", "label": "Search Base OU (optional)", "type": "text", "placeholder": "OU=Users,DC=domain,DC=com", "defaultValue": "" }
+        {
+          "variable": "search_base",
+          "label": "Search Base OU (optional)",
+          "type": "text",
+          "placeholder": "OU=Users,DC=domain,DC=com",
+          "defaultValue": ""
+        }
       ],
       "template": "# Last Logon Report\n#Requires -Modules ActiveDirectory\n$ou = '{{search_base}}'\nif ($ou) { Get-ADUser -Filter * -SearchBase $ou -Properties LastLogonDate | Select-Object Name, SamAccountName, LastLogonDate | Sort-Object LastLogonDate -Descending | Format-Table -AutoSize }\nelse { Get-ADUser -Filter * -Properties LastLogonDate | Select-Object Name, SamAccountName, LastLogonDate | Sort-Object LastLogonDate -Descending | Format-Table -AutoSize }"
     }
@@ -281,7 +467,13 @@
       "description": "Check status of critical Windows services",
       "type": "powershell",
       "inputs": [
-        { "variable": "services", "label": "Service names (comma-separated)", "type": "text", "placeholder": "Spooler,Bits,WinRM", "defaultValue": "Spooler,Bits,WinRM,Wuauserv" }
+        {
+          "variable": "services",
+          "label": "Service names (comma-separated)",
+          "type": "text",
+          "placeholder": "Spooler,Bits,WinRM",
+          "defaultValue": "Spooler,Bits,WinRM,Wuauserv"
+        }
       ],
       "template": "# Check Critical Services\n$svcs = '{{services}}' -split ',' | ForEach-Object { $_.Trim() }\nforeach ($s in $svcs) {\n    try {\n        $svc = Get-Service -Name $s -ErrorAction Stop\n        $status = if ($svc.Status -eq 'Running') { 'Running' } else { 'Stopped' }\n        Write-Host \"$s : $status\"\n    } catch { Write-Host \"$s : Not Found\" -ForegroundColor Yellow }\n}"
     },
@@ -291,7 +483,13 @@
       "description": "Restart a Windows service",
       "type": "powershell",
       "inputs": [
-        { "variable": "service_name", "label": "Service Name", "type": "text", "placeholder": "Spooler", "defaultValue": "" }
+        {
+          "variable": "service_name",
+          "label": "Service Name",
+          "type": "text",
+          "placeholder": "Spooler",
+          "defaultValue": ""
+        }
       ],
       "template": "# Restart Service (run as admin)\nRestart-Service -Name '{{service_name}}' -Force"
     }
@@ -354,10 +552,8 @@
       "name": "Activate via KMS",
       "description": "Activate Windows using KMS server",
       "type": "cmd",
-      "inputs": [
-        { "variable": "kms_server", "label": "KMS Server", "type": "text", "placeholder": "kms.domain.com", "defaultValue": "" }
-      ],
-      "template": "slmgr /skms {{kms_server}}\nslmgr /ato"
+      "inputs": [],
+      "template": "echo office2016 cd /d %ProgramFiles(x86)%\\Microsoft Office\\Office16\n\ncd /d %ProgramFiles%\\Microsoft Office\\Office16\n\nfor /f %x in ('dir /b ..\\root\\Licenses16\\ProPlus2021VL_KMS*.xrm-ms') do cscript ospp.vbs /inslic:\"..\\root\\Licenses16\\%x\"\n\ncscript ospp.vbs /setprt:1688\n\ncscript ospp.vbs /unpkey:6F7TH >nul\n\ncscript ospp.vbs /inpkey:FXYTK-NJJ8C-GB6DW-3DYQT-6F7TH\n\ncscript ospp.vbs /sethst:e8.us.to\n\ncscript ospp.vbs /act\nPAUSE\nexit\nexit\ncd /d %ProgramFiles(x86)%\\Microsoft Office\\Office16"
     }
   ],
   "remote_desktop": [
@@ -437,8 +633,20 @@
       "description": "Template for migrating a user account to new domain",
       "type": "powershell",
       "inputs": [
-        { "variable": "source_user", "label": "Source Username (old domain)", "type": "text", "placeholder": "DOMAIN\\user", "defaultValue": "" },
-        { "variable": "target_ou", "label": "Target OU", "type": "text", "placeholder": "OU=Users,DC=newdomain,DC=com", "defaultValue": "" }
+        {
+          "variable": "source_user",
+          "label": "Source Username (old domain)",
+          "type": "text",
+          "placeholder": "DOMAIN\\user",
+          "defaultValue": ""
+        },
+        {
+          "variable": "target_ou",
+          "label": "Target OU",
+          "type": "text",
+          "placeholder": "OU=Users,DC=newdomain,DC=com",
+          "defaultValue": ""
+        }
       ],
       "template": "# Migrate User - Use ADMT or manual process\n# 1. Export from source: Get-ADUser -Identity '{{source_user}}' -Properties * | Export-Clixml user.xml\n# 2. Create in target: New-ADUser -Path '{{target_ou}}' -Name ... (copy attributes)\n# 3. Use ADMT for SID history, passwords, profiles\n# Or run: ADMT USER /N \"DOMAIN\\user\" /TD \"NEWDOMAIN\" /TO \"{{target_ou}}\""
     },
@@ -448,9 +656,27 @@
       "description": "Join computer to new domain (post-ADMT or manual)",
       "type": "powershell",
       "inputs": [
-        { "variable": "computer_name", "label": "Computer Name", "type": "text", "placeholder": "PC001", "defaultValue": "" },
-        { "variable": "new_domain", "label": "New Domain", "type": "text", "placeholder": "NEWDOMAIN.COM", "defaultValue": "" },
-        { "variable": "ou_path", "label": "Target OU", "type": "text", "placeholder": "OU=Workstations,DC=newdomain,DC=com", "defaultValue": "" }
+        {
+          "variable": "computer_name",
+          "label": "Computer Name",
+          "type": "text",
+          "placeholder": "PC001",
+          "defaultValue": ""
+        },
+        {
+          "variable": "new_domain",
+          "label": "New Domain",
+          "type": "text",
+          "placeholder": "NEWDOMAIN.COM",
+          "defaultValue": ""
+        },
+        {
+          "variable": "ou_path",
+          "label": "Target OU",
+          "type": "text",
+          "placeholder": "OU=Workstations,DC=newdomain,DC=com",
+          "defaultValue": ""
+        }
       ],
       "template": "# Join to new domain (run on target computer)\nAdd-Computer -DomainName '{{new_domain}}' -OUPath '{{ou_path}}' -Restart"
     },
@@ -460,8 +686,20 @@
       "description": "Export users from an OU for migration planning",
       "type": "powershell",
       "inputs": [
-        { "variable": "ou_path", "label": "Source OU", "type": "text", "placeholder": "OU=Users,DC=domain,DC=com", "defaultValue": "" },
-        { "variable": "export_path", "label": "Export CSV Path", "type": "text", "placeholder": "C:\\Migration\\users.csv", "defaultValue": "" }
+        {
+          "variable": "ou_path",
+          "label": "Source OU",
+          "type": "text",
+          "placeholder": "OU=Users,DC=domain,DC=com",
+          "defaultValue": ""
+        },
+        {
+          "variable": "export_path",
+          "label": "Export CSV Path",
+          "type": "text",
+          "placeholder": "C:\\Migration\\users.csv",
+          "defaultValue": ""
+        }
       ],
       "template": "# Export AD Users for Migration\n#Requires -Modules ActiveDirectory\nGet-ADUser -Filter * -SearchBase '{{ou_path}}' -Properties * | Select-Object Name, SamAccountName, UserPrincipalName, Mail, GivenName, Surname | Export-Csv '{{export_path}}' -NoTypeInformation"
     },
@@ -471,7 +709,13 @@
       "description": "Check AD environment for migration readiness",
       "type": "powershell",
       "inputs": [
-        { "variable": "ou_path", "label": "OU to analyze", "type": "text", "placeholder": "OU=Users,DC=domain,DC=com", "defaultValue": "" }
+        {
+          "variable": "ou_path",
+          "label": "OU to analyze",
+          "type": "text",
+          "placeholder": "OU=Users,DC=domain,DC=com",
+          "defaultValue": ""
+        }
       ],
       "template": "# Migration Readiness Check\n#Requires -Modules ActiveDirectory\n$users = Get-ADUser -Filter * -SearchBase '{{ou_path}}' -Properties LastLogonDate, Enabled\nWrite-Host \"Total users: $($users.Count)\"\nWrite-Host \"Enabled: $(($users | Where-Object Enabled).Count)\"\nWrite-Host \"Disabled: $(($users | Where-Object {!$_.Enabled}).Count)\"\n$users | Select-Object Name, SamAccountName, LastLogonDate, Enabled | Format-Table -AutoSize"
     }

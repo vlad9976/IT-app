@@ -455,6 +455,61 @@ ipcMain.handle('m365:traceMessages', async (event, options) => {
 // FILE DIALOG (for CSV export)
 // ============================================
 
+// ============================================
+// SCRIPTS DATA (categories + scripts)
+// ============================================
+
+function getScriptsPath() {
+  if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+    return path.join(__dirname, '..', 'src', 'data', 'scripts.json');
+  }
+  return path.join(app.getPath('userData'), 'scripts.json');
+}
+
+function getDefaultScriptsPath() {
+  return path.join(__dirname, '..', 'src', 'data', 'scripts.json');
+}
+
+ipcMain.handle('scripts:getData', async () => {
+  try {
+    const userPath = getScriptsPath();
+    const defaultPath = getDefaultScriptsPath();
+    let data;
+    if (fs.existsSync(userPath)) {
+      data = JSON.parse(fs.readFileSync(userPath, 'utf8'));
+    } else if (fs.existsSync(defaultPath)) {
+      data = JSON.parse(fs.readFileSync(defaultPath, 'utf8'));
+      if (!app.isPackaged) {
+        return data;
+      }
+      fs.mkdirSync(path.dirname(userPath), { recursive: true });
+      fs.writeFileSync(userPath, JSON.stringify(data, null, 2), 'utf8');
+    } else {
+      data = {};
+    }
+    return data;
+  } catch (err) {
+    log.error('scripts:getData error:', err);
+    return {};
+  }
+});
+
+ipcMain.handle('scripts:saveData', async (event, data) => {
+  try {
+    const filePath = getScriptsPath();
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    return { success: true };
+  } catch (err) {
+    log.error('scripts:saveData error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// ============================================
+// FILE DIALOG
+// ============================================
+
 ipcMain.handle('dialog:saveFile', async (event, defaultFilename, content) => {
   const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
   
