@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Terminal, FolderOpen, Search, X, Plug } from 'lucide-react';
+import { ChevronDown, ChevronRight, Terminal, FolderOpen, Search, X, Plug, Cloud } from 'lucide-react';
 
-const Sidebar = ({ categories, scriptsData, onScriptSelect, selectedScript }) => {
+const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, selectedScript, viewMode }) => {
   const [expandedCategories, setExpandedCategories] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -94,6 +94,28 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, selectedScript }) =>
             Found {Object.values(filteredData.scriptsData).reduce((sum, scripts) => sum + scripts.length, 0)} script(s)
           </p>
         )}
+      </div>
+
+      {/* Microsoft 365 Integration */}
+      <div className="px-4 mb-2">
+        <button
+          onClick={onM365Select}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+            viewMode === 'm365'
+              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+              : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+          }`}
+        >
+          <Cloud className="w-5 h-5" />
+          <div className="flex-1 text-left">
+            <p className="font-semibold text-sm">Microsoft 365</p>
+            <p className="text-xs opacity-80">Graph API Integration</p>
+          </div>
+        </button>
+      </div>
+
+      <div className="px-4 mb-4">
+        <div className="h-px bg-slate-700"></div>
       </div>
 
       {/* Categories */}

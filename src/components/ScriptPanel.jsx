@@ -5,7 +5,9 @@ import EventDocsModal from './EventDocsModal';
 import ServiceDocsModal from './ServiceDocsModal';
 import PortDocsModal from './PortDocsModal';
 import M365LicenseDocsModal from './M365LicenseDocsModal';
-import { FileCode, Copy, Check, Download, BookOpen } from 'lucide-react';
+import { FileCode, Copy, Check, Download, BookOpen, FileSpreadsheet } from 'lucide-react';
+
+const BULK_CREATE_CSV_TEMPLATE = 'GivenName,Surname,SamAccountName,UserPrincipalName,OU,Description\nJohn,Doe,john.doe,john.doe@domain.com,OU=Users,User account\nJane,Smith,jane.smith,jane.smith@domain.com,OU=Users,User account';
 
 const ScriptPanel = ({ script }) => {
   const [inputs, setInputs] = useState({});
@@ -103,6 +105,18 @@ const ScriptPanel = ({ script }) => {
         prompt('Copy this script (Ctrl+C or Cmd+C):', generatedScript);
       }
     }
+  };
+
+  const handleDownloadCsvTemplate = () => {
+    const blob = new Blob([BULK_CREATE_CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'BulkCreateADUsers_Template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   const handleSaveToFile = () => {
@@ -220,6 +234,15 @@ const ScriptPanel = ({ script }) => {
                 >
                   <BookOpen className="w-4 h-4" />
                   M365 License Guide
+                </button>
+              )}
+              {script.id === 'ad-bulk-create-users-csv' && (
+                <button
+                  onClick={handleDownloadCsvTemplate}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-900/50 hover:bg-emerald-800/50 text-emerald-300 rounded-lg text-sm font-medium transition-colors border border-emerald-700"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Download CSV Template
                 </button>
               )}
             </div>

@@ -1,72 +1,25 @@
 {
   "active_directory": [
     {
-      "id": "ad-create-user",
-      "name": "Create AD User",
-      "description": "Create a new Active Directory user with specified properties",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        },
-        {
-          "variable": "firstname",
-          "label": "First Name",
-          "type": "text",
-          "placeholder": "John",
-          "required": true
-        },
-        {
-          "variable": "lastname",
-          "label": "Last Name",
-          "type": "text",
-          "placeholder": "Doe",
-          "required": true
-        },
-        {
-          "variable": "password",
-          "label": "Password",
-          "type": "password",
-          "placeholder": "Enter secure password",
-          "required": true
-        },
-        {
-          "variable": "ou_path",
-          "label": "OU Path",
-          "type": "text",
-          "placeholder": "OU=Users,DC=company,DC=com",
-          "description": "Organizational Unit path",
-          "required": true
-        }
-      ],
-      "template": "# Create New Active Directory User\n# Generated: $(Get-Date)\n\n$Username = \"{{username}}\"\n$FirstName = \"{{firstname}}\"\n$LastName = \"{{lastname}}\"\n$Password = ConvertTo-SecureString \"{{password}}\" -AsPlainText -Force\n$OUPath = \"{{ou_path}}\"\n\nWrite-Host \"=== CREATE ACTIVE DIRECTORY USER ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    New-ADUser -Name \"$FirstName $LastName\" `\n        -GivenName $FirstName `\n        -Surname $LastName `\n        -SamAccountName $Username `\n        -UserPrincipalName \"$Username@company.com\" `\n        -Path $OUPath `\n        -AccountPassword $Password `\n        -Enabled $true `\n        -ChangePasswordAtLogon $true\n    \n    Write-Host \"✅ User $Username created successfully!\" -ForegroundColor Green\n    Write-Host \"Full Name: $FirstName $LastName\" -ForegroundColor Gray\n    Write-Host \"OU Path: $OUPath\" -ForegroundColor Gray\n    Write-Host \"User must change password at next logon\" -ForegroundColor Yellow\n}\ncatch {\n    Write-Host \"[ERROR] Failed to create user: $_\" -ForegroundColor Red\n}"
-    },
-    {
       "id": "ad-reset-password",
       "name": "Reset AD User Password",
-      "description": "Reset password for an Active Directory user account",
+      "description": "Reset an Active Directory user password",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        },
-        {
-          "variable": "newpassword",
-          "label": "New Password",
-          "type": "password",
-          "placeholder": "Enter new password",
-          "required": true
-        }
+        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com or DOMAIN\\user", "defaultValue": "" },
+        { "variable": "new_password", "label": "New Password", "type": "password", "placeholder": "NewPassword123!", "defaultValue": "" }
       ],
-      "template": "# Reset Active Directory User Password\n# Generated: $(Get-Date)\n\n$Username = \"{{username}}\"\n$NewPassword = ConvertTo-SecureString \"{{newpassword}}\" -AsPlainText -Force\n\nWrite-Host \"=== RESET AD USER PASSWORD ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    Set-ADAccountPassword -Identity $Username -NewPassword $NewPassword -Reset\n    Set-ADUser -Identity $Username -ChangePasswordAtLogon $true\n    \n    Write-Host \"✅ Password reset successfully for $Username\" -ForegroundColor Green\n    Write-Host \"User must change password at next logon\" -ForegroundColor Yellow\n}\ncatch {\n    Write-Host \"[ERROR] Failed to reset password: $_\" -ForegroundColor Red\n}"
+      "template": "# Reset AD Password\nSet-ADAccountPassword -Identity '{{username}}' -Reset -NewPassword (ConvertTo-SecureString -AsPlainText '{{new_password}}' -Force)\nSet-ADUser -Identity '{{username}}' -ChangePasswordAtLogon $true"
+    },
+    {
+      "id": "ad-unlock-account",
+      "name": "Unlock AD Account",
+      "description": "Unlock a locked Active Directory user account",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" }
+      ],
+      "template": "# Unlock AD Account\nUnlock-ADAccount -Identity '{{username}}'"
     },
     {
       "id": "ad-disable-user",
@@ -74,208 +27,107 @@
       "description": "Disable an Active Directory user account",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        }
+        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" }
       ],
-      "template": "# Disable Active Directory User Account\n# Generated: $(Get-Date)\n\n$Username = \"{{username}}\"\n\nWrite-Host \"=== DISABLE AD USER ACCOUNT ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    Disable-ADAccount -Identity $Username\n    Write-Host \"✅ User account $Username has been disabled\" -ForegroundColor Green\n}\ncatch {\n    Write-Host \"[ERROR] Failed to disable account: $_\" -ForegroundColor Red\n}"
+      "template": "# Disable AD User\nDisable-ADAccount -Identity '{{username}}'"
     },
     {
       "id": "ad-enable-user",
       "name": "Enable AD User",
-      "description": "Enable an Active Directory user account",
+      "description": "Enable a disabled Active Directory user account",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        }
+        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" }
       ],
-      "template": "# Enable Active Directory User Account\n# Generated: $(Get-Date)\n\n$Username = \"{{username}}\"\n\nWrite-Host \"=== ENABLE AD USER ACCOUNT ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    Enable-ADAccount -Identity $Username\n    Write-Host \"✅ User account $Username has been enabled\" -ForegroundColor Green\n}\ncatch {\n    Write-Host \"[ERROR] Failed to enable account: $_\" -ForegroundColor Red\n}"
+      "template": "# Enable AD User\nEnable-ADAccount -Identity '{{username}}'"
+    },
+    {
+      "id": "ad-add-to-group",
+      "name": "Add User to AD Group",
+      "description": "Add a user to an Active Directory security group",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" },
+        { "variable": "group_name", "label": "Group Name", "type": "text", "placeholder": "Sales_Team", "defaultValue": "" }
+      ],
+      "template": "# Add User to AD Group\nAdd-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}'"
+    },
+    {
+      "id": "ad-remove-from-group",
+      "name": "Remove User from AD Group",
+      "description": "Remove a user from an Active Directory security group",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" },
+        { "variable": "group_name", "label": "Group Name", "type": "text", "placeholder": "Sales_Team", "defaultValue": "" }
+      ],
+      "template": "# Remove User from AD Group\nRemove-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}' -Confirm:$false"
+    },
+    {
+      "id": "ad-add-local-group-member",
+      "name": "Add to Local Administrators",
+      "description": "Add a user or group to the local Administrators group on a computer",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "computer_name", "label": "Computer Name", "type": "text", "placeholder": "PC001 or . for local", "defaultValue": "." },
+        { "variable": "account", "label": "Account (user or group)", "type": "text", "placeholder": "DOMAIN\\user", "defaultValue": "" }
+      ],
+      "template": "# Add to Local Administrators\nAdd-LocalGroupMember -Group 'Administrators' -Member '{{account}}' -ComputerName '{{computer_name}}'"
+    },
+    {
+      "id": "ad-bulk-create-users-csv",
+      "name": "Bulk Create AD Users from CSV",
+      "description": "Create multiple AD users from a CSV file",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "csv_path", "label": "CSV Path", "type": "text", "placeholder": "C:\\Data\\users.csv", "defaultValue": "" },
+        { "variable": "initial_password", "label": "Initial Password", "type": "password", "placeholder": "TempPassword123!", "defaultValue": "" },
+        { "variable": "ou_path", "label": "OU Path (optional)", "type": "text", "placeholder": "OU=Users,DC=domain,DC=com", "defaultValue": "" }
+      ],
+      "template": "# Bulk Create AD Users from CSV\n#Requires -Modules ActiveDirectory\n$csv = Import-Csv '{{csv_path}}'\n$securePass = ConvertTo-SecureString '{{initial_password}}' -AsPlainText -Force\nforeach ($row in $csv) {\n    $DisplayName = if ([string]::IsNullOrWhiteSpace($row.Surname)) { $row.GivenName } else { \"$($row.GivenName) $($row.Surname)\" }\n    $params = @{\n        Name = $DisplayName\n        SamAccountName = $row.SamAccountName\n        UserPrincipalName = $row.UserPrincipalName\n        GivenName = $row.GivenName\n        Surname = $row.Surname\n        AccountPassword = $securePass\n        Enabled = $true\n    }\n    if ($row.OU) { $params['Path'] = $row.OU }\n    elseif ('{{ou_path}}') { $params['Path'] = '{{ou_path}}' }\n    if ($row.Description) { $params['Description'] = $row.Description }\n    New-ADUser @params\n}"
     },
     {
       "id": "ad-get-user-info",
       "name": "Get AD User Info",
-      "description": "Retrieve detailed information about an Active Directory user",
+      "description": "Display detailed information for an AD user",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        }
+        { "variable": "username", "label": "Username/UPN", "type": "text", "placeholder": "user@domain.com", "defaultValue": "" }
       ],
-      "template": "# Get Active Directory User Information\n# Generated: $(Get-Date)\n\n$Username = \"{{username}}\"\n\nWrite-Host \"=== AD USER INFORMATION ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    $User = Get-ADUser -Identity $Username -Properties *\n    \n    Write-Host \"Username: $($User.SamAccountName)\" -ForegroundColor Yellow\n    Write-Host \"Full Name: $($User.Name)\" -ForegroundColor Yellow\n    Write-Host \"Email: $($User.EmailAddress)\" -ForegroundColor Yellow\n    Write-Host \"Enabled: $($User.Enabled)\" -ForegroundColor $(if($User.Enabled){'Green'}else{'Red'})\n    Write-Host \"Last Logon: $($User.LastLogonDate)\" -ForegroundColor Yellow\n    Write-Host \"Password Last Set: $($User.PasswordLastSet)\" -ForegroundColor Yellow\n    Write-Host \"Distinguished Name: $($User.DistinguishedName)\" -ForegroundColor Gray\n    Write-Host \"Created: $($User.Created)\" -ForegroundColor Gray\n}\ncatch {\n    Write-Host \"[ERROR] User not found or error retrieving info: $_\" -ForegroundColor Red\n}"
+      "template": "# Get AD User Info\nGet-ADUser -Identity '{{username}}' -Properties * | Format-List"
     },
     {
-      "id": "dc-hardening-basic",
-      "name": "DC Basic Hardening",
-      "description": "Essential security for Domain Controllers",
+      "id": "ad-list-group-members",
+      "name": "List AD Group Members",
+      "description": "List all members of an Active Directory group",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "lockout_threshold",
-          "label": "Lockout Threshold (attempts)",
-          "type": "text",
-          "defaultValue": "5",
-          "required": true
-        },
-        {
-          "variable": "lockout_duration",
-          "label": "Lockout Duration (min)",
-          "type": "text",
-          "defaultValue": "30",
-          "required": true
-        },
-        {
-          "variable": "min_password_length",
-          "label": "Min Password Length",
-          "type": "text",
-          "defaultValue": "14",
-          "required": true
-        },
-        {
-          "variable": "max_password_age",
-          "label": "Max Password Age (days)",
-          "type": "text",
-          "defaultValue": "90",
-          "required": true
-        },
-        {
-          "variable": "password_history",
-          "label": "Password History",
-          "type": "text",
-          "defaultValue": "24",
-          "required": true
-        }
+        { "variable": "group_name", "label": "Group Name", "type": "text", "placeholder": "Sales_Team", "defaultValue": "" }
       ],
-      "template": "# Domain Controller Basic Hardening\n# Generated: $(Get-Date)\n# NOTE: Requires Domain Admin privileges\n\n$LockoutThreshold = {{lockout_threshold}}\n$LockoutDuration = {{lockout_duration}}\n$MinPasswordLength = {{min_password_length}}\n$MaxPasswordAge = {{max_password_age}}\n$PasswordHistory = {{password_history}}\n\nWrite-Host \"=== DC BASIC HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Config: Lockout=$LockoutThreshold attempts, Duration=$LockoutDuration min, MinPwd=$MinPasswordLength chars\" -ForegroundColor Yellow\nWrite-Host \"\"\n\nWrite-Host \"[1/8] Account Lockout Policy...\" -ForegroundColor Cyan\nnet accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[2/8] Password Policy...\" -ForegroundColor Cyan\nnet accounts /minpwlen:$MinPasswordLength /maxpwage:$MaxPasswordAge /minpwage:1 /uniquepw:$PasswordHistory\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[3/8] Disable SMBv1...\" -ForegroundColor Cyan\nSet-SmbServerConfiguration -EnableSMB1Protocol $false -Force\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[4/8] Enable Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[5/8] Audit Policies...\" -ForegroundColor Cyan\nauditpol /set /category:\"Account Logon\" /success:enable /failure:enable\nauditpol /set /category:\"Account Management\" /success:enable /failure:enable\nauditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\nWrite-Host \"  ✅ Auditing enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[6/8] Disable Guest...\" -ForegroundColor Cyan\nnet user guest /active:no\nWrite-Host \"  ✅ Guest disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[7/8] RDP Security...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'MinEncryptionLevel' -Value 3\nWrite-Host \"  ✅ RDP hardened\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[8/8] Disable Services...\" -ForegroundColor Cyan\n@('RemoteRegistry', 'SSDPSRV', 'upnphost') | ForEach-Object { Stop-Service $_ -Force -EA SilentlyContinue; Set-Service $_ -StartupType Disabled -EA SilentlyContinue }\nWrite-Host \"  ✅ Services disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE ===\" -ForegroundColor Green"
-    },
-    {
-      "id": "dc-hardening-advanced",
-      "name": "DC Advanced Hardening",
-      "description": "LDAP signing, Kerberos, NTLM restrictions",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# DC Advanced Hardening\n# Generated: $(Get-Date)\n\nWrite-Host \"=== DC ADVANCED HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"[1/10] LDAP Signing...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LDAPServerIntegrity' -Value 2 -Type DWord\nWrite-Host \"  ✅ LDAP signing enforced\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[2/10] LDAP Channel Binding...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LdapEnforceChannelBinding' -Value 2 -Type DWord\nWrite-Host \"  ✅ Channel binding enforced\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[3/10] Kerberos Encryption (AES only)...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\Kerberos\\Parameters' -Name 'SupportedEncryptionTypes' -Value 0x18 -Type DWord -Force\nWrite-Host \"  ✅ Weak encryption disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[4/10] Restrict NTLM...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictSendingNTLMTraffic' -Value 2 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LmCompatibilityLevel' -Value 5 -Type DWord\nWrite-Host \"  ✅ NTLM restricted\" -ForegroundColor Green\nWrite-Host \"  ⚠ Ensure Kerberos support\" -ForegroundColor Yellow\n\nWrite-Host \"\"\nWrite-Host \"[5/10] AdminSDHolder...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'AdminSDProtectFrequency' -Value 600 -Type DWord\nWrite-Host \"  ✅ Check interval: 10 min\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[6/10] Disable Print Spooler...\" -ForegroundColor Cyan\nStop-Service Spooler -Force -EA SilentlyContinue\nSet-Service Spooler -StartupType Disabled\nWrite-Host \"  ✅ PrintNightmare protection\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[7/10] Security Log Size (4GB)...\" -ForegroundColor Cyan\nwevtutil sl Security /ms:4194304000\nWrite-Host \"  ✅ Log size increased\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[8/10] Credential Guard...\" -ForegroundColor Cyan\nNew-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\nWrite-Host \"  ✅ Enabled (reboot required)\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[9/10] Restrict Anonymous...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymous' -Value 1 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymousSAM' -Value 1 -Type DWord\nWrite-Host \"  ✅ Anonymous restricted\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[10/10] Protected Users Group...\" -ForegroundColor Cyan\ntry {\n    Get-ADGroup -Identity 'Protected Users' | Out-Null\n    Write-Host \"  ✅ Available - add privileged accounts manually\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ⚠ Not available (2012 R2+ required)\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE - REBOOT REQUIRED ===\" -ForegroundColor Green"
-    },
-    {
-      "id": "ad-endpoint-hardening",
-      "name": "AD Endpoint Hardening",
-      "description": "Harden domain-joined workstations",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "disable_llmnr",
-          "label": "Disable LLMNR",
-          "type": "select",
-          "options": [
-            {
-              "value": "true",
-              "label": "Yes (Recommended)"
-            },
-            {
-              "value": "false",
-              "label": "No"
-            }
-          ],
-          "defaultValue": "true",
-          "required": true
-        },
-        {
-          "variable": "disable_netbios",
-          "label": "Disable NetBIOS",
-          "type": "select",
-          "options": [
-            {
-              "value": "true",
-              "label": "Yes (Recommended)"
-            },
-            {
-              "value": "false",
-              "label": "No"
-            }
-          ],
-          "defaultValue": "true",
-          "required": true
-        },
-        {
-          "variable": "disable_wsh",
-          "label": "Disable Windows Script Host",
-          "type": "select",
-          "options": [
-            {
-              "value": "true",
-              "label": "Yes (Recommended)"
-            },
-            {
-              "value": "false",
-              "label": "No"
-            }
-          ],
-          "defaultValue": "true",
-          "required": true
-        },
-        {
-          "variable": "enable_controlled_folder",
-          "label": "Controlled Folder Access",
-          "type": "select",
-          "options": [
-            {
-              "value": "true",
-              "label": "Enable (Recommended)"
-            },
-            {
-              "value": "false",
-              "label": "Disable"
-            }
-          ],
-          "defaultValue": "true",
-          "required": true
-        }
-      ],
-      "template": "# AD Endpoint Hardening\n# Generated: $(Get-Date)\n\n$DisableLLMNR = [System.Convert]::ToBoolean(\"{{disable_llmnr}}\")\n$DisableNetBIOS = [System.Convert]::ToBoolean(\"{{disable_netbios}}\")\n$DisableWSH = [System.Convert]::ToBoolean(\"{{disable_wsh}}\")\n$EnableControlledFolder = [System.Convert]::ToBoolean(\"{{enable_controlled_folder}}\")\n\nWrite-Host \"=== AD ENDPOINT HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nif ($DisableLLMNR) {\n    Write-Host \"[1] Disable LLMNR...\" -ForegroundColor Cyan\n    New-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Name 'EnableMulticast' -Value 0 -Type DWord\n    Write-Host \"  ✅ LLMNR disabled\" -ForegroundColor Green\n}\n\nif ($DisableNetBIOS) {\n    Write-Host \"[2] Disable NetBIOS...\" -ForegroundColor Cyan\n    Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled} | ForEach-Object { $_.SetTcpipNetbios(2) | Out-Null }\n    Write-Host \"  ✅ NetBIOS disabled\" -ForegroundColor Green\n}\n\nWrite-Host \"[3] Disable WPAD...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Wpad' -Name 'WpadOverride' -Value 1 -Type DWord -Force\nWrite-Host \"  ✅ WPAD disabled\" -ForegroundColor Green\n\nWrite-Host \"[4] Credential Guard...\" -ForegroundColor Cyan\nNew-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\nWrite-Host \"  ✅ Enabled\" -ForegroundColor Green\n\nif ($DisableWSH) {\n    Write-Host \"[5] Disable WSH...\" -ForegroundColor Cyan\n    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Name 'Enabled' -Value 0 -Type DWord\n    Write-Host \"  ✅ WSH disabled\" -ForegroundColor Green\n}\n\nWrite-Host \"[6] PowerShell Policy...\" -ForegroundColor Cyan\nSet-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force\nWrite-Host \"  ✅ RemoteSigned\" -ForegroundColor Green\n\nWrite-Host \"[7] PowerShell Logging...\" -ForegroundColor Cyan\nNew-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Force | Out-Null\nSet-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Name 'EnableScriptBlockLogging' -Value 1 -Type DWord\nWrite-Host \"  ✅ Logging enabled\" -ForegroundColor Green\n\nWrite-Host \"[8] Disable SMBv1...\" -ForegroundColor Cyan\nDisable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"[9] Windows Defender...\" -ForegroundColor Cyan\nSet-MpPreference -DisableRealtimeMonitoring $false -DisableBehaviorMonitoring $false -DisableIOAVProtection $false\nif ($EnableControlledFolder) { Set-MpPreference -EnableControlledFolderAccess Enabled }\nWrite-Host \"  ✅ Defender enabled\" -ForegroundColor Green\n\nWrite-Host \"[10] Disable AutoRun...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoDriveTypeAutoRun' -Value 255 -Type DWord\nWrite-Host \"  ✅ AutoRun disabled\" -ForegroundColor Green\n\nWrite-Host \"[11] UAC...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableLUA' -Value 1 -Type DWord\nWrite-Host \"  ✅ UAC enabled\" -ForegroundColor Green\n\nWrite-Host \"[12] Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE - REBOOT REQUIRED ===\" -ForegroundColor Green"
+      "template": "# List AD Group Members\nGet-ADGroupMember -Identity '{{group_name}}' | Format-Table Name, SamAccountName, objectClass -AutoSize"
     }
   ],
   "local_users": [
     {
       "id": "local-create-user",
       "name": "Create Local User",
-      "description": "Create a new local user account on the computer",
+      "description": "Create a local user account on the computer",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        },
-        {
-          "variable": "fullname",
-          "label": "Full Name",
-          "type": "text",
-          "placeholder": "John Doe",
-          "required": true
-        },
-        {
-          "variable": "password",
-          "label": "Password",
-          "type": "password",
-          "placeholder": "Enter secure password",
-          "required": true
-        }
+        { "variable": "username", "label": "Username", "type": "text", "placeholder": "newuser", "defaultValue": "" },
+        { "variable": "password", "label": "Password", "type": "password", "placeholder": "Password123!", "defaultValue": "" }
       ],
-      "template": "# Create New Local User\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\n$Username = \"{{username}}\"\n$FullName = \"{{fullname}}\"\n$Password = ConvertTo-SecureString \"{{password}}\" -AsPlainText -Force\n\nWrite-Host \"=== CREATE LOCAL USER ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    New-LocalUser -Name $Username -FullName $FullName -Password $Password -PasswordNeverExpires:$false -UserMayNotChangePassword:$false\n    \n    Write-Host \"✅ Local user $Username created successfully!\" -ForegroundColor Green\n    Write-Host \"Full Name: $FullName\" -ForegroundColor Gray\n    Write-Host \"User must change password at next logon: No\" -ForegroundColor Yellow\n}\ncatch {\n    Write-Host \"[ERROR] Failed to create user: $_\" -ForegroundColor Red\n}"
+      "template": "# Create Local User\nNew-LocalUser -Name '{{username}}' -Password (ConvertTo-SecureString '{{password}}' -AsPlainText -Force) -FullName '{{username}}' -Description 'Local user'"
+    },
+    {
+      "id": "local-delete-user",
+      "name": "Delete Local User",
+      "description": "Remove a local user account",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "username", "label": "Username", "type": "text", "placeholder": "olduser", "defaultValue": "" }
+      ],
+      "template": "# Delete Local User\nRemove-LocalUser -Name '{{username}}'"
     },
     {
       "id": "local-reset-password",
@@ -283,288 +135,58 @@
       "description": "Reset password for a local user account",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        },
-        {
-          "variable": "newpassword",
-          "label": "New Password",
-          "type": "password",
-          "placeholder": "Enter new password",
-          "required": true
-        }
+        { "variable": "username", "label": "Username", "type": "text", "placeholder": "user", "defaultValue": "" },
+        { "variable": "new_password", "label": "New Password", "type": "password", "placeholder": "NewPassword123!", "defaultValue": "" }
       ],
-      "template": "# Reset Local User Password\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\n$Username = \"{{username}}\"\n$NewPassword = ConvertTo-SecureString \"{{newpassword}}\" -AsPlainText -Force\n\nWrite-Host \"=== RESET LOCAL USER PASSWORD ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    Set-LocalUser -Name $Username -Password $NewPassword\n    \n    Write-Host \"✅ Password reset successfully for $Username\" -ForegroundColor Green\n}\ncatch {\n    Write-Host \"[ERROR] Failed to reset password: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "local-disable-user",
-      "name": "Disable Local User",
-      "description": "Disable a local user account",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        }
-      ],
-      "template": "# Disable Local User Account\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\n$Username = \"{{username}}\"\n\nWrite-Host \"=== DISABLE LOCAL USER ACCOUNT ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    Disable-LocalUser -Name $Username\n    Write-Host \"✅ Local user account $Username has been disabled\" -ForegroundColor Green\n}\ncatch {\n    Write-Host \"[ERROR] Failed to disable account: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "local-enable-user",
-      "name": "Enable Local User",
-      "description": "Enable a local user account",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        }
-      ],
-      "template": "# Enable Local User Account\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\n$Username = \"{{username}}\"\n\nWrite-Host \"=== ENABLE LOCAL USER ACCOUNT ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    Enable-LocalUser -Name $Username\n    Write-Host \"✅ Local user account $Username has been enabled\" -ForegroundColor Green\n}\ncatch {\n    Write-Host \"[ERROR] Failed to enable account: $_\" -ForegroundColor Red\n}"
+      "template": "# Reset Local User Password\n$user = Get-LocalUser -Name '{{username}}'\n$user | Set-LocalUser -Password (ConvertTo-SecureString '{{new_password}}' -AsPlainText -Force)"
     },
     {
       "id": "local-list-users",
-      "name": "List All Local Users",
-      "description": "Display all local user accounts and their status",
+      "name": "List Local Users",
+      "description": "List all local user accounts on the computer",
       "type": "powershell",
       "inputs": [],
-      "template": "# List All Local User Accounts\n# Generated: $(Get-Date)\n\nWrite-Host \"=== LOCAL USER ACCOUNTS ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$Users = Get-LocalUser\n\nforeach ($User in $Users) {\n    Write-Host \"Username: $($User.Name)\" -ForegroundColor Yellow\n    Write-Host \"Full Name: $($User.FullName)\" -ForegroundColor Gray\n    Write-Host \"Enabled: $($User.Enabled)\" -ForegroundColor $(if($User.Enabled){'Green'}else{'Red'})\n    Write-Host \"Last Logon: $($User.LastLogon)\" -ForegroundColor Gray\n    Write-Host \"Password Last Set: $($User.PasswordLastSet)\" -ForegroundColor Gray\n    Write-Host \"Password Expires: $($User.PasswordExpires)\" -ForegroundColor Gray\n    Write-Host \"---\" -ForegroundColor DarkGray\n    Write-Host \"\"\n}"
-    },
-    {
-      "id": "local-delete-user",
-      "name": "Delete Local User",
-      "description": "Permanently delete a local user account",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "john.doe",
-          "required": true
-        }
-      ],
-      "template": "# Delete Local User Account\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n# WARNING: This action is permanent and cannot be undone!\n\n$Username = \"{{username}}\"\n\nWrite-Host \"=== DELETE LOCAL USER ACCOUNT ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"[WARNING] This will permanently delete the user account!\" -ForegroundColor Red\nWrite-Host \"\"\n\ntry {\n    Remove-LocalUser -Name $Username\n    Write-Host \"✅ Local user account $Username has been deleted\" -ForegroundColor Green\n}\ncatch {\n    Write-Host \"[ERROR] Failed to delete account: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "local-pc-hardening",
-      "name": "Local PC Hardening",
-      "description": "Harden standalone/workgroup PCs",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "min_password_length",
-          "label": "Min Password Length",
-          "type": "text",
-          "defaultValue": "12",
-          "required": true
-        },
-        {
-          "variable": "lockout_threshold",
-          "label": "Lockout Threshold",
-          "type": "text",
-          "defaultValue": "5",
-          "required": true
-        },
-        {
-          "variable": "lockout_duration",
-          "label": "Lockout Duration (min)",
-          "type": "text",
-          "defaultValue": "30",
-          "required": true
-        },
-        {
-          "variable": "disable_rdp",
-          "label": "Disable RDP",
-          "type": "select",
-          "options": [
-            {
-              "value": "true",
-              "label": "Yes (Recommended)"
-            },
-            {
-              "value": "false",
-              "label": "No"
-            }
-          ],
-          "defaultValue": "true",
-          "required": true
-        },
-        {
-          "variable": "enable_controlled_folder",
-          "label": "Controlled Folder Access",
-          "type": "select",
-          "options": [
-            {
-              "value": "true",
-              "label": "Enable (Recommended)"
-            },
-            {
-              "value": "false",
-              "label": "Disable"
-            }
-          ],
-          "defaultValue": "true",
-          "required": true
-        }
-      ],
-      "template": "# Local PC Hardening\n# Generated: $(Get-Date)\n\n$MinPasswordLength = {{min_password_length}}\n$LockoutThreshold = {{lockout_threshold}}\n$LockoutDuration = {{lockout_duration}}\n$DisableRDP = [System.Convert]::ToBoolean(\"{{disable_rdp}}\")\n$EnableControlledFolder = [System.Convert]::ToBoolean(\"{{enable_controlled_folder}}\")\n\nWrite-Host \"=== LOCAL PC HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"[1] Windows Defender...\" -ForegroundColor Cyan\nSet-MpPreference -DisableRealtimeMonitoring $false -DisableBehaviorMonitoring $false -PUAProtection Enabled\nif ($EnableControlledFolder) { Set-MpPreference -EnableControlledFolderAccess Enabled }\nWrite-Host \"  ✅ Defender enabled\" -ForegroundColor Green\n\nWrite-Host \"[2] Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nSet-NetFirewallProfile -Profile Public,Private -DefaultInboundAction Block\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nif ($DisableRDP) {\n    Write-Host \"[3] Disable RDP...\" -ForegroundColor Cyan\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 1\n    Disable-NetFirewallRule -DisplayGroup 'Remote Desktop'\n    Write-Host \"  ✅ RDP disabled\" -ForegroundColor Green\n}\n\nWrite-Host \"[4] Disable Remote Assistance...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Remote Assistance' -Name 'fAllowToGetHelp' -Value 0\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"[5] Disable SMBv1...\" -ForegroundColor Cyan\nDisable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"[6] Disable AutoRun...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoDriveTypeAutoRun' -Value 255 -Type DWord\nWrite-Host \"  ✅ AutoRun disabled\" -ForegroundColor Green\n\nWrite-Host \"[7] UAC Maximum...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableLUA' -Value 1 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'ConsentPromptBehaviorAdmin' -Value 2 -Type DWord\nWrite-Host \"  ✅ UAC configured\" -ForegroundColor Green\n\nWrite-Host \"[8] Disable Guest...\" -ForegroundColor Cyan\nnet user guest /active:no\nWrite-Host \"  ✅ Guest disabled\" -ForegroundColor Green\n\nWrite-Host \"[9] Password Policy...\" -ForegroundColor Cyan\nnet accounts /minpwlen:$MinPasswordLength /maxpwage:90 /minpwage:1 /uniquepw:5\nWrite-Host \"  ✅ Min length: $MinPasswordLength\" -ForegroundColor Green\n\nWrite-Host \"[10] Account Lockout...\" -ForegroundColor Cyan\nnet accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\nWrite-Host \"  ✅ Lockout: $LockoutThreshold attempts\" -ForegroundColor Green\n\nWrite-Host \"[11] Disable WSH...\" -ForegroundColor Cyan\nNew-Item -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Force | Out-Null\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Name 'Enabled' -Value 0\nWrite-Host \"  ✅ WSH disabled\" -ForegroundColor Green\n\nWrite-Host \"[12] Disable Services...\" -ForegroundColor Cyan\n@('RemoteRegistry', 'SSDPSRV', 'upnphost', 'XblAuthManager', 'XblGameSave') | ForEach-Object { Stop-Service $_ -Force -EA SilentlyContinue; Set-Service $_ -StartupType Disabled -EA SilentlyContinue }\nWrite-Host \"  ✅ Services disabled\" -ForegroundColor Green\n\nWrite-Host \"[13] Windows Update...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'NoAutoUpdate' -Value 0 -Force -EA SilentlyContinue\nWrite-Host \"  ✅ Auto-update enabled\" -ForegroundColor Green\n\nWrite-Host \"[14] Audit Policies...\" -ForegroundColor Cyan\nauditpol /set /category:\"Account Logon\" /success:enable /failure:enable\nauditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\nWrite-Host \"  ✅ Auditing enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE - REBOOT RECOMMENDED ===\" -ForegroundColor Green"
-    }
-  ],
-  "system_maintenance": [
-    {
-      "id": "disk-cleanup",
-      "name": "Disk Cleanup",
-      "description": "Clean temporary files and free up disk space",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "drive",
-          "label": "Drive Letter",
-          "type": "text",
-          "placeholder": "C",
-          "required": true
-        }
-      ],
-      "template": "# Disk Cleanup Script\n# Generated: $(Get-Date)\n\n$Drive = \"{{drive}}:\"\n\nWrite-Host \"Starting disk cleanup on drive $Drive...\" -ForegroundColor Cyan\n\n# Clear Windows Temp folder\nWrite-Host \"Cleaning Windows Temp folder...\" -ForegroundColor Yellow\nRemove-Item -Path \"$env:TEMP\\*\" -Recurse -Force -ErrorAction SilentlyContinue\n\n# Clear Windows Update Cache\nWrite-Host \"Cleaning Windows Update cache...\" -ForegroundColor Yellow\nStop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue\nRemove-Item -Path \"$env:SystemRoot\\SoftwareDistribution\\Download\\*\" -Recurse -Force -ErrorAction SilentlyContinue\nStart-Service -Name wuauserv\n\n# Clear Recycle Bin\nWrite-Host \"Emptying Recycle Bin...\" -ForegroundColor Yellow\nClear-RecycleBin -DriveLetter $Drive.TrimEnd(':') -Force -ErrorAction SilentlyContinue\n\nWrite-Host \"Disk cleanup completed!\" -ForegroundColor Green"
-    },
-    {
-      "id": "check-services",
-      "name": "Check Service Status",
-      "description": "Check the status of a Windows service",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "servicename",
-          "label": "Service Name",
-          "type": "text",
-          "placeholder": "wuauserv",
-          "required": true
-        }
-      ],
-      "template": "# Check Service Status\n# Generated: $(Get-Date)\n\n$ServiceName = \"{{servicename}}\"\n\ntry {\n    $Service = Get-Service -Name $ServiceName -ErrorAction Stop\n    \n    Write-Host \"Service Name: $($Service.Name)\" -ForegroundColor Cyan\n    Write-Host \"Display Name: $($Service.DisplayName)\" -ForegroundColor Cyan\n    Write-Host \"Status: $($Service.Status)\" -ForegroundColor $(if($Service.Status -eq 'Running'){'Green'}else{'Yellow'})\n    Write-Host \"Start Type: $($Service.StartType)\" -ForegroundColor Cyan\n}\ncatch {\n    Write-Host \"Service '$ServiceName' not found\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "clear-print-queue",
-      "name": "Clear Print Queue & Restart Spooler",
-      "description": "Stop runaway printing, clear all print jobs, and restart the Print Spooler service",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Clear Print Queue & Restart Spooler\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== STOP RUNAWAY PRINTING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if running as administrator\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n\nif (-not $IsAdmin) {\n    Write-Host \"[!] WARNING: This script is not running as Administrator\" -ForegroundColor Red\n    Write-Host \"    This operation requires admin privileges to work properly\" -ForegroundColor Yellow\n    Write-Host \"\"\n}\n\ntry {\n    # Stop Print Spooler\n    Write-Host \"Stopping Print Spooler service...\" -ForegroundColor Yellow\n    Stop-Service Spooler -Force -ErrorAction Stop\n    Write-Host \"  [OK] Print Spooler stopped\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Clear print queue files\n    Write-Host \"Clearing print queue files...\" -ForegroundColor Yellow\n    $SpoolPath = \"$env:SystemRoot\\System32\\spool\\PRINTERS\\*\"\n    $FilesRemoved = (Get-ChildItem -Path \"$env:SystemRoot\\System32\\spool\\PRINTERS\" -ErrorAction SilentlyContinue | Measure-Object).Count\n    Remove-Item $SpoolPath -Force -ErrorAction SilentlyContinue\n    Write-Host \"  [OK] Removed $FilesRemoved file(s) from spool folder\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Start Print Spooler\n    Write-Host \"Starting Print Spooler service...\" -ForegroundColor Yellow\n    Start-Service Spooler -ErrorAction Stop\n    Write-Host \"  [OK] Print Spooler started\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Remove any remaining print jobs\n    Write-Host \"Removing any remaining print jobs...\" -ForegroundColor Yellow\n    $JobsCleared = 0\n    Get-Printer -ErrorAction SilentlyContinue | ForEach-Object {\n        $PrinterName = $_.Name\n        $Jobs = Get-PrintJob -PrinterName $PrinterName -ErrorAction SilentlyContinue\n        if ($Jobs) {\n            $Jobs | Remove-PrintJob -ErrorAction SilentlyContinue\n            $JobsCleared += ($Jobs | Measure-Object).Count\n            Write-Host \"  Cleared jobs from: $PrinterName\" -ForegroundColor Gray\n        }\n    }\n    Write-Host \"  [OK] Cleared $JobsCleared print job(s)\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    Write-Host \"✅ SUCCESS: Print queues cleared, Spooler restarted\" -ForegroundColor Green\n    Write-Host \"All print jobs have been stopped and removed.\" -ForegroundColor Cyan\n}\ncatch {\n    Write-Host \"[ERROR] Failed to clear print queue: $_\" -ForegroundColor Red\n    Write-Host \"Make sure you are running PowerShell as Administrator\" -ForegroundColor Yellow\n}"
-    },
-    {
-      "id": "restart-scanner-service",
-      "name": "Restart Scanner/WIA Service",
-      "description": "Fix stuck scanner issues by restarting Windows Image Acquisition service",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Restart Scanner/WIA Service\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== RESTART SCANNER/WIA SERVICE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if running as administrator\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n\nif (-not $IsAdmin) {\n    Write-Host \"[!] WARNING: This script is not running as Administrator\" -ForegroundColor Red\n    Write-Host \"    This operation requires admin privileges to work properly\" -ForegroundColor Yellow\n    Write-Host \"\"\n}\n\ntry {\n    # Stop Windows Image Acquisition service\n    Write-Host \"Stopping Windows Image Acquisition (WIA) service...\" -ForegroundColor Yellow\n    Stop-Service -Name stisvc -Force -ErrorAction Stop\n    Write-Host \"  [OK] WIA service stopped\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Kill common scanner processes if stuck\n    Write-Host \"Checking for stuck scanner processes...\" -ForegroundColor Yellow\n    $ScannerProcesses = Get-Process | Where-Object {\n        $_.Name -match \"scan|avision|wia|twain\"\n    }\n    \n    if ($ScannerProcesses) {\n        $ProcessCount = ($ScannerProcesses | Measure-Object).Count\n        Write-Host \"  Found $ProcessCount scanner-related process(es)\" -ForegroundColor Cyan\n        \n        foreach ($Process in $ScannerProcesses) {\n            Write-Host \"  Stopping: $($Process.Name) (PID: $($Process.Id))\" -ForegroundColor Gray\n        }\n        \n        $ScannerProcesses | Stop-Process -Force -ErrorAction SilentlyContinue\n        Write-Host \"  [OK] Scanner processes terminated\" -ForegroundColor Green\n    } else {\n        Write-Host \"  No stuck scanner processes found\" -ForegroundColor Gray\n    }\n    Write-Host \"\"\n    \n    # Start WIA service again\n    Write-Host \"Starting Windows Image Acquisition (WIA) service...\" -ForegroundColor Yellow\n    Start-Service -Name stisvc -ErrorAction Stop\n    Write-Host \"  [OK] WIA service started\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Verify service is running\n    $ServiceStatus = (Get-Service -Name stisvc).Status\n    if ($ServiceStatus -eq 'Running') {\n        Write-Host \"✅ SUCCESS: Scanner service restarted successfully!\" -ForegroundColor Green\n        Write-Host \"Service Status: $ServiceStatus\" -ForegroundColor Cyan\n    } else {\n        Write-Host \"[WARNING] Service status: $ServiceStatus\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] Failed to restart scanner service: $_\" -ForegroundColor Red\n    Write-Host \"Make sure you are running PowerShell as Administrator\" -ForegroundColor Yellow\n}"
-    },
-    {
-      "id": "repair-windows-image",
-      "name": "Repair Windows Image (DISM + SFC)",
-      "description": "Repair Windows system files using DISM and System File Checker",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Repair Windows Image - DISM + SFC\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges and internet connection\n\nWrite-Host \"=== REPAIR WINDOWS IMAGE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if running as administrator\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n\nif (-not $IsAdmin) {\n    Write-Host \"[ERROR] This script must run as Administrator\" -ForegroundColor Red\n    Write-Host \"Please run PowerShell as Administrator and try again\" -ForegroundColor Yellow\n    exit 1\n}\n\nWrite-Host \"This process will:\" -ForegroundColor Yellow\nWrite-Host \"  1. Run DISM to repair the Windows image\" -ForegroundColor Gray\nWrite-Host \"  2. Run SFC to fix system files using the repaired image\" -ForegroundColor Gray\nWrite-Host \"  This may take 15-30 minutes...\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# Step 1: DISM RestoreHealth\nWrite-Host \"[STEP 1/2] Running DISM /RestoreHealth...\" -ForegroundColor Cyan\nWrite-Host \"This repairs the Windows component store...\" -ForegroundColor Gray\nWrite-Host \"\"\n\ntry {\n    $dismResult = DISM /Online /Cleanup-Image /RestoreHealth\n    $dismResult | Out-String | Write-Host\n    \n    if ($LASTEXITCODE -eq 0) {\n        Write-Host \"✅ DISM completed successfully\" -ForegroundColor Green\n    } else {\n        Write-Host \"[WARNING] DISM completed with exit code: $LASTEXITCODE\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] DISM failed: $_\" -ForegroundColor Red\n    exit 1\n}\n\nWrite-Host \"\"\nWrite-Host \"---\" -ForegroundColor DarkGray\nWrite-Host \"\"\n\n# Step 2: SFC Scan\nWrite-Host \"[STEP 2/2] Running SFC /scannow...\" -ForegroundColor Cyan\nWrite-Host \"This scans and repairs system files...\" -ForegroundColor Gray\nWrite-Host \"\"\n\ntry {\n    $sfcResult = sfc /scannow\n    $sfcResult | Out-String | Write-Host\n    \n    if ($LASTEXITCODE -eq 0) {\n        Write-Host \"✅ SFC completed successfully\" -ForegroundColor Green\n    } else {\n        Write-Host \"[WARNING] SFC completed with exit code: $LASTEXITCODE\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] SFC failed: $_\" -ForegroundColor Red\n    exit 1\n}\n\nWrite-Host \"\"\nWrite-Host \"=== REPAIR COMPLETE ===\" -ForegroundColor Cyan\nWrite-Host \"✅ Windows image repair finished\" -ForegroundColor Green\nWrite-Host \"\"\nWrite-Host \"Check the output above for details.\" -ForegroundColor Gray\nWrite-Host \"If issues persist, a system restart may be required.\" -ForegroundColor Yellow"
-    },
-    {
-      "id": "windows-performance-boost",
-      "name": "Windows Performance Boost",
-      "description": "Comprehensive system optimization with DISM, SFC, disk optimization, and performance tweaks",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Safe Windows Performance Boost\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== SAFE WINDOWS BOOST STARTED ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if running as administrator\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n\nif (-not $IsAdmin) {\n    Write-Host \"[ERROR] This script must run as Administrator\" -ForegroundColor Red\n    exit 1\n}\n\n# Create restore point\nWrite-Host \"[1/7] Creating system restore point...\" -ForegroundColor Cyan\ntry {\n    Checkpoint-Computer -Description \"SafeBoost-$(Get-Date -Format 'yyyyMMdd-HHmmss')\" -RestorePointType \"MODIFY_SETTINGS\" -ErrorAction Stop\n    Write-Host \"  ✅ Restore point created\" -ForegroundColor Green\n}\ncatch {\n    Write-Host \"  [WARN] Could not create restore point (protection might be disabled)\" -ForegroundColor Yellow\n}\nWrite-Host \"\"\n\n# DISM Cleanup\nWrite-Host \"[2/7] Running DISM component cleanup...\" -ForegroundColor Cyan\nStart-Process DISM.exe -ArgumentList \"/Online\",\"/Cleanup-Image\",\"/StartComponentCleanup\",\"/NoRestart\" -Wait -NoNewWindow\nWrite-Host \"  ✅ DISM cleanup complete\" -ForegroundColor Green\nWrite-Host \"\"\n\n# SFC Scan\nWrite-Host \"[3/7] Running SFC /scannow (this may take time)...\" -ForegroundColor Cyan\nStart-Process sfc.exe -ArgumentList \"/scannow\" -Wait -NoNewWindow\nWrite-Host \"  ✅ SFC scan complete\" -ForegroundColor Green\nWrite-Host \"\"\n\n# Optimize drives\nWrite-Host \"[4/7] Optimizing drives...\" -ForegroundColor Cyan\nGet-Volume | Where-Object { $_.DriveLetter -and $_.FileSystem -and $_.HealthStatus -ne 'Unhealthy' } | ForEach-Object {\n    $letter = $_.DriveLetter\n    $kind = $_.MediaType\n    \n    if ($kind -like \"*SSD*\") {\n        Write-Host \"  [SSD] ReTrimming drive $letter...\" -ForegroundColor Green\n        Optimize-Volume -DriveLetter $letter -ReTrim -ErrorAction SilentlyContinue\n    }\n    elseif ($kind -like \"*HDD*\") {\n        Write-Host \"  [HDD] Defragmenting drive $letter...\" -ForegroundColor Green\n        Optimize-Volume -DriveLetter $letter -Defrag -ErrorAction SilentlyContinue\n    }\n    else {\n        Write-Host \"  [SKIP] Drive $letter (MediaType: $kind)\" -ForegroundColor Gray\n    }\n}\nWrite-Host \"  ✅ Drive optimization complete\" -ForegroundColor Green\nWrite-Host \"\"\n\n# Clean old temp files\nWrite-Host \"[5/7] Cleaning old temp files (>7 days)...\" -ForegroundColor Cyan\nfunction Clear-OldTemp($path) {\n    if (Test-Path $path) {\n        $removed = 0\n        Get-ChildItem $path -Recurse -Force -ErrorAction SilentlyContinue |\n            Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) -and -not ($_.Attributes -match \"ReparsePoint\") } |\n            ForEach-Object {\n                Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue\n                $removed++\n            }\n        return $removed\n    }\n    return 0\n}\n\n$userTemp = Clear-OldTemp $env:TEMP\n$sysTemp = Clear-OldTemp \"$env:WINDIR\\Temp\"\nWrite-Host \"  Removed $userTemp file(s) from user temp\" -ForegroundColor Gray\nWrite-Host \"  Removed $sysTemp file(s) from system temp\" -ForegroundColor Gray\nWrite-Host \"  ✅ Temp cleanup complete\" -ForegroundColor Green\nWrite-Host \"\"\n\n# Flush DNS\nWrite-Host \"[6/7] Flushing DNS cache...\" -ForegroundColor Cyan\nipconfig /flushdns | Out-Null\nWrite-Host \"  ✅ DNS cache flushed\" -ForegroundColor Green\nWrite-Host \"\"\n\n# Ultimate Performance power plan\nWrite-Host \"[7/7] Enabling Ultimate Performance power plan...\" -ForegroundColor Cyan\ntry {\n    $guid = \"e9a42b02-d5df-448d-aa00-03f14749eb61\"\n    if (-not (powercfg -list | Select-String $guid)) {\n        powercfg -duplicatescheme $guid | Out-Null\n    }\n    powercfg -setactive $guid\n    Write-Host \"  ✅ Ultimate Performance plan activated\" -ForegroundColor Green\n}\ncatch {\n    Write-Host \"  [WARN] Could not apply Ultimate Performance plan\" -ForegroundColor Yellow\n}\nWrite-Host \"\"\n\nWrite-Host \"=== SAFE WINDOWS BOOST COMPLETE ===\" -ForegroundColor Cyan\nWrite-Host \"✅ All optimization tasks finished!\" -ForegroundColor Green\nWrite-Host \"A system restart is recommended for best results.\" -ForegroundColor Yellow"
-    },
-    {
-      "id": "quick-clean-advanced",
-      "name": "QuickClean - Advanced System Cleanup",
-      "description": "Comprehensive cleanup with logging, size calculation, and startup review",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# QuickClean - Advanced System Cleanup\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges for full functionality\n\n$ErrorActionPreference = 'Stop'\n$logDir = \"$env:ProgramData\\QuickClean\"\n$null = New-Item -ItemType Directory -Path $logDir -Force -ErrorAction SilentlyContinue\n$log = Join-Path $logDir (\"QuickClean_{0:yyyy-MM-dd_HH-mm-ss}.log\" -f (Get-Date))\n\nfunction Write-Log {\n    param([string]$Message)\n    $line = \"[{0}] {1}\" -f (Get-Date -Format \"yyyy-MM-dd HH:mm:ss\"), $Message\n    $line | Tee-Object -FilePath $log -Append\n}\n\nfunction Format-Size {\n    param([double]$Bytes)\n    switch ($Bytes) {\n        {$_ -ge 1TB} { return (\"{0:N2} TB\" -f ($Bytes/1TB)) }\n        {$_ -ge 1GB} { return (\"{0:N2} GB\" -f ($Bytes/1GB)) }\n        {$_ -ge 1MB} { return (\"{0:N2} MB\" -f ($Bytes/1MB)) }\n        {$_ -ge 1KB} { return (\"{0:N2} KB\" -f ($Bytes/1KB)) }\n        default { return (\"{0} B\" -f [math]::Round($Bytes)) }\n    }\n}\n\nfunction Get-SizeBytes {\n    param([string[]]$Paths)\n    $total = 0\n    foreach ($p in $Paths) {\n        if (Test-Path $p) {\n            Get-ChildItem -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue |\n                Where-Object { -not $_.PSIsContainer } |\n                ForEach-Object { $total += ($_.Length) }\n        }\n    }\n    return [double]$total\n}\n\nWrite-Log \"=== QuickClean started ===\"\n$sw = [System.Diagnostics.Stopwatch]::StartNew()\n\n# Check admin\n$IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\nWrite-Log \"Running as admin: $IsAdmin\"\n\n# Define paths\n$tempPaths = @($env:TEMP, $env:TMP, \"$env:USERPROFILE\\AppData\\Local\\Temp\")\n$sysTempPaths = @(\"$env:windir\\Temp\")\n\n# Measure before\nWrite-Log \"Measuring space before cleanup...\"\n$beforeUser = Get-SizeBytes -Paths $tempPaths\n$beforeSys = Get-SizeBytes -Paths $sysTempPaths\n\n# Clean user temp\nWrite-Log \"Cleaning USER temp folders...\"\nforeach ($p in $tempPaths) {\n    if (Test-Path $p) {\n        try {\n            Get-ChildItem -LiteralPath $p -Force -Recurse -ErrorAction SilentlyContinue |\n                Remove-Item -Force -Recurse -ErrorAction SilentlyContinue\n            Write-Log \"✔ Cleaned: $p\"\n        } catch {\n            Write-Log \"⚠ Skipped (in use): $p\"\n        }\n    }\n}\n\n# Clean system temp\nif ($IsAdmin) {\n    Write-Log \"Cleaning SYSTEM temp folders...\"\n    foreach ($p in $sysTempPaths) {\n        if (Test-Path $p) {\n            try {\n                Get-ChildItem -LiteralPath $p -Force -Recurse -ErrorAction SilentlyContinue |\n                    Remove-Item -Force -Recurse -ErrorAction SilentlyContinue\n                Write-Log \"✔ Cleaned: $p\"\n            } catch {\n                Write-Log \"⚠ Skipped (in use): $p\"\n            }\n        }\n    }\n} else {\n    Write-Log \"Skipping SYSTEM temp (run as Administrator to clean).\"\n}\n\n# Recycle Bin\ntry {\n    Write-Log \"Emptying Recycle Bin...\"\n    Clear-RecycleBin -Force -ErrorAction SilentlyContinue\n    Write-Log \"✔ Recycle Bin emptied\"\n} catch {\n    Write-Log \"⚠ Recycle Bin not emptied\"\n}\n\n# DNS Cache\ntry {\n    Write-Log \"Flushing DNS cache...\"\n    ipconfig /flushdns | Out-Null\n    Write-Log \"✔ DNS cache flushed\"\n} catch {\n    Write-Log \"⚠ DNS flush failed\"\n}\n\n# Measure after\n$afterUser = Get-SizeBytes -Paths $tempPaths\n$afterSys = Get-SizeBytes -Paths $sysTempPaths\n$freedUser = [math]::Max(0, $beforeUser - $afterUser)\n$freedSys = [math]::Max(0, $beforeSys - $afterSys)\n$totalFreed = $freedUser + $freedSys\n\nWrite-Log \"Freed (User temp):  $(Format-Size $freedUser)\"\nWrite-Log \"Freed (System temp): $(Format-Size $freedSys)\"\nWrite-Log \"Freed (Total):      $(Format-Size $totalFreed)\"\n\n$sw.Stop()\nWrite-Log \"Elapsed: $($sw.Elapsed)\"\nWrite-Log \"=== QuickClean finished ===\"\n\nWrite-Host \"\"\nWrite-Host \"✅ Cleanup complete.\" -ForegroundColor Green\nWrite-Host \"Freed total: $(Format-Size $totalFreed)\"\nWrite-Host \"Detailed log: $log\"\nif (-not $IsAdmin) {\n    Write-Host \"Tip: Run as Administrator to also clean system temp.\" -ForegroundColor Yellow\n}"
+      "template": "# List Local Users\nGet-LocalUser | Format-Table Name, Enabled, LastLogon -AutoSize"
     }
   ],
   "network_tools": [
     {
-      "id": "reset-network-stack",
-      "name": "Reset Network Stack",
-      "description": "Reset TCP/IP stack and Winsock catalog (requires restart)",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Reset Network Stack\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges and will require restart\n\nWrite-Host \"=== RESET NETWORK STACK ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Resetting TCP/IP stack...\" -ForegroundColor Yellow\nnetsh int ip reset\n\nWrite-Host \"Resetting Winsock catalog...\" -ForegroundColor Yellow\nnetsh winsock reset\n\nWrite-Host \"Flushing DNS cache...\" -ForegroundColor Yellow\nipconfig /flushdns\n\nWrite-Host \"Releasing IP address...\" -ForegroundColor Yellow\nipconfig /release\n\nWrite-Host \"Renewing IP address...\" -ForegroundColor Yellow\nipconfig /renew\n\nWrite-Host \"\"\nWrite-Host \"✅ Network stack reset complete\" -ForegroundColor Green\nWrite-Host \"A system restart is required for changes to take effect\" -ForegroundColor Red"
-    },
-    {
-      "id": "show-wifi-passwords",
-      "name": "Show Saved WiFi Passwords",
-      "description": "Display passwords for all saved WiFi networks",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Show Saved WiFi Passwords\n# Generated: $(Get-Date)\n\nWrite-Host \"=== SAVED WIFI PASSWORDS ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$Profiles = (netsh wlan show profiles) | Select-String \"All User Profile\" | ForEach-Object { ($_ -split \":\")[1].Trim() }\n\nif ($Profiles.Count -eq 0) {\n    Write-Host \"No saved WiFi profiles found\" -ForegroundColor Yellow\n    exit 0\n}\n\nforeach ($Profile in $Profiles) {\n    Write-Host \"Network: $Profile\" -ForegroundColor Yellow\n    \n    $Password = (netsh wlan show profile name=\"$Profile\" key=clear) | Select-String \"Key Content\" | ForEach-Object { ($_ -split \":\")[1].Trim() }\n    \n    if ($Password) {\n        Write-Host \"  Password: $Password\" -ForegroundColor Green\n    } else {\n        Write-Host \"  Password: (Open Network or Not Available)\" -ForegroundColor Gray\n    }\n    Write-Host \"\"\n}\n\nWrite-Host \"=== COMPLETE ===\" -ForegroundColor Green"
-    },
-    {
-      "id": "network-adapter-info",
-      "name": "Network Adapter Information",
-      "description": "Show detailed network adapter configuration",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Network Adapter Information\n# Generated: $(Get-Date)\n\nWrite-Host \"=== NETWORK ADAPTER INFORMATION ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$Adapters = Get-NetAdapter | Where-Object Status -eq 'Up'\n\nforeach ($Adapter in $Adapters) {\n    Write-Host \"[ADAPTER: $($Adapter.Name)]\" -ForegroundColor Yellow\n    Write-Host \"  Status: $($Adapter.Status)\" -ForegroundColor Green\n    Write-Host \"  Interface Description: $($Adapter.InterfaceDescription)\" -ForegroundColor Gray\n    Write-Host \"  Link Speed: $($Adapter.LinkSpeed)\" -ForegroundColor Gray\n    Write-Host \"  MAC Address: $($Adapter.MacAddress)\" -ForegroundColor Gray\n    \n    $IPConfig = Get-NetIPAddress -InterfaceIndex $Adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue\n    if ($IPConfig) {\n        Write-Host \"  IP Address: $($IPConfig.IPAddress)\" -ForegroundColor Cyan\n        Write-Host \"  Subnet Mask: $($IPConfig.PrefixLength)\" -ForegroundColor Gray\n    }\n    \n    $Gateway = Get-NetRoute -InterfaceIndex $Adapter.ifIndex -DestinationPrefix \"0.0.0.0/0\" -ErrorAction SilentlyContinue\n    if ($Gateway) {\n        Write-Host \"  Default Gateway: $($Gateway.NextHop)\" -ForegroundColor Gray\n    }\n    \n    $DNS = Get-DnsClientServerAddress -InterfaceIndex $Adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue\n    if ($DNS.ServerAddresses) {\n        Write-Host \"  DNS Servers: $($DNS.ServerAddresses -join ', ')\" -ForegroundColor Gray\n    }\n    \n    Write-Host \"\"\n}\n\nWrite-Host \"=== COMPLETE ===\" -ForegroundColor Green"
-    },
-    {
-      "id": "test-connection",
-      "name": "Test Network Connection",
-      "description": "Test connectivity to a remote host",
-      "type": "powershell",
+      "id": "ping-host",
+      "name": "Ping Host",
+      "description": "Ping a host to check connectivity",
+      "type": "cmd",
       "inputs": [
-        {
-          "variable": "hostname",
-          "label": "Hostname or IP",
-          "type": "text",
-          "placeholder": "google.com or 8.8.8.8",
-          "required": true
-        },
-        {
-          "variable": "count",
-          "label": "Ping Count",
-          "type": "text",
-          "placeholder": "4",
-          "required": true
-        }
+        { "variable": "hostname", "label": "Hostname or IP", "type": "text", "placeholder": "8.8.8.8 or google.com", "defaultValue": "" }
       ],
-      "template": "# Test Network Connection\n# Generated: $(Get-Date)\n\n$Hostname = \"{{hostname}}\"\n$Count = {{count}}\n\nWrite-Host \"Testing connection to $Hostname...\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$Result = Test-Connection -ComputerName $Hostname -Count $Count -ErrorAction SilentlyContinue\n\nif ($Result) {\n    Write-Host \"Connection successful!\" -ForegroundColor Green\n    Write-Host \"\"\n    $Result | Format-Table Address, IPv4Address, ResponseTime\n    \n    $AvgTime = ($Result | Measure-Object -Property ResponseTime -Average).Average\n    Write-Host \"Average Response Time: $([math]::Round($AvgTime, 2)) ms\" -ForegroundColor Yellow\n}\nelse {\n    Write-Host \"Connection failed to $Hostname\" -ForegroundColor Red\n}"
+      "template": "ping {{hostname}} -n 4"
     },
     {
-      "id": "port-scan",
-      "name": "Port Scanner",
-      "description": "Check if a specific port is open on a remote host",
-      "type": "powershell",
+      "id": "nslookup",
+      "name": "DNS Lookup (nslookup)",
+      "description": "Perform DNS lookup for a hostname",
+      "type": "cmd",
       "inputs": [
-        {
-          "variable": "hostname",
-          "label": "Hostname or IP",
-          "type": "text",
-          "placeholder": "192.168.1.1",
-          "required": true
-        },
-        {
-          "variable": "port",
-          "label": "Port Number",
-          "type": "text",
-          "placeholder": "80",
-          "required": true
-        }
+        { "variable": "hostname", "label": "Hostname", "type": "text", "placeholder": "google.com", "defaultValue": "" }
       ],
-      "template": "# Port Scanner\n# Generated: $(Get-Date)\n\n$Hostname = \"{{hostname}}\"\n$Port = {{port}}\n\nWrite-Host \"Scanning port $Port on $Hostname...\" -ForegroundColor Cyan\n\ntry {\n    $Connection = Test-NetConnection -ComputerName $Hostname -Port $Port -WarningAction SilentlyContinue\n    \n    if ($Connection.TcpTestSucceeded) {\n        Write-Host \"Port $Port is OPEN\" -ForegroundColor Green\n    }\n    else {\n        Write-Host \"Port $Port is CLOSED\" -ForegroundColor Red\n    }\n    \n    Write-Host \"\"\n    Write-Host \"Remote Address: $($Connection.RemoteAddress)\" -ForegroundColor Yellow\n    Write-Host \"Ping Success: $($Connection.PingSucceeded)\" -ForegroundColor Yellow\n}\ncatch {\n    Write-Host \"Error scanning port: $_\" -ForegroundColor Red\n}"
+      "template": "nslookup {{hostname}}"
+    },
+    {
+      "id": "tracert",
+      "name": "Traceroute",
+      "description": "Trace the route to a host",
+      "type": "cmd",
+      "inputs": [
+        { "variable": "hostname", "label": "Hostname or IP", "type": "text", "placeholder": "google.com", "defaultValue": "" }
+      ],
+      "template": "tracert {{hostname}}"
+    },
+    {
+      "id": "ip-config",
+      "name": "IP Configuration",
+      "description": "Display full IP configuration",
+      "type": "cmd",
+      "inputs": [],
+      "template": "ipconfig /all"
     },
     {
       "id": "flush-dns",
@@ -572,580 +194,314 @@
       "description": "Clear the DNS resolver cache",
       "type": "cmd",
       "inputs": [],
-      "template": "@echo off\nREM Flush DNS Cache\nREM Generated: %date% %time%\n\necho Flushing DNS cache...\nipconfig /flushdns\n\necho.\necho Displaying DNS cache...\nipconfig /displaydns\n\necho.\necho DNS cache has been flushed successfully!\npause"
+      "template": "ipconfig /flushdns"
+    },
+    {
+      "id": "test-connection",
+      "name": "Test Connection (Port)",
+      "description": "Test if a port is open on a remote host",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "hostname", "label": "Hostname or IP", "type": "text", "placeholder": "server.domain.com", "defaultValue": "" },
+        { "variable": "port", "label": "Port", "type": "text", "placeholder": "443", "defaultValue": "443" }
+      ],
+      "template": "# Test Connection\nTest-NetConnection -ComputerName '{{hostname}}' -Port {{port}}"
+    },
+    {
+      "id": "port-scan",
+      "name": "Port Scan",
+      "description": "Scan common ports on a host",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "hostname", "label": "Hostname or IP", "type": "text", "placeholder": "192.168.1.1", "defaultValue": "" }
+      ],
+      "template": "# Port Scan (common ports)\n$ports = 21,22,23,25,80,443,445,3389,5985\nforeach ($p in $ports) {\n    $result = Test-NetConnection -ComputerName '{{hostname}}' -Port $p -WarningAction SilentlyContinue -ErrorAction SilentlyContinue\n    if ($result.TcpTestSucceeded) { Write-Host \"Port $p - OPEN\" -ForegroundColor Green } else { Write-Host \"Port $p - Closed\" -ForegroundColor Gray }\n}"
     }
   ],
   "security": [
     {
-      "id": "firewall-rule",
-      "name": "Create Firewall Rule",
-      "description": "Create a new Windows Firewall rule",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "rulename",
-          "label": "Rule Name",
-          "type": "text",
-          "placeholder": "Allow Port 8080",
-          "required": true
-        },
-        {
-          "variable": "port",
-          "label": "Port Number",
-          "type": "text",
-          "placeholder": "8080",
-          "required": true
-        },
-        {
-          "variable": "direction",
-          "label": "Direction",
-          "type": "select",
-          "options": [
-            {
-              "value": "Inbound",
-              "label": "Inbound"
-            },
-            {
-              "value": "Outbound",
-              "label": "Outbound"
-            }
-          ],
-          "required": true
-        }
-      ],
-      "template": "# Create Firewall Rule\n# Generated: $(Get-Date)\n\n$RuleName = \"{{rulename}}\"\n$Port = {{port}}\n$Direction = \"{{direction}}\"\n\ntry {\n    New-NetFirewallRule -DisplayName $RuleName `\n        -Direction $Direction `\n        -LocalPort $Port `\n        -Protocol TCP `\n        -Action Allow\n    \n    Write-Host \"Firewall rule '$RuleName' created successfully!\" -ForegroundColor Green\n    Write-Host \"Direction: $Direction\" -ForegroundColor Yellow\n    Write-Host \"Port: $Port\" -ForegroundColor Yellow\n}\ncatch {\n    Write-Host \"Error creating firewall rule: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "audit-users",
-      "name": "Audit Local Users",
-      "description": "List all local user accounts and their status",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Audit Local User Accounts\n# Generated: $(Get-Date)\n\nWrite-Host \"=== LOCAL USER ACCOUNTS AUDIT ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$Users = Get-LocalUser\n\nforeach ($User in $Users) {\n    Write-Host \"Username: $($User.Name)\" -ForegroundColor Yellow\n    Write-Host \"Enabled: $($User.Enabled)\" -ForegroundColor $(if($User.Enabled){'Green'}else{'Red'})\n    Write-Host \"Last Logon: $($User.LastLogon)\" -ForegroundColor Yellow\n    Write-Host \"Password Last Set: $($User.PasswordLastSet)\" -ForegroundColor Yellow\n    Write-Host \"Password Expires: $($User.PasswordExpires)\" -ForegroundColor Yellow\n    Write-Host \"---\" -ForegroundColor Gray\n    Write-Host \"\"\n}"
-    },
-    {
       "id": "event-log-hunter",
-      "name": "Windows Event Log Hunter",
-      "description": "Hunt for security events with common event ID reference guide",
+      "name": "Event Log Hunter",
+      "description": "Search Event Log for specific Event IDs",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "event_ids",
-          "label": "Event IDs to Hunt",
-          "type": "text",
-          "placeholder": "4624,4625,4672",
-          "description": "Comma-separated Event IDs (e.g., 4624,4625,4672). Leave empty to see common events guide.",
-          "required": false
-        },
-        {
-          "variable": "hours_back",
-          "label": "Hours to Look Back",
-          "type": "text",
-          "placeholder": "24",
-          "description": "Number of hours to search back (default: 24)",
-          "required": false
-        },
-        {
-          "variable": "max_events",
-          "label": "Maximum Events",
-          "type": "text",
-          "placeholder": "100",
-          "description": "Maximum number of events to display (default: 100)",
-          "required": false
-        }
+        { "variable": "log_name", "label": "Log Name", "type": "text", "placeholder": "System or Application", "defaultValue": "System" },
+        { "variable": "event_ids", "label": "Event IDs (comma-separated)", "type": "text", "placeholder": "1000,1001", "defaultValue": "" },
+        { "variable": "hours", "label": "Hours to look back", "type": "text", "placeholder": "24", "defaultValue": "24" }
       ],
-      "template": "# Windows Event Log Hunter\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\n$EventIDsInput = \"{{event_ids}}\"\n$HoursBack = \"{{hours_back}}\"\n$MaxEvents = \"{{max_events}}\"\n\n# Set defaults\nif ([string]::IsNullOrWhiteSpace($HoursBack)) { $HoursBack = 24 }\nif ([string]::IsNullOrWhiteSpace($MaxEvents)) { $MaxEvents = 100 }\n\nWrite-Host \"=== WINDOWS EVENT LOG HUNTER ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Parse Event IDs\n$EventIDs = $EventIDsInput -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^\\d+$' }\n\nif ($EventIDs.Count -eq 0) {\n    Write-Host \"[ERROR] No Event IDs provided\" -ForegroundColor Red\n    Write-Host \"Enter Event IDs (e.g., 4624,4625,4672)\" -ForegroundColor Yellow\n    exit 1\n}\n\nWrite-Host \"Hunting for Event IDs: $($EventIDs -join ', ')\" -ForegroundColor Yellow\nWrite-Host \"Time Range: Last $HoursBack hours\" -ForegroundColor Gray\nWrite-Host \"Max Events: $MaxEvents\" -ForegroundColor Gray\nWrite-Host \"\"\n\n$StartTime = (Get-Date).AddHours(-$HoursBack)\n\n# Hunt in Security log\nWrite-Host \"[SECURITY LOG]\" -ForegroundColor Cyan\ntry {\n    $SecurityEvents = Get-WinEvent -FilterHashtable @{\n        LogName = 'Security'\n        ID = $EventIDs\n        StartTime = $StartTime\n    } -MaxEvents $MaxEvents -ErrorAction SilentlyContinue\n    \n    if ($SecurityEvents) {\n        Write-Host \"Found $($SecurityEvents.Count) event(s)\" -ForegroundColor Green\n        Write-Host \"\"\n        \n        foreach ($Event in $SecurityEvents) {\n            Write-Host \"[Event ID: $($Event.Id)]\" -ForegroundColor Yellow\n            Write-Host \"  Time: $($Event.TimeCreated)\" -ForegroundColor Gray\n            Write-Host \"  User: $($Event.Properties[1].Value)\" -ForegroundColor Cyan\n            Write-Host \"  Computer: $($Event.MachineName)\" -ForegroundColor Gray\n            Write-Host \"\"\n        }\n    } else {\n        Write-Host \"No events found\" -ForegroundColor Yellow\n    }\n} catch {\n    Write-Host \"Error querying Security log: $_\" -ForegroundColor Red\n}\n\n# Hunt in System log\n$SystemEventIDs = $EventIDs | Where-Object { $_ -in @('1074','1076','6005','6006','6008') }\nif ($SystemEventIDs.Count -gt 0) {\n    Write-Host \"\"\n    Write-Host \"[SYSTEM LOG]\" -ForegroundColor Cyan\n    try {\n        $SystemEvents = Get-WinEvent -FilterHashtable @{\n            LogName = 'System'\n            ID = $SystemEventIDs\n            StartTime = $StartTime\n        } -MaxEvents $MaxEvents -ErrorAction SilentlyContinue\n        \n        if ($SystemEvents) {\n            Write-Host \"Found $($SystemEvents.Count) event(s)\" -ForegroundColor Green\n            Write-Host \"\"\n            \n            foreach ($Event in $SystemEvents) {\n                Write-Host \"[Event ID: $($Event.Id)]\" -ForegroundColor Yellow\n                Write-Host \"  Time: $($Event.TimeCreated)\" -ForegroundColor Gray\n                Write-Host \"  Computer: $($Event.MachineName)\" -ForegroundColor Gray\n                Write-Host \"\"\n            }\n        } else {\n            Write-Host \"No events found\" -ForegroundColor Yellow\n        }\n    } catch {\n        Write-Host \"Error querying System log: $_\" -ForegroundColor Red\n    }\n}\n\nWrite-Host \"=== EVENT HUNT COMPLETE ===\" -ForegroundColor Green"
+      "template": "# Event Log Hunter\n$ids = '{{event_ids}}' -split ',' | ForEach-Object { [int]$_.Trim() }\n$start = (Get-Date).AddHours(-[int]'{{hours}}')\nGet-WinEvent -FilterHashtable @{ LogName='{{log_name}}'; Id=$ids; StartTime=$start } -ErrorAction SilentlyContinue | Format-Table TimeCreated, Id, Message -AutoSize -Wrap"
+    },
+    {
+      "id": "check-firewall-status",
+      "name": "Check Firewall Status",
+      "description": "Check Windows Firewall status for all profiles",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Firewall Status\nGet-NetFirewallProfile | Select-Object Name, Enabled | Format-Table -AutoSize"
+    },
+    {
+      "id": "bitlocker-status",
+      "name": "BitLocker Status",
+      "description": "Check BitLocker encryption status on drives",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# BitLocker Status\nGet-BitLockerVolume | Format-Table MountPoint, EncryptionMethod, ProtectionStatus, EncryptionPercentage -AutoSize"
+    },
+    {
+      "id": "last-logon",
+      "name": "Last Logon Report",
+      "description": "Get last logon for domain users",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "search_base", "label": "Search Base OU (optional)", "type": "text", "placeholder": "OU=Users,DC=domain,DC=com", "defaultValue": "" }
+      ],
+      "template": "# Last Logon Report\n#Requires -Modules ActiveDirectory\n$ou = '{{search_base}}'\nif ($ou) { Get-ADUser -Filter * -SearchBase $ou -Properties LastLogonDate | Select-Object Name, SamAccountName, LastLogonDate | Sort-Object LastLogonDate -Descending | Format-Table -AutoSize }\nelse { Get-ADUser -Filter * -Properties LastLogonDate | Select-Object Name, SamAccountName, LastLogonDate | Sort-Object LastLogonDate -Descending | Format-Table -AutoSize }"
     }
   ],
-  "microsoft_office": [
+  "system_maintenance": [
     {
-      "id": "outlook-pst-size-limit",
-      "name": "Configure Outlook PST Size Limit",
-      "description": "Set maximum and warning size limits for Outlook PST files",
+      "id": "disk-cleanup",
+      "name": "Disk Cleanup",
+      "description": "Run Windows disk cleanup",
+      "type": "powershell",
+      "inputs": [],
+      "template": "cleanmgr /sagerun:1"
+    },
+    {
+      "id": "clear-temp",
+      "name": "Clear Temp Files",
+      "description": "Clear user and Windows temp folders",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Clear Temp Files (run as admin for full clean)\nRemove-Item $env:TEMP\\* -Recurse -Force -ErrorAction SilentlyContinue\nRemove-Item C:\\Windows\\Temp\\* -Recurse -Force -ErrorAction SilentlyContinue\nWrite-Host 'Temp folders cleared' -ForegroundColor Green"
+    },
+    {
+      "id": "check-services",
+      "name": "Check Critical Services",
+      "description": "Check status of critical Windows services",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "max_size_mb",
-          "label": "Maximum PST Size (MB)",
-          "type": "text",
-          "placeholder": "102400",
-          "defaultValue": "102400",
-          "description": "Maximum file size in MB (default: 102400 MB = 100 GB)",
-          "required": true
-        },
-        {
-          "variable": "warn_size_mb",
-          "label": "Warning Size (MB)",
-          "type": "text",
-          "placeholder": "97280",
-          "defaultValue": "97280",
-          "description": "Warning threshold in MB (default: 97280 MB = 95 GB)",
-          "required": true
-        }
+        { "variable": "services", "label": "Service names (comma-separated)", "type": "text", "placeholder": "Spooler,Bits,WinRM", "defaultValue": "Spooler,Bits,WinRM,Wuauserv" }
       ],
-      "template": "# Configure Outlook PST File Size Limits\n# Generated: $(Get-Date)\n\n$MaxSizeMB = {{max_size_mb}}\n$WarnSizeMB = {{warn_size_mb}}\n\n# Convert MB to KB\n$MaxSizeKB = $MaxSizeMB * 1024\n$WarnSizeKB = $WarnSizeMB * 1024\n\n# Registry paths for Outlook 2016/2019/365\n$RegistryKey1 = 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\PST'\n$RegistryKey2 = 'HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\PST'\n\nWrite-Host \"Configuring Outlook PST size limits...\" -ForegroundColor Cyan\nWrite-Host \"Max Size: $MaxSizeMB MB ($MaxSizeKB KB)\" -ForegroundColor Yellow\nWrite-Host \"Warning Size: $WarnSizeMB MB ($WarnSizeKB KB)\" -ForegroundColor Yellow\nWrite-Host \"\"\n\nforeach ($RegistryKey in @($RegistryKey1, $RegistryKey2)) {\n    Write-Host \"Processing: $RegistryKey\" -ForegroundColor Cyan\n    \n    # Create registry key if it doesn't exist\n    if (!(Test-Path $RegistryKey)) {\n        New-Item $RegistryKey -Force | Out-Null\n        Write-Host \"  Created registry key\" -ForegroundColor Green\n    }\n    \n    # Set MaxLargeFileSize\n    New-ItemProperty $RegistryKey -Name MaxLargeFileSize -Type DWord -Value $MaxSizeKB -Force | Out-Null\n    Write-Host \"  Set MaxLargeFileSize = $MaxSizeKB KB\" -ForegroundColor Green\n    \n    # Set WarnLargeFileSize\n    New-ItemProperty $RegistryKey -Name WarnLargeFileSize -Type DWord -Value $WarnSizeKB -Force | Out-Null\n    Write-Host \"  Set WarnLargeFileSize = $WarnSizeKB KB\" -ForegroundColor Green\n    Write-Host \"\"\n}\n\nWrite-Host \"Done! Please restart Outlook for changes to take effect.\" -ForegroundColor Green"
+      "template": "# Check Critical Services\n$svcs = '{{services}}' -split ',' | ForEach-Object { $_.Trim() }\nforeach ($s in $svcs) {\n    try {\n        $svc = Get-Service -Name $s -ErrorAction Stop\n        $status = if ($svc.Status -eq 'Running') { 'Running' } else { 'Stopped' }\n        Write-Host \"$s : $status\"\n    } catch { Write-Host \"$s : Not Found\" -ForegroundColor Yellow }\n}"
     },
     {
-      "id": "activate-office-2021",
-      "name": "Activate Office 2021 Pro Plus",
-      "description": "Activate Microsoft Office 2021 Professional Plus using KMS",
-      "type": "cmd",
-      "inputs": [],
-      "template": "@echo off\nREM Activate Office 2021 Professional Plus\nREM Generated: %date% %time%\n\necho ========================================\necho Office 2021 Pro Plus Activation\necho ========================================\necho.\n\necho Attempting to locate Office installation...\necho.\n\nREM Try 64-bit Office path first\nif exist \"%ProgramFiles%\\Microsoft Office\\Office16\\ospp.vbs\" (\n    echo Found 64-bit Office installation\n    cd /d \"%ProgramFiles%\\Microsoft Office\\Office16\"\n    goto :activate\n)\n\nREM Try 32-bit Office path\nif exist \"%ProgramFiles(x86)%\\Microsoft Office\\Office16\\ospp.vbs\" (\n    echo Found 32-bit Office installation\n    cd /d \"%ProgramFiles(x86)%\\Microsoft Office\\Office16\"\n    goto :activate\n)\n\necho [ERROR] Office 2016/2019/2021 not found!\necho Please make sure Office is installed.\npause\nexit /b 1\n\n:activate\necho.\necho Installing Office 2021 Pro Plus VL license...\nfor /f %%x in ('dir /b ..\\root\\Licenses16\\ProPlus2021VL_KMS*.xrm-ms 2^>nul') do (\n    echo Installing license: %%x\n    cscript ospp.vbs /inslic:\"..\\root\\Licenses16\\%%x\" >nul\n)\n\necho.\necho Configuring KMS settings...\ncscript ospp.vbs /setprt:1688\n\necho.\necho Removing old product key if exists...\ncscript ospp.vbs /unpkey:6F7TH >nul 2>&1\n\necho.\necho Installing Office 2021 Pro Plus product key...\ncscript ospp.vbs /inpkey:FXYTK-NJJ8C-GB6DW-3DYQT-6F7TH\n\necho.\necho Setting KMS host server...\ncscript ospp.vbs /sethst:e8.us.to\n\necho.\necho Activating Office...\ncscript ospp.vbs /act\n\necho.\necho ========================================\necho Activation process completed!\necho ========================================\necho.\necho If activation was successful, your Office is now activated.\necho If it failed, please check your internet connection and try again.\necho.\n\npause\nexit"
-    }
-  ],
-  "activation": [
-    {
-      "id": "activate-windows-10-pro",
-      "name": "Activate Windows 10 Pro",
-      "description": "Activate Windows 10 Professional using KMS server",
-      "type": "cmd",
-      "inputs": [],
-      "template": "@echo off\nREM Activate Windows 10 Pro\nREM Generated: %date% %time%\nREM NOTE: This script requires Administrator privileges\n\necho ========================================\necho Windows 10 Pro Activation\necho ========================================\necho.\n\necho Installing Windows 10 Pro product key...\nslmgr /ipk W269N-WFGWX-YVC9B-4J6C9-T83GX\necho.\n\necho Setting KMS server...\nslmgr /skms kms8.msguides.com\necho.\n\necho Activating Windows...\nslmgr /ato\necho.\n\necho ========================================\necho Activation process completed!\necho ========================================\necho.\necho A dialog box should appear showing the activation status.\necho If activation was successful, your Windows is now activated.\necho.\n\npause\nexit"
-    }
-  ],
-  "windows_updates": [
-    {
-      "id": "list-recent-updates",
-      "name": "List Recent Updates",
-      "description": "Show the 10 most recently installed Windows updates",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# List Recent Windows Updates\n# Generated: $(Get-Date)\n\nWrite-Host \"=== LATEST 10 INSTALLED UPDATES ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$RecentUpdates = Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 10\n\nif ($RecentUpdates) {\n    foreach ($Update in $RecentUpdates) {\n        Write-Host \"KB: $($Update.HotFixID)\" -ForegroundColor Yellow\n        Write-Host \"Installed: $($Update.InstalledOn)\" -ForegroundColor Gray\n        Write-Host \"Description: $($Update.Description)\" -ForegroundColor Gray\n        Write-Host \"---\" -ForegroundColor DarkGray\n        Write-Host \"\"\n    }\n} else {\n    Write-Host \"No updates found.\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "remove-update",
-      "name": "Remove Windows Update",
-      "description": "Uninstall a specific Windows Update KB (requires admin)",
+      "id": "restart-service",
+      "name": "Restart Service",
+      "description": "Restart a Windows service",
       "type": "powershell",
       "inputs": [
-        {
-          "variable": "kb_number",
-          "label": "KB Number",
-          "type": "text",
-          "placeholder": "5065426",
-          "description": "Enter KB number without 'KB' prefix (e.g., 5065426)",
-          "required": true
-        }
+        { "variable": "service_name", "label": "Service Name", "type": "text", "placeholder": "Spooler", "defaultValue": "" }
       ],
-      "template": "# Remove Windows Update\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\n$KBNumber = \"{{kb_number}}\"\n\nWrite-Host \"=== REMOVE WINDOWS UPDATE KB$KBNumber ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if running as administrator\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n\nif (-not $IsAdmin) {\n    Write-Host \"[!] WARNING: This script is not running as Administrator\" -ForegroundColor Red\n    Write-Host \"    The uninstall operation will likely fail without admin privileges\" -ForegroundColor Yellow\n    Write-Host \"\"\n}\n\n# Check if the update is installed\nWrite-Host \"Checking if KB$KBNumber is installed...\" -ForegroundColor Cyan\n$InstalledUpdate = Get-HotFix | Where-Object { $_.HotFixID -eq \"KB$KBNumber\" }\n\nif ($InstalledUpdate) {\n    Write-Host \"[FOUND] KB$KBNumber is currently installed\" -ForegroundColor Yellow\n    Write-Host \"  Installed On: $($InstalledUpdate.InstalledOn)\" -ForegroundColor Gray\n    Write-Host \"  Description: $($InstalledUpdate.Description)\" -ForegroundColor Gray\n    Write-Host \"\"\n    \n    Write-Host \"Attempting to uninstall KB$KBNumber...\" -ForegroundColor Cyan\n    Write-Host \"This may take several minutes...\" -ForegroundColor Yellow\n    Write-Host \"\"\n    \n    try {\n        # Use wusa.exe to uninstall the update\n        $Process = Start-Process -FilePath \"wusa.exe\" -ArgumentList \"/uninstall /kb:$KBNumber /quiet /norestart\" -Wait -PassThru\n        \n        if ($Process.ExitCode -eq 0) {\n            Write-Host \"[SUCCESS] KB$KBNumber has been uninstalled successfully!\" -ForegroundColor Green\n            Write-Host \"\"\n            Write-Host \"A system restart may be required for changes to take effect.\" -ForegroundColor Yellow\n        } elseif ($Process.ExitCode -eq 2359302) {\n            Write-Host \"[INFO] Update is not installed or already removed\" -ForegroundColor Yellow\n        } else {\n            Write-Host \"[ERROR] Uninstallation failed with exit code: $($Process.ExitCode)\" -ForegroundColor Red\n            Write-Host \"\"\n            Write-Host \"Common exit codes:\" -ForegroundColor Gray\n            Write-Host \"  2359302 - Update not found\" -ForegroundColor Gray\n            Write-Host \"  5 - Access denied (run as Administrator)\" -ForegroundColor Gray\n        }\n    }\n    catch {\n        Write-Host \"[ERROR] Failed to uninstall update: $_\" -ForegroundColor Red\n    }\n} else {\n    Write-Host \"[NOT FOUND] KB$KBNumber is not currently installed\" -ForegroundColor Green\n    Write-Host \"No action needed.\" -ForegroundColor Gray\n}"
-    }
-  ],
-  "domain_migration": [
-    {
-      "id": "migration-backup",
-      "name": "Step 1: Smart Backup + BreakGlass",
-      "description": "Create emergency admin, backup user data, enable OneDrive KFM, and snapshot printers",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Domain Migration - Smart Backup + BreakGlass\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== DOMAIN MIGRATION SMART BACKUP STARTED ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nif (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]\"Administrator\")) {\n    Write-Error \"Run this script as Administrator.\"\n    exit 1\n}\n\n# Create/Verify BreakGlass Admin\nWrite-Host \"=== Verifying Local Emergency Admin Account ===\" -ForegroundColor Cyan\n\n$BreakGlassUserName = \"IT-BreakGlass\"\n$BreakGlassPlainPass = \"S0mething!VeryStr0ng#2026\"\n$BreakGlassSecurePass = ConvertTo-SecureString $BreakGlassPlainPass -AsPlainText -Force\n\n$ExistingLocalUser = Get-LocalUser -Name $BreakGlassUserName -ErrorAction SilentlyContinue\n\nif (-not $ExistingLocalUser) {\n    Write-Host \"Creating local emergency admin: $BreakGlassUserName\" -ForegroundColor Yellow\n    New-LocalUser -Name $BreakGlassUserName -Password $BreakGlassSecurePass -FullName \"IT Emergency Admin\" -Description \"Local emergency admin account for domain migration / recovery\" -PasswordNeverExpires:$true -UserMayNotChangePassword:$true -AccountNeverExpires:$true\n} else {\n    Write-Host \"Local emergency admin already exists\" -ForegroundColor Green\n    if ($ExistingLocalUser.Enabled -eq $false) {\n        Enable-LocalUser -Name $BreakGlassUserName\n        Write-Host \"Enabled existing $BreakGlassUserName account\" -ForegroundColor Green\n    }\n}\n\n$IsBreakGlassAdmin = Get-LocalGroupMember -Group \"Administrators\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like \"*\\$BreakGlassUserName\" }\n\nif (-not $IsBreakGlassAdmin) {\n    Add-LocalGroupMember -Group \"Administrators\" -Member $BreakGlassUserName\n    Write-Host \"Added $BreakGlassUserName to Administrators group\" -ForegroundColor Green\n} else {\n    Write-Host \"$BreakGlassUserName already member of Administrators\" -ForegroundColor Green\n}\n\nWrite-Host \"✅ Emergency Admin Verified\" -ForegroundColor Green\nWrite-Host \"\"\n\n# Detect real user profile\n$ExcludedPatterns = @('^Public$','^Default$','^Default User$','^All Users$','^Administrator$','^WDAGUtilityAccount$','^TEMP\\.')\n\n$UserProfile = Get-ChildItem 'C:\\Users' -Directory | Where-Object {\n    $name = $_.Name\n    ($ExcludedPatterns | Where-Object { $name -match $_ }).Count -eq 0 -and (Test-Path (Join-Path $_.FullName 'NTUSER.DAT'))\n} | Sort-Object LastWriteTime -Descending | Select-Object -First 1\n\nif (-not $UserProfile) {\n    Write-Error \"No valid user profile found.\"\n    exit 1\n}\n\n$User = $UserProfile.Name\n$ProfileDir = $UserProfile.FullName\n$BackupRoot = \"C:\\DomainMigration\\$User\"\n\nWrite-Host \"Detected user: $User\" -ForegroundColor Cyan\nNew-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null\n\n# Resolve SID\n$ProfileListKey = 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList'\n$Sid = $null\n\nforeach ($p in Get-ChildItem $ProfileListKey) {\n    $pi = Get-ItemProperty $p.PSPath -ErrorAction SilentlyContinue\n    if ($pi.ProfileImagePath -ieq $ProfileDir) {\n        $Sid = Split-Path $p.PSChildName -Leaf\n        break\n    }\n}\n\nif (-not $Sid) {\n    Write-Error \"Could not resolve SID for user profile: $ProfileDir\"\n    exit 1\n}\n\n# Get shell folders\n$UserShellKey = \"Registry::HKEY_USERS\\$Sid\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders\"\n$UShell = Get-ItemProperty $UserShellKey\n\nfunction Expand-UserPath { param($p) [Environment]::ExpandEnvironmentVariables($p) }\n\n$DesktopPath = Expand-UserPath $UShell.Desktop\n$DocsPath = Expand-UserPath $UShell.Personal\n$PicturesPath = Expand-UserPath $UShell.'My Pictures'\n\n$DesktopInOD = $DesktopPath -like '*OneDrive*'\n$DocsInOD = $DocsPath -like '*OneDrive*'\n$PicturesInOD = $PicturesPath -like '*OneDrive*'\n\nWrite-Host \"Desktop:   $DesktopPath (OneDrive: $DesktopInOD)\" -ForegroundColor Gray\nWrite-Host \"Documents: $DocsPath (OneDrive: $DocsInOD)\" -ForegroundColor Gray\nWrite-Host \"Pictures:  $PicturesPath (OneDrive: $PicturesInOD)\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# Smart backup (skip if in OneDrive)\n$FoldersToCheck = @(\n    @{Name=\"Desktop\"; Path=$DesktopPath; InOD=$DesktopInOD},\n    @{Name=\"Documents\"; Path=$DocsPath; InOD=$DocsInOD},\n    @{Name=\"Pictures\"; Path=$PicturesPath; InOD=$PicturesInOD}\n)\n\nforeach ($f in $FoldersToCheck) {\n    if (-not $f.InOD -and (Test-Path $f.Path)) {\n        Write-Host \"Backing up local $($f.Name)...\" -ForegroundColor Yellow\n        robocopy $f.Path \"$BackupRoot\\$($f.Name)\" /E /COPY:DAT /R:1 /W:1 /NFL /NDL | Out-Null\n    } else {\n        if ($f.InOD) {\n            Write-Host \"$($f.Name) is in OneDrive – skipping local backup\" -ForegroundColor Cyan\n        }\n    }\n}\n\n# Additional folders\n$ExtraFolders = @(\"Downloads\",\"Favorites\")\nforeach ($Folder in $ExtraFolders) {\n    $Src = Join-Path $ProfileDir $Folder\n    if (Test-Path $Src) {\n        Write-Host \"Backing up $Folder...\" -ForegroundColor Yellow\n        robocopy $Src \"$BackupRoot\\$Folder\" /E /COPY:DAT /R:1 /W:1 /NFL /NDL | Out-Null\n    }\n}\n\n# Outlook\n$Outlook = Join-Path $ProfileDir \"AppData\\Roaming\\Microsoft\\Outlook\"\nif (Test-Path $Outlook) {\n    Write-Host \"Backing up Outlook...\" -ForegroundColor Yellow\n    robocopy $Outlook \"$BackupRoot\\Outlook\" /E /COPY:DAT /R:1 /W:1 /NFL /NDL | Out-Null\n}\n\n# Browsers\n$Chrome = Join-Path $ProfileDir \"AppData\\Local\\Google\\Chrome\\User Data\"\nif (Test-Path $Chrome) {\n    Write-Host \"Backing up Chrome...\" -ForegroundColor Yellow\n    robocopy $Chrome \"$BackupRoot\\Chrome\" /E /XJ /COPY:DAT /R:1 /W:1 /NFL /NDL | Out-Null\n}\n\n$Edge = Join-Path $ProfileDir \"AppData\\Local\\Microsoft\\Edge\\User Data\"\nif (Test-Path $Edge) {\n    Write-Host \"Backing up Edge...\" -ForegroundColor Yellow\n    robocopy $Edge \"$BackupRoot\\Edge\" /E /XJ /COPY:DAT /R:1 /W:1 /NFL /NDL | Out-Null\n}\n\n$Firefox = Join-Path $ProfileDir \"AppData\\Roaming\\Mozilla\"\nif (Test-Path $Firefox) {\n    Write-Host \"Backing up Firefox...\" -ForegroundColor Yellow\n    robocopy $Firefox \"$BackupRoot\\Firefox\" /E /COPY:DAT /R:1 /W:1 /NFL /NDL | Out-Null\n}\n\n# Printer snapshot\n$PrinterDir = Join-Path $BackupRoot \"Printers\"\nNew-Item -ItemType Directory -Path $PrinterDir -Force | Out-Null\n\ntry {\n    Import-Module PrintManagement -ErrorAction Stop\n    $printers = Get-Printer | Sort-Object Name\n    $snapshot = [pscustomobject]@{\n        ComputerName = $env:COMPUTERNAME\n        CollectedAt = (Get-Date).ToString(\"s\")\n        Printers = $printers\n    }\n    $snapshot | ConvertTo-Json -Depth 5 | Out-File \"$PrinterDir\\Printers.json\" -Encoding UTF8\n    Write-Host \"Printer backup completed\" -ForegroundColor Green\n} catch {\n    Write-Warning \"Printer module not available. Skipping printer backup.\"\n}\n\n# Summary\n$Summary = @\"\nUser: $User\nBackupRoot: $BackupRoot\nCompleted: $(Get-Date)\n\"@\n\n$Summary | Out-File \"$BackupRoot\\BackupSummary.txt\" -Encoding UTF8\nNew-Item \"$BackupRoot\\BACKUP_COMPLETED.txt\" -ItemType File -Force | Out-Null\n\nWrite-Host \"\"\nWrite-Host \"=== SMART BACKUP COMPLETED SUCCESSFULLY ===\" -ForegroundColor Green\nWrite-Host \"Backup location: $BackupRoot\" -ForegroundColor Cyan"
-    },
-    {
-      "id": "migration-unjoin",
-      "name": "Step 2: Unjoin Old Domain",
-      "description": "Stop services and unjoin from the old domain (requires restart)",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "domain_user",
-          "label": "Old Domain Username",
-          "type": "text",
-          "placeholder": "DOMAIN\\Administrator",
-          "description": "Domain user with rights to unjoin computer",
-          "required": true
-        },
-        {
-          "variable": "domain_password",
-          "label": "Old Domain Password",
-          "type": "password",
-          "placeholder": "Enter domain password",
-          "required": true
-        }
-      ],
-      "template": "# Domain Migration - Unjoin Old Domain\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges and will restart the computer\n\nWrite-Host \"=== PRE-UNJOIN PREPARATION STARTED ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$OldDomainUser = \"{{domain_user}}\"\n$OldDomainPass = \"{{domain_password}}\"\n\n# Stop problematic processes\nWrite-Host \"Stopping user-dependent processes...\" -ForegroundColor Yellow\n\n$Processes = @(\n    \"OneDrive.exe\",\n    \"ms-teams.exe\",\n    \"Teams.exe\",\n    \"msedge.exe\",\n    \"chrome.exe\"\n)\n\nforeach ($p in $Processes) {\n    $running = Get-Process -Name ($p -replace '\\.exe$','') -ErrorAction SilentlyContinue\n    if ($running) {\n        Write-Host \"  Stopping $p...\" -ForegroundColor Gray\n        Stop-Process -Name ($p -replace '\\.exe$','') -Force -ErrorAction SilentlyContinue\n    }\n}\n\nWrite-Host \"✅ Processes stopped\" -ForegroundColor Green\nWrite-Host \"\"\n\n# Build domain credential\nWrite-Host \"Preparing domain credentials...\" -ForegroundColor Yellow\n$SecurePass = ConvertTo-SecureString $OldDomainPass -AsPlainText -Force\n$OldDomainCred = New-Object System.Management.Automation.PSCredential ($OldDomainUser, $SecurePass)\n\nWrite-Host \"✅ Credentials prepared\" -ForegroundColor Green\nWrite-Host \"\"\n\n# Unjoin domain\nWrite-Host \"Unjoining from old domain...\" -ForegroundColor Yellow\nWrite-Host \"Computer will restart automatically...\" -ForegroundColor Red\nWrite-Host \"\"\n\ntry {\n    Remove-Computer -UnjoinDomainCredential $OldDomainCred -Force -Restart\n}\ncatch {\n    Write-Host \"[ERROR] Failed to unjoin domain: $_\" -ForegroundColor Red\n    exit 1\n}"
-    },
-    {
-      "id": "migration-join",
-      "name": "Step 3: Join New Domain",
-      "description": "Join the computer to the new domain (requires restart)",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "new_domain_fqdn",
-          "label": "New Domain FQDN",
-          "type": "text",
-          "placeholder": "newdomain.com",
-          "description": "Fully qualified domain name",
-          "required": true
-        },
-        {
-          "variable": "domain_join_user",
-          "label": "Domain Join Username",
-          "type": "text",
-          "placeholder": "DOMAIN\\Administrator",
-          "description": "User with rights to join computers to domain",
-          "required": true
-        },
-        {
-          "variable": "domain_join_password",
-          "label": "Domain Join Password",
-          "type": "password",
-          "placeholder": "Enter password",
-          "required": true
-        }
-      ],
-      "template": "# Domain Migration - Join New Domain\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges and will restart the computer\n\nWrite-Host \"=== JOIN NEW DOMAIN STARTED ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$DomainJoinUser = \"{{domain_join_user}}\"\n$DomainJoinPassword = \"{{domain_join_password}}\"\n$NewDomainFQDN = \"{{new_domain_fqdn}}\"\n\n# Validation\nif ([string]::IsNullOrWhiteSpace($DomainJoinUser)) {\n    Write-Error \"DomainJoinUser is missing\"\n    exit 1\n}\nif ([string]::IsNullOrWhiteSpace($DomainJoinPassword)) {\n    Write-Error \"DomainJoinPassword is missing\"\n    exit 1\n}\nif ([string]::IsNullOrWhiteSpace($NewDomainFQDN)) {\n    Write-Error \"NewDomainFQDN is missing\"\n    exit 1\n}\n\nWrite-Host \"Joining domain: $NewDomainFQDN\" -ForegroundColor Yellow\nWrite-Host \"Using account: $DomainJoinUser\" -ForegroundColor Yellow\nWrite-Host \"\"\n\n# Build credential\n$SecurePass = ConvertTo-SecureString $DomainJoinPassword -AsPlainText -Force\n$Cred = New-Object System.Management.Automation.PSCredential ($DomainJoinUser, $SecurePass)\n\n# Join domain\nWrite-Host \"Joining domain...\" -ForegroundColor Cyan\nWrite-Host \"Computer will restart automatically...\" -ForegroundColor Red\nWrite-Host \"\"\n\ntry {\n    Add-Computer -DomainName $NewDomainFQDN -Credential $Cred -Restart\n}\ncatch {\n    Write-Host \"[ERROR] Failed to join domain: $_\" -ForegroundColor Red\n    exit 1\n}"
-    },
-    {
-      "id": "migration-restore",
-      "name": "Step 4: Restore User Data",
-      "description": "Restore backed up data to the new domain profile (no duplications)",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Domain Migration - Restore User Data (No Duplications)\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== DOMAIN MIGRATION RESTORE (NO DUP) STARTED ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nif (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]\"Administrator\")) {\n    Write-Error \"Run this script as Administrator.\"\n    exit 1\n}\n\n# Detect NEW user profile\n$ExcludedPatterns = @('^Public$','^Default$','^Default User$','^All Users$','^Administrator$','^WDAGUtilityAccount$','^TEMP\\.')\n\n$NewUserProfile = Get-ChildItem 'C:\\Users' -Directory | Where-Object {\n    $name = $_.Name\n    ($ExcludedPatterns | Where-Object { $name -match $_ }).Count -eq 0 -and (Test-Path (Join-Path $_.FullName 'NTUSER.DAT'))\n} | Sort-Object LastWriteTime -Descending | Select-Object -First 1\n\nif (-not $NewUserProfile) {\n    Write-Error \"No valid NEW user profile found.\"\n    exit 1\n}\n\n$NewUser = $NewUserProfile.Name\n$NewProfileDir = $NewUserProfile.FullName\n\nWrite-Host \"Detected NEW user profile: $NewUser\" -ForegroundColor Cyan\nWrite-Host \"Profile path: $NewProfileDir\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# Find backup folder\n$BackupBase = \"C:\\DomainMigration\"\nif (-not (Test-Path $BackupBase)) {\n    Write-Error \"Backup root not found: $BackupBase\"\n    exit 1\n}\n\n$BackupFolder = Get-ChildItem $BackupBase -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1\n\nif (-not $BackupFolder) {\n    Write-Error \"No backup folders found under $BackupBase\"\n    exit 1\n}\n\n$OldUserBackupRoot = $BackupFolder.FullName\nWrite-Host \"Using backup source: $OldUserBackupRoot\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Resolve NEW user's SID\n$ProfileListKey = 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList'\n$Sid = $null\n\nforeach ($p in Get-ChildItem $ProfileListKey) {\n    $pi = Get-ItemProperty $p.PSPath -ErrorAction SilentlyContinue\n    if ($pi.ProfileImagePath -ieq $NewProfileDir) {\n        $Sid = Split-Path $p.PSChildName -Leaf\n        break\n    }\n}\n\nif (-not $Sid) {\n    Write-Error \"Could not resolve SID for $NewProfileDir\"\n    exit 1\n}\n\nWrite-Host \"Resolved NEW SID: $Sid\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# Get shell folders\n$UserShellKey = \"Registry::HKEY_USERS\\$Sid\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders\"\nif (-not (Test-Path $UserShellKey)) {\n    Write-Error \"User Shell Folders not found. Ensure the user has logged in at least once.\"\n    exit 1\n}\n\n$UShell = Get-ItemProperty $UserShellKey\nfunction Expand-UserPath { param([string]$p) [Environment]::ExpandEnvironmentVariables($p) }\n\n$DestDesktop = Expand-UserPath $UShell.Desktop\n$DestDocuments = Expand-UserPath $UShell.Personal\n$DestPictures = Expand-UserPath $UShell.'My Pictures'\n$DestDownloads = Join-Path $NewProfileDir \"Downloads\"\n$DestFavorites = Join-Path $NewProfileDir \"Favorites\"\n\nWrite-Host \"Destination folders:\" -ForegroundColor Cyan\nWrite-Host \"  Desktop:   $DestDesktop\" -ForegroundColor Gray\nWrite-Host \"  Documents: $DestDocuments\" -ForegroundColor Gray\nWrite-Host \"  Pictures:  $DestPictures\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# No-dup robocopy options\n$RoboNoDup = @(\"/E\",\"/XO\",\"/XN\",\"/XC\",\"/XJ\",\"/R:1\",\"/W:1\",\"/NFL\",\"/NDL\")\n\nfunction Restore-FolderNoDup {\n    param([string]$Src, [string]$Dst, [string]$Label)\n    \n    if (-not (Test-Path $Src)) {\n        Write-Host \"Skip $Label (source missing)\" -ForegroundColor DarkGray\n        return\n    }\n    \n    New-Item -ItemType Directory -Path $Dst -Force | Out-Null\n    Write-Host \"Restoring $Label (NO DUP): $Src -> $Dst\" -ForegroundColor Yellow\n    robocopy $Src $Dst @RoboNoDup | Out-Null\n}\n\n# Restore folders\nRestore-FolderNoDup -Label \"Desktop\" -Src (Join-Path $OldUserBackupRoot \"Desktop\") -Dst $DestDesktop\nRestore-FolderNoDup -Label \"Documents\" -Src (Join-Path $OldUserBackupRoot \"Documents\") -Dst $DestDocuments\nRestore-FolderNoDup -Label \"Pictures\" -Src (Join-Path $OldUserBackupRoot \"Pictures\") -Dst $DestPictures\nRestore-FolderNoDup -Label \"Downloads\" -Src (Join-Path $OldUserBackupRoot \"Downloads\") -Dst $DestDownloads\nRestore-FolderNoDup -Label \"Favorites\" -Src (Join-Path $OldUserBackupRoot \"Favorites\") -Dst $DestFavorites\n\n# Restore applications\nRestore-FolderNoDup -Label \"Outlook\" -Src (Join-Path $OldUserBackupRoot \"Outlook\") -Dst (Join-Path $NewProfileDir \"AppData\\Roaming\\Microsoft\\Outlook\")\nRestore-FolderNoDup -Label \"Chrome\" -Src (Join-Path $OldUserBackupRoot \"Chrome\") -Dst (Join-Path $NewProfileDir \"AppData\\Local\\Google\\Chrome\\User Data\")\nRestore-FolderNoDup -Label \"Edge\" -Src (Join-Path $OldUserBackupRoot \"Edge\") -Dst (Join-Path $NewProfileDir \"AppData\\Local\\Microsoft\\Edge\\User Data\")\nRestore-FolderNoDup -Label \"Firefox\" -Src (Join-Path $OldUserBackupRoot \"Firefox\") -Dst (Join-Path $NewProfileDir \"AppData\\Roaming\\Mozilla\")\n\n# Marker\n$Marker = Join-Path $OldUserBackupRoot \"RESTORE_COMPLETED_$($env:COMPUTERNAME).txt\"\n\"Restore completed to $NewUser at $(Get-Date)\" | Out-File $Marker -Encoding UTF8\n\nWrite-Host \"\"\nWrite-Host \"=== DOMAIN MIGRATION RESTORE (NO DUP) COMPLETED ===\" -ForegroundColor Green\nWrite-Host \"Restored to: $NewUser\" -ForegroundColor Cyan"
+      "template": "# Restart Service (run as admin)\nRestart-Service -Name '{{service_name}}' -Force"
     }
   ],
   "system_info": [
     {
-      "id": "system-info",
-      "name": "Get System Information",
-      "description": "Retrieve detailed system information",
-      "type": "powershell",
+      "id": "systeminfo",
+      "name": "System Info",
+      "description": "Display detailed system information",
+      "type": "cmd",
       "inputs": [],
-      "template": "# System Information Report\n# Generated: $(Get-Date)\n\nWrite-Host \"=== SYSTEM INFORMATION ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Computer Info\n$ComputerInfo = Get-ComputerInfo\nWrite-Host \"Computer Name: $($ComputerInfo.CsName)\" -ForegroundColor Yellow\nWrite-Host \"OS: $($ComputerInfo.OsName)\" -ForegroundColor Yellow\nWrite-Host \"OS Version: $($ComputerInfo.OsVersion)\" -ForegroundColor Yellow\nWrite-Host \"OS Architecture: $($ComputerInfo.OsArchitecture)\" -ForegroundColor Yellow\nWrite-Host \"\"\n\n# CPU Info\nWrite-Host \"CPU: $($ComputerInfo.CsProcessors.Name)\" -ForegroundColor Yellow\nWrite-Host \"Cores: $($ComputerInfo.CsNumberOfProcessors)\" -ForegroundColor Yellow\nWrite-Host \"\"\n\n# Memory Info\n$TotalRAM = [math]::Round($ComputerInfo.CsTotalPhysicalMemory / 1GB, 2)\nWrite-Host \"Total RAM: $TotalRAM GB\" -ForegroundColor Yellow\nWrite-Host \"\"\n\n# Disk Info\nWrite-Host \"=== DISK INFORMATION ===\" -ForegroundColor Cyan\nGet-Volume | Where-Object {$_.DriveLetter} | Format-Table DriveLetter, FileSystemLabel, FileSystem, @{Name='Size(GB)';Expression={[math]::Round($_.Size/1GB,2)}}, @{Name='Free(GB)';Expression={[math]::Round($_.SizeRemaining/1GB,2)}}"
+      "template": "systeminfo"
     },
     {
-      "id": "hardware-inventory",
-      "name": "Hardware Inventory Report",
-      "description": "Generate detailed hardware inventory (CPU, RAM, Disk, GPU, BIOS)",
+      "id": "get-hotfix",
+      "name": "List Installed Updates",
+      "description": "List installed Windows updates",
       "type": "powershell",
       "inputs": [],
-      "template": "# Hardware Inventory Report\n# Generated: $(Get-Date)\n\nWrite-Host \"=== HARDWARE INVENTORY REPORT ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Computer System\n$CS = Get-CimInstance Win32_ComputerSystem\nWrite-Host \"[COMPUTER SYSTEM]\" -ForegroundColor Yellow\nWrite-Host \"  Manufacturer: $($CS.Manufacturer)\" -ForegroundColor Gray\nWrite-Host \"  Model: $($CS.Model)\" -ForegroundColor Gray\nWrite-Host \"  Computer Name: $($CS.Name)\" -ForegroundColor Gray\nWrite-Host \"  Domain: $($CS.Domain)\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# BIOS\n$BIOS = Get-CimInstance Win32_BIOS\nWrite-Host \"[BIOS]\" -ForegroundColor Yellow\nWrite-Host \"  Manufacturer: $($BIOS.Manufacturer)\" -ForegroundColor Gray\nWrite-Host \"  Version: $($BIOS.SMBIOSBIOSVersion)\" -ForegroundColor Gray\nWrite-Host \"  Serial Number: $($BIOS.SerialNumber)\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# CPU\n$CPU = Get-CimInstance Win32_Processor\nWrite-Host \"[PROCESSOR]\" -ForegroundColor Yellow\nWrite-Host \"  Name: $($CPU.Name)\" -ForegroundColor Gray\nWrite-Host \"  Cores: $($CPU.NumberOfCores)\" -ForegroundColor Gray\nWrite-Host \"  Logical Processors: $($CPU.NumberOfLogicalProcessors)\" -ForegroundColor Gray\nWrite-Host \"  Max Clock Speed: $($CPU.MaxClockSpeed) MHz\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# RAM\n$RAM = Get-CimInstance Win32_PhysicalMemory\n$TotalRAM = [math]::Round(($RAM | Measure-Object Capacity -Sum).Sum / 1GB, 2)\nWrite-Host \"[MEMORY]\" -ForegroundColor Yellow\nWrite-Host \"  Total RAM: $TotalRAM GB\" -ForegroundColor Gray\nforeach ($Stick in $RAM) {\n    $Size = [math]::Round($Stick.Capacity / 1GB, 2)\n    Write-Host \"  Slot: $Size GB @ $($Stick.Speed) MHz ($($Stick.Manufacturer))\" -ForegroundColor Gray\n}\nWrite-Host \"\"\n\n# Disks\nWrite-Host \"[STORAGE]\" -ForegroundColor Yellow\n$Disks = Get-CimInstance Win32_DiskDrive\nforeach ($Disk in $Disks) {\n    $Size = [math]::Round($Disk.Size / 1GB, 2)\n    Write-Host \"  $($Disk.Model): $Size GB ($($Disk.InterfaceType))\" -ForegroundColor Gray\n}\nWrite-Host \"\"\n\n# GPU\nWrite-Host \"[GRAPHICS]\" -ForegroundColor Yellow\n$GPU = Get-CimInstance Win32_VideoController\nforeach ($Card in $GPU) {\n    $VRAM = [math]::Round($Card.AdapterRAM / 1GB, 2)\n    Write-Host \"  $($Card.Name): $VRAM GB VRAM\" -ForegroundColor Gray\n}\nWrite-Host \"\"\n\n# Network Adapters\nWrite-Host \"[NETWORK ADAPTERS]\" -ForegroundColor Yellow\n$Adapters = Get-NetAdapter | Where-Object Status -eq 'Up'\nforeach ($Adapter in $Adapters) {\n    Write-Host \"  $($Adapter.Name): $($Adapter.LinkSpeed) ($($Adapter.Status))\" -ForegroundColor Gray\n}\nWrite-Host \"\"\n\nWrite-Host \"=== REPORT COMPLETE ===\" -ForegroundColor Green"
+      "template": "# Installed Updates\nGet-HotFix | Sort-Object InstalledOn -Descending | Format-Table HotFixID, Description, InstalledOn -AutoSize"
     },
     {
-      "id": "check-windows-license",
-      "name": "Check Windows License Status",
-      "description": "Display Windows activation and license information",
+      "id": "disk-space",
+      "name": "Disk Space Report",
+      "description": "Report disk space on all drives",
       "type": "powershell",
       "inputs": [],
-      "template": "# Check Windows License Status\n# Generated: $(Get-Date)\n\nWrite-Host \"=== WINDOWS LICENSE STATUS ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Get license status\n$LicenseStatus = Get-CimInstance SoftwareLicensingProduct | Where-Object { $_.PartialProductKey -and $_.Name -like \"Windows*\" }\n\nif ($LicenseStatus) {\n    Write-Host \"Product Name: $($LicenseStatus.Name)\" -ForegroundColor Yellow\n    Write-Host \"Description: $($LicenseStatus.Description)\" -ForegroundColor Gray\n    Write-Host \"Partial Product Key: $($LicenseStatus.PartialProductKey)\" -ForegroundColor Gray\n    \n    $Status = switch ($LicenseStatus.LicenseStatus) {\n        0 { \"Unlicensed\" }\n        1 { \"Licensed\" }\n        2 { \"OOBGrace\" }\n        3 { \"OOTGrace\" }\n        4 { \"NonGenuineGrace\" }\n        5 { \"Notification\" }\n        6 { \"ExtendedGrace\" }\n        default { \"Unknown\" }\n    }\n    \n    $Color = if ($Status -eq \"Licensed\") { \"Green\" } else { \"Red\" }\n    Write-Host \"License Status: $Status\" -ForegroundColor $Color\n    Write-Host \"\"\n}\n\n# Run slmgr for detailed info\nWrite-Host \"Detailed License Information:\" -ForegroundColor Cyan\ncscript //nologo $env:SystemRoot\\System32\\slmgr.vbs /dli\n\nWrite-Host \"\"\nWrite-Host \"=== LICENSE CHECK COMPLETE ===\" -ForegroundColor Green"
+      "template": "# Disk Space\nGet-PSDrive -PSProvider FileSystem | Select-Object Name, @{N='Used(GB)';E={[math]::Round($_.Used/1GB,2)}}, @{N='Free(GB)';E={[math]::Round($_.Free/1GB,2)}} | Format-Table -AutoSize"
+    }
+  ],
+  "windows_updates": [
+    {
+      "id": "check-updates",
+      "name": "Check for Windows Updates",
+      "description": "Check for available Windows updates",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Check for Updates (run as admin)\n$UpdateSession = New-Object -ComObject Microsoft.Update.Session\n$UpdateSearcher = $UpdateSession.CreateUpdateSearcher()\n$SearchResult = $UpdateSearcher.Search('IsInstalled=0')\nWrite-Host \"Updates available: $($SearchResult.Updates.Count)\"\n$SearchResult.Updates | Select-Object Title"
     },
     {
-      "id": "system-uptime",
-      "name": "Check System Uptime",
-      "description": "Show last boot time and system uptime",
+      "id": "wuau-reset",
+      "name": "Reset Windows Update",
+      "description": "Stop Windows Update services and clear cache",
       "type": "powershell",
       "inputs": [],
-      "template": "# Check System Uptime\n# Generated: $(Get-Date)\n\nWrite-Host \"=== SYSTEM UPTIME REPORT ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$OS = Get-CimInstance Win32_OperatingSystem\n$LastBoot = $OS.LastBootUpTime\n$Uptime = (Get-Date) - $LastBoot\n\nWrite-Host \"Computer Name: $env:COMPUTERNAME\" -ForegroundColor Yellow\nWrite-Host \"Last Boot Time: $LastBoot\" -ForegroundColor Yellow\nWrite-Host \"\"\n\nWrite-Host \"System Uptime:\" -ForegroundColor Cyan\nWrite-Host \"  Days: $($Uptime.Days)\" -ForegroundColor Gray\nWrite-Host \"  Hours: $($Uptime.Hours)\" -ForegroundColor Gray\nWrite-Host \"  Minutes: $($Uptime.Minutes)\" -ForegroundColor Gray\nWrite-Host \"\"\n\n$TotalHours = [math]::Round($Uptime.TotalHours, 2)\nWrite-Host \"Total Uptime: $TotalHours hours\" -ForegroundColor Green\n\nif ($Uptime.Days -gt 30) {\n    Write-Host \"\"\n    Write-Host \"[WARNING] System has been running for over 30 days.\" -ForegroundColor Red\n    Write-Host \"Consider rebooting to apply updates and clear memory.\" -ForegroundColor Yellow\n}"
+      "template": "# Reset Windows Update (run as admin)\nStop-Service wuauserv -Force; Stop-Service bits -Force\nRemove-Item C:\\Windows\\SoftwareDistribution\\* -Recurse -Force -ErrorAction SilentlyContinue\nStart-Service wuauserv; Start-Service bits\nWrite-Host 'Windows Update reset complete'"
+    }
+  ],
+  "activation": [
+    {
+      "id": "activation-status",
+      "name": "Check Activation Status",
+      "description": "Check Windows activation status",
+      "type": "cmd",
+      "inputs": [],
+      "template": "slmgr /xpr"
+    },
+    {
+      "id": "kms-activate",
+      "name": "Activate via KMS",
+      "description": "Activate Windows using KMS server",
+      "type": "cmd",
+      "inputs": [
+        { "variable": "kms_server", "label": "KMS Server", "type": "text", "placeholder": "kms.domain.com", "defaultValue": "" }
+      ],
+      "template": "slmgr /skms {{kms_server}}\nslmgr /ato"
     }
   ],
   "remote_desktop": [
     {
       "id": "enable-rdp",
       "name": "Enable Remote Desktop",
-      "description": "Enable RDP and configure firewall rules",
+      "description": "Enable Remote Desktop on the computer",
       "type": "powershell",
       "inputs": [],
-      "template": "# Enable Remote Desktop\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== ENABLE REMOTE DESKTOP ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Enable RDP\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name \"fDenyTSConnections\" -Value 0\nWrite-Host \"✅ Remote Desktop enabled\" -ForegroundColor Green\n\n# Enable RDP through Windows Firewall\nEnable-NetFirewallRule -DisplayGroup \"Remote Desktop\"\nWrite-Host \"✅ Firewall rules enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"Remote Desktop is now enabled on this computer\" -ForegroundColor Green\nWrite-Host \"Computer Name: $env:COMPUTERNAME\" -ForegroundColor Yellow\n\n$IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.InterfaceAlias -notlike '*Loopback*' -and $_.IPAddress -notlike '169.254.*'}).IPAddress | Select-Object -First 1\nif ($IP) {\n    Write-Host \"IP Address: $IP\" -ForegroundColor Yellow\n}"
+      "template": "# Enable RDP (run as admin)\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 0\nEnable-NetFirewallRule -DisplayGroup 'Remote Desktop'"
     },
     {
       "id": "disable-rdp",
       "name": "Disable Remote Desktop",
-      "description": "Disable RDP for security",
+      "description": "Disable Remote Desktop",
       "type": "powershell",
       "inputs": [],
-      "template": "# Disable Remote Desktop\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== DISABLE REMOTE DESKTOP ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Disable RDP\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name \"fDenyTSConnections\" -Value 1\nWrite-Host \"✅ Remote Desktop disabled\" -ForegroundColor Green\n\n# Disable RDP firewall rules\nDisable-NetFirewallRule -DisplayGroup \"Remote Desktop\"\nWrite-Host \"✅ Firewall rules disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"Remote Desktop has been disabled\" -ForegroundColor Green"
+      "template": "# Disable RDP (run as admin)\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 1"
     }
   ],
   "browser_tools": [
     {
-      "id": "update-browser",
-      "name": "Update Browser",
-      "description": "Update web browsers using winget package manager",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "browser",
-          "label": "Browser",
-          "type": "select",
-          "placeholder": "Select a browser",
-          "required": true,
-          "options": [
-            {
-              "value": "Google.Chrome",
-              "label": "Google Chrome"
-            },
-            {
-              "value": "Mozilla.Firefox",
-              "label": "Mozilla Firefox"
-            },
-            {
-              "value": "Microsoft.Edge",
-              "label": "Microsoft Edge"
-            },
-            {
-              "value": "BraveSoftware.BraveBrowser",
-              "label": "Brave Browser"
-            },
-            {
-              "value": "Opera.Opera",
-              "label": "Opera"
-            },
-            {
-              "value": "Vivaldi.Vivaldi",
-              "label": "Vivaldi"
-            }
-          ]
-        }
-      ],
-      "template": "# Update Browser using Winget\n# Generated: $(Get-Date)\n\n$Browser = \"{{browser}}\"\n\nWrite-Host \"=== UPDATE BROWSER ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if winget is available\ntry {\n    $WingetVersion = winget --version\n    Write-Host \"Winget version: $WingetVersion\" -ForegroundColor Gray\n    Write-Host \"\"\n}\ncatch {\n    Write-Host \"[ERROR] Winget is not installed or not available\" -ForegroundColor Red\n    Write-Host \"Please install Windows Package Manager (winget) first\" -ForegroundColor Yellow\n    exit 1\n}\n\n# Get browser name for display\n$BrowserName = switch ($Browser) {\n    \"Google.Chrome\" { \"Google Chrome\" }\n    \"Mozilla.Firefox\" { \"Mozilla Firefox\" }\n    \"Microsoft.Edge\" { \"Microsoft Edge\" }\n    \"BraveSoftware.BraveBrowser\" { \"Brave Browser\" }\n    \"Opera.Opera\" { \"Opera\" }\n    \"Vivaldi.Vivaldi\" { \"Vivaldi\" }\n    default { $Browser }\n}\n\nWrite-Host \"Updating $BrowserName...\" -ForegroundColor Yellow\nWrite-Host \"Package ID: $Browser\" -ForegroundColor Gray\nWrite-Host \"\"\n\ntry {\n    # Check if browser is installed\n    Write-Host \"Checking if $BrowserName is installed...\" -ForegroundColor Cyan\n    $InstalledApp = winget list --id $Browser --exact 2>$null\n    \n    if ($LASTEXITCODE -ne 0) {\n        Write-Host \"[NOT FOUND] $BrowserName is not installed\" -ForegroundColor Yellow\n        Write-Host \"Would you like to install it instead? Run: winget install $Browser\" -ForegroundColor Gray\n        exit 0\n    }\n    \n    Write-Host \"[FOUND] $BrowserName is installed\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Upgrade the browser\n    Write-Host \"Starting upgrade process...\" -ForegroundColor Cyan\n    Write-Host \"This may take a few minutes...\" -ForegroundColor Gray\n    Write-Host \"\"\n    \n    winget upgrade $Browser --silent --accept-source-agreements --accept-package-agreements\n    \n    if ($LASTEXITCODE -eq 0) {\n        Write-Host \"\"\n        Write-Host \"✅ SUCCESS: $BrowserName has been updated!\" -ForegroundColor Green\n    } elseif ($LASTEXITCODE -eq -1978335189) {\n        Write-Host \"\"\n        Write-Host \"[INFO] $BrowserName is already up to date\" -ForegroundColor Cyan\n    } else {\n        Write-Host \"\"\n        Write-Host \"[WARNING] Update completed with exit code: $LASTEXITCODE\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] Failed to update $BrowserName: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "clear-all-browser-cache",
-      "name": "Clear All Browser Caches",
-      "description": "Clear cache for Chrome, Edge, and Firefox",
+      "id": "clear-ie-cache",
+      "name": "Clear IE/Edge Cache",
+      "description": "Clear Internet Explorer and Edge cache",
       "type": "powershell",
       "inputs": [],
-      "template": "# Clear All Browser Caches\n# Generated: $(Get-Date)\n\nWrite-Host \"=== CLEAR ALL BROWSER CACHES ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Stopping browsers...\" -ForegroundColor Yellow\nWrite-Host \"  Lockout Threshold: $LockoutThreshold attempts\" -ForegroundColor Gray\nWrite-Host \"  Lockout Duration: $LockoutDuration minutes\" -ForegroundColor Gray\nWrite-Host \"  Min Password Length: $MinPasswordLength characters\" -ForegroundColor Gray\nWrite-Host \"  Max Password Age: $MaxPasswordAge days\" -ForegroundColor Gray\nWrite-Host \"  Password History: $PasswordHistory passwords\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# Check if running on a Domain Controller\n$IsDC = (Get-WmiObject -Class Win32_ComputerSystem).DomainRole -ge 4\nif (-not $IsDC) {\n    Write-Host \"[!] WARNING: This machine is not a Domain Controller\" -ForegroundColor Red\n    Write-Host \"This script should only be run on Domain Controllers\" -ForegroundColor Yellow\n    $continue = Read-Host \"Continue anyway? (y/N)\"\n    if ($continue -ne 'y') { exit }\n}\n\nWrite-Host \"[1/8] Configuring Account Lockout Policy...\" -ForegroundColor Cyan\ntry {\n    # Set account lockout threshold\n    net accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\n    Write-Host \"  ✅ Account lockout: $LockoutThreshold attempts, $LockoutDuration min duration\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to set account lockout policy\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[2/8] Configuring Password Policy...\" -ForegroundColor Cyan\ntry {\n    # Set minimum password length and complexity\n    net accounts /minpwlen:$MinPasswordLength /maxpwage:$MaxPasswordAge /minpwage:1 /uniquepw:$PasswordHistory\n    Write-Host \"  ✅ Min password length: $MinPasswordLength characters\" -ForegroundColor Green\n    Write-Host \"  ✅ Max password age: $MaxPasswordAge days\" -ForegroundColor Green\n    Write-Host \"  ✅ Password history: $PasswordHistory passwords\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to set password policy\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[3/8] Disabling SMBv1 Protocol...\" -ForegroundColor Cyan\ntry {\n    Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force\n    Write-Host \"  ✅ SMBv1 disabled (protects against WannaCry/EternalBlue)\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable SMBv1\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[4/8] Enabling Windows Firewall...\" -ForegroundColor Cyan\ntry {\n    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\n    Write-Host \"  ✅ Firewall enabled on all profiles\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to enable firewall\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[5/8] Configuring Audit Policies...\" -ForegroundColor Cyan\ntry {\n    # Enable critical audit policies\n    auditpol /set /category:\"Account Logon\" /success:enable /failure:enable\n    auditpol /set /category:\"Account Management\" /success:enable /failure:enable\n    auditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\n    auditpol /set /category:\"Policy Change\" /success:enable /failure:enable\n    auditpol /set /category:\"Privilege Use\" /success:enable /failure:enable\n    Write-Host \"  ✅ Critical audit policies enabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure audit policies\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[6/8] Disabling Guest Account...\" -ForegroundColor Cyan\ntry {\n    net user guest /active:no\n    Write-Host \"  ✅ Guest account disabled\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to disable guest account\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[7/8] Configuring RDP Security...\" -ForegroundColor Cyan\ntry {\n    # Require NLA for RDP\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1\n    # Set encryption level to high\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'MinEncryptionLevel' -Value 3\n    Write-Host \"  ✅ RDP requires Network Level Authentication\" -ForegroundColor Green\n    Write-Host \"  ✅ RDP encryption set to High\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to configure RDP security\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"[8/8] Disabling Unnecessary Services...\" -ForegroundColor Cyan\n$ServicesToDisable = @('RemoteRegistry', 'SSDPSRV', 'upnphost')\nforeach ($Service in $ServicesToDisable) {\n    try {\n        $Svc = Get-Service -Name $Service -ErrorAction SilentlyContinue\n        if ($Svc) {\n            Stop-Service -Name $Service -Force -ErrorAction SilentlyContinue\n            Set-Service -Name $Service -StartupType Disabled\n            Write-Host \"  ✅ Disabled: $Service\" -ForegroundColor Green\n        }\n    } catch {\n        Write-Host \"  ⚠ Could not disable: $Service\" -ForegroundColor Yellow\n    }\n}\n\nWrite-Host \"\"\nWrite-Host \"=== BASIC HARDENING COMPLETE ===\" -ForegroundColor Green\nWrite-Host \"\"\nWrite-Host \"Additional Recommendations:\" -ForegroundColor Yellow\nWrite-Host \"  • Run Windows Update regularly\" -ForegroundColor Gray\nWrite-Host \"  • Enable BitLocker on system drives\" -ForegroundColor Gray\nWrite-Host \"  • Implement least privilege access\" -ForegroundColor Gray\nWrite-Host \"  • Use separate admin accounts\" -ForegroundColor Gray\nWrite-Host \"  • Enable Advanced Threat Protection\" -ForegroundColor Gray\nWrite-Host \"\"\nWrite-Host \"[!] IMPORTANT: Test these changes in a non-production environment first\" -ForegroundColor Red"
+      "template": "# Clear IE/Edge cache\nRunDll32.exe InetCpl.cpl,ClearMyTracksByProcess 8"
+    }
+  ],
+  "troubleshooting": [
+    {
+      "id": "gpupdate",
+      "name": "Group Policy Update",
+      "description": "Force Group Policy update",
+      "type": "cmd",
+      "inputs": [],
+      "template": "gpupdate /force"
+    },
+    {
+      "id": "release-renew-ip",
+      "name": "Release and Renew IP",
+      "description": "Release and renew DHCP lease",
+      "type": "cmd",
+      "inputs": [],
+      "template": "ipconfig /release\nipconfig /renew"
+    },
+    {
+      "id": "register-dns",
+      "name": "Register DNS",
+      "description": "Register DNS records for this computer",
+      "type": "cmd",
+      "inputs": [],
+      "template": "ipconfig /registerdns"
+    },
+    {
+      "id": "sfc-scan",
+      "name": "SFC System File Check",
+      "description": "Scan and repair system files (run as admin)",
+      "type": "cmd",
+      "inputs": [],
+      "template": "sfc /scannow"
+    },
+    {
+      "id": "repair-winsock",
+      "name": "Repair Winsock",
+      "description": "Reset Winsock catalog",
+      "type": "cmd",
+      "inputs": [],
+      "template": "netsh winsock reset"
+    }
+  ],
+  "domain_migration": [
+    {
+      "id": "migrate-user-account",
+      "name": "Migrate User Account (ADMT-style)",
+      "description": "Template for migrating a user account to new domain",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "source_user", "label": "Source Username (old domain)", "type": "text", "placeholder": "DOMAIN\\user", "defaultValue": "" },
+        { "variable": "target_ou", "label": "Target OU", "type": "text", "placeholder": "OU=Users,DC=newdomain,DC=com", "defaultValue": "" }
+      ],
+      "template": "# Migrate User - Use ADMT or manual process\n# 1. Export from source: Get-ADUser -Identity '{{source_user}}' -Properties * | Export-Clixml user.xml\n# 2. Create in target: New-ADUser -Path '{{target_ou}}' -Name ... (copy attributes)\n# 3. Use ADMT for SID history, passwords, profiles\n# Or run: ADMT USER /N \"DOMAIN\\user\" /TD \"NEWDOMAIN\" /TO \"{{target_ou}}\""
+    },
+    {
+      "id": "migrate-computer",
+      "name": "Migrate Computer to New Domain",
+      "description": "Join computer to new domain (post-ADMT or manual)",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "computer_name", "label": "Computer Name", "type": "text", "placeholder": "PC001", "defaultValue": "" },
+        { "variable": "new_domain", "label": "New Domain", "type": "text", "placeholder": "NEWDOMAIN.COM", "defaultValue": "" },
+        { "variable": "ou_path", "label": "Target OU", "type": "text", "placeholder": "OU=Workstations,DC=newdomain,DC=com", "defaultValue": "" }
+      ],
+      "template": "# Join to new domain (run on target computer)\nAdd-Computer -DomainName '{{new_domain}}' -OUPath '{{ou_path}}' -Restart"
+    },
+    {
+      "id": "export-ad-users",
+      "name": "Export AD Users for Migration",
+      "description": "Export users from an OU for migration planning",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "ou_path", "label": "Source OU", "type": "text", "placeholder": "OU=Users,DC=domain,DC=com", "defaultValue": "" },
+        { "variable": "export_path", "label": "Export CSV Path", "type": "text", "placeholder": "C:\\Migration\\users.csv", "defaultValue": "" }
+      ],
+      "template": "# Export AD Users for Migration\n#Requires -Modules ActiveDirectory\nGet-ADUser -Filter * -SearchBase '{{ou_path}}' -Properties * | Select-Object Name, SamAccountName, UserPrincipalName, Mail, GivenName, Surname | Export-Csv '{{export_path}}' -NoTypeInformation"
+    },
+    {
+      "id": "migration-readiness-check",
+      "name": "Migration Readiness Check",
+      "description": "Check AD environment for migration readiness",
+      "type": "powershell",
+      "inputs": [
+        { "variable": "ou_path", "label": "OU to analyze", "type": "text", "placeholder": "OU=Users,DC=domain,DC=com", "defaultValue": "" }
+      ],
+      "template": "# Migration Readiness Check\n#Requires -Modules ActiveDirectory\n$users = Get-ADUser -Filter * -SearchBase '{{ou_path}}' -Properties LastLogonDate, Enabled\nWrite-Host \"Total users: $($users.Count)\"\nWrite-Host \"Enabled: $(($users | Where-Object Enabled).Count)\"\nWrite-Host \"Disabled: $(($users | Where-Object {!$_.Enabled}).Count)\"\n$users | Select-Object Name, SamAccountName, LastLogonDate, Enabled | Format-Table -AutoSize"
+    }
+  ],
+  "microsoft_office": [
+    {
+      "id": "office-repair",
+      "name": "Repair Office Installation",
+      "description": "Run Office quick repair",
+      "type": "cmd",
+      "inputs": [],
+      "template": "cd %ProgramFiles%\\Microsoft Office\\Office16\nfor /d %%i in (*) do \"%%i\\OfficeClickToRun.exe\" scenario=repair platform=x86 repairtype=QuickRepair"
+    },
+    {
+      "id": "office-clear-cache",
+      "name": "Clear Office Cache",
+      "description": "Clear Office application cache",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Clear Office Cache\nRemove-Item \"$env:LOCALAPPDATA\\Microsoft\\Office\\16.0\\OfficeFileCache\\*\" -Recurse -Force -ErrorAction SilentlyContinue\nRemove-Item \"$env:LOCALAPPDATA\\Microsoft\\Office\\UnsavedFiles\\*\" -Recurse -Force -ErrorAction SilentlyContinue\nWrite-Host 'Office cache cleared'"
     }
   ],
   "m365": [
     {
       "id": "m365-connect",
-      "name": "Connect to Microsoft 365",
-      "description": "Connect to Exchange Online, Azure AD, and Teams",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "admin_email",
-          "label": "Admin Email",
-          "type": "text",
-          "placeholder": "admin@company.com",
-          "required": true
-        }
-      ],
-      "template": "# Connect to Microsoft 365 Services\n# Generated: $(Get-Date)\n# NOTE: Requires Microsoft 365 PowerShell modules\n\n$AdminEmail = \"{{admin_email}}\"\n\nWrite-Host \"=== MICROSOFT 365 CONNECTION ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Admin Account: $AdminEmail\" -ForegroundColor Yellow\nWrite-Host \"\"\n\n# Check for required modules\n$RequiredModules = @(\n    'ExchangeOnlineManagement',\n    'AzureAD',\n    'MicrosoftTeams'\n)\n\nWrite-Host \"Checking required modules...\" -ForegroundColor Cyan\nforeach ($Module in $RequiredModules) {\n    if (Get-Module -ListAvailable -Name $Module) {\n        Write-Host \"  ✅ $Module installed\" -ForegroundColor Green\n    } else {\n        Write-Host \"  ❌ $Module NOT installed\" -ForegroundColor Red\n        Write-Host \"     Install with: Install-Module $Module -Force\" -ForegroundColor Yellow\n    }\n}\n\nWrite-Host \"\"\nWrite-Host \"Connecting to services...\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Connect to Exchange Online\ntry {\n    Write-Host \"[1/3] Connecting to Exchange Online...\" -ForegroundColor Yellow\n    Connect-ExchangeOnline -UserPrincipalName $AdminEmail -ShowProgress $true\n    Write-Host \"  ✅ Connected to Exchange Online\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to connect to Exchange Online: $_\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\n\n# Connect to Azure AD\ntry {\n    Write-Host \"[2/3] Connecting to Azure AD...\" -ForegroundColor Yellow\n    Connect-AzureAD -AccountId $AdminEmail\n    Write-Host \"  ✅ Connected to Azure AD\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to connect to Azure AD: $_\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\n\n# Connect to Microsoft Teams\ntry {\n    Write-Host \"[3/3] Connecting to Microsoft Teams...\" -ForegroundColor Yellow\n    Connect-MicrosoftTeams -AccountId $AdminEmail\n    Write-Host \"  ✅ Connected to Microsoft Teams\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ❌ Failed to connect to Teams: $_\" -ForegroundColor Red\n}\n\nWrite-Host \"\"\nWrite-Host \"=== CONNECTION COMPLETE ===\" -ForegroundColor Green\nWrite-Host \"You are now connected to Microsoft 365 services\" -ForegroundColor Cyan"
-    },
-    {
-      "id": "m365-user-info",
-      "name": "Get M365 User Information",
-      "description": "Retrieve detailed user information from M365",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "user_email",
-          "label": "User Email",
-          "type": "text",
-          "placeholder": "user@company.com",
-          "required": true
-        }
-      ],
-      "template": "# Get Microsoft 365 User Information\n# Generated: $(Get-Date)\n# NOTE: Must be connected to M365 (use Connect to Microsoft 365 script first)\n\n$UserEmail = \"{{user_email}}\"\n\nWrite-Host \"=== M365 USER INFORMATION ===\" -ForegroundColor Cyan\nWrite-Host \"User: $UserEmail\" -ForegroundColor Yellow\nWrite-Host \"\"\n\n# Get Azure AD User\ntry {\n    Write-Host \"[Azure AD Information]\" -ForegroundColor Cyan\n    $AzureUser = Get-AzureADUser -ObjectId $UserEmail -ErrorAction Stop\n    \n    Write-Host \"  Display Name: $($AzureUser.DisplayName)\" -ForegroundColor Gray\n    Write-Host \"  User Principal Name: $($AzureUser.UserPrincipalName)\" -ForegroundColor Gray\n    Write-Host \"  Object ID: $($AzureUser.ObjectId)\" -ForegroundColor Gray\n    Write-Host \"  Account Enabled: $($AzureUser.AccountEnabled)\" -ForegroundColor $(if($AzureUser.AccountEnabled){'Green'}else{'Red'})\n    Write-Host \"  Department: $($AzureUser.Department)\" -ForegroundColor Gray\n    Write-Host \"  Job Title: $($AzureUser.JobTitle)\" -ForegroundColor Gray\n    Write-Host \"  Office Location: $($AzureUser.PhysicalDeliveryOfficeName)\" -ForegroundColor Gray\n    Write-Host \"  Mobile: $($AzureUser.Mobile)\" -ForegroundColor Gray\n    Write-Host \"\"\n} catch {\n    Write-Host \"  ❌ Error retrieving Azure AD info: $_\" -ForegroundColor Red\n    Write-Host \"\"\n}\n\n# Get Mailbox Information\ntry {\n    Write-Host \"[Exchange Online Mailbox]\" -ForegroundColor Cyan\n    $Mailbox = Get-Mailbox -Identity $UserEmail -ErrorAction Stop\n    \n    Write-Host \"  Mailbox Type: $($Mailbox.RecipientTypeDetails)\" -ForegroundColor Gray\n    Write-Host \"  Primary SMTP: $($Mailbox.PrimarySmtpAddress)\" -ForegroundColor Gray\n    Write-Host \"  Mailbox Size: \" -NoNewline -ForegroundColor Gray\n    \n    $Stats = Get-MailboxStatistics -Identity $UserEmail\n    Write-Host \"$($Stats.TotalItemSize)\" -ForegroundColor Yellow\n    Write-Host \"  Item Count: $($Stats.ItemCount)\" -ForegroundColor Gray\n    Write-Host \"  Last Logon: $($Stats.LastLogonTime)\" -ForegroundColor Gray\n    Write-Host \"\"\n} catch {\n    Write-Host \"  ❌ Error retrieving mailbox info: $_\" -ForegroundColor Red\n    Write-Host \"\"\n}\n\n# Get License Information\ntry {\n    Write-Host \"[License Information]\" -ForegroundColor Cyan\n    $Licenses = Get-AzureADUserLicenseDetail -ObjectId $UserEmail -ErrorAction Stop\n    \n    if ($Licenses) {\n        foreach ($License in $Licenses) {\n            Write-Host \"  ✅ $($License.SkuPartNumber)\" -ForegroundColor Green\n        }\n    } else {\n        Write-Host \"  No licenses assigned\" -ForegroundColor Yellow\n    }\n    Write-Host \"\"\n} catch {\n    Write-Host \"  ❌ Error retrieving license info: $_\" -ForegroundColor Red\n    Write-Host \"\"\n}\n\nWrite-Host \"=== REPORT COMPLETE ===\" -ForegroundColor Green"
-    },
-    {
-      "id": "m365-reset-password",
-      "name": "Reset M365 User Password",
-      "description": "Reset password for a Microsoft 365 user",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "user_email",
-          "label": "User Email",
-          "type": "text",
-          "placeholder": "user@company.com",
-          "required": true
-        },
-        {
-          "variable": "new_password",
-          "label": "New Password",
-          "type": "password",
-          "placeholder": "NewP@ssw0rd!",
-          "required": true
-        },
-        {
-          "variable": "force_change",
-          "label": "Force Change at Next Login",
-          "type": "select",
-          "options": [
-            {
-              "value": "true",
-              "label": "Yes - User must change password"
-            },
-            {
-              "value": "false",
-              "label": "No - Keep this password"
-            }
-          ],
-          "defaultValue": "true",
-          "required": true
-        }
-      ],
-      "template": "# Reset Microsoft 365 User Password\n# Generated: $(Get-Date)\n# NOTE: Must be connected to Azure AD\n\n$UserEmail = \"{{user_email}}\"\n$NewPassword = \"{{new_password}}\"\n$ForceChange = [System.Convert]::ToBoolean(\"{{force_change}}\")\n\nWrite-Host \"=== RESET M365 USER PASSWORD ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"User: $UserEmail\" -ForegroundColor Yellow\nWrite-Host \"Force change at next login: $ForceChange\" -ForegroundColor Yellow\nWrite-Host \"\"\n\ntry {\n    # Create password profile\n    $PasswordProfile = New-Object -TypeName Microsoft.Open.AzureAD.Model.PasswordProfile\n    $PasswordProfile.Password = $NewPassword\n    $PasswordProfile.ForceChangePasswordNextLogin = $ForceChange\n    \n    # Reset password\n    Set-AzureADUserPassword -ObjectId $UserEmail -PasswordProfile $PasswordProfile\n    \n    Write-Host \"✅ Password reset successfully!\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    if ($ForceChange) {\n        Write-Host \"User will be prompted to change password at next login\" -ForegroundColor Cyan\n    } else {\n        Write-Host \"User can keep this password\" -ForegroundColor Cyan\n    }\n    \n    Write-Host \"\"\n    Write-Host \"[IMPORTANT] Provide this temporary password to the user securely\" -ForegroundColor Yellow\n    \n} catch {\n    Write-Host \"❌ Error resetting password: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "m365-mailbox-permissions",
-      "name": "Grant Mailbox Permissions",
-      "description": "Grant Full Access or Send As permissions to a mailbox",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "target_mailbox",
-          "label": "Target Mailbox (to grant access to)",
-          "type": "text",
-          "placeholder": "shared@company.com",
-          "required": true
-        },
-        {
-          "variable": "user_email",
-          "label": "User Email (who gets access)",
-          "type": "text",
-          "placeholder": "user@company.com",
-          "required": true
-        },
-        {
-          "variable": "permission_type",
-          "label": "Permission Type",
-          "type": "select",
-          "options": [
-            {
-              "value": "FullAccess",
-              "label": "Full Access"
-            },
-            {
-              "value": "SendAs",
-              "label": "Send As"
-            },
-            {
-              "value": "SendOnBehalf",
-              "label": "Send on Behalf"
-            }
-          ],
-          "defaultValue": "FullAccess",
-          "required": true
-        }
-      ],
-      "template": "# Grant Mailbox Permissions\n# Generated: $(Get-Date)\n# NOTE: Must be connected to Exchange Online\n\n$TargetMailbox = \"{{target_mailbox}}\"\n$UserEmail = \"{{user_email}}\"\n$PermissionType = \"{{permission_type}}\"\n\nWrite-Host \"=== GRANT MAILBOX PERMISSIONS ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Target Mailbox: $TargetMailbox\" -ForegroundColor Yellow\nWrite-Host \"User: $UserEmail\" -ForegroundColor Yellow\nWrite-Host \"Permission: $PermissionType\" -ForegroundColor Yellow\nWrite-Host \"\"\n\ntry {\n    switch ($PermissionType) {\n        \"FullAccess\" {\n            Add-MailboxPermission -Identity $TargetMailbox -User $UserEmail -AccessRights FullAccess -InheritanceType All -AutoMapping $true\n            Write-Host \"✅ Full Access granted successfully!\" -ForegroundColor Green\n            Write-Host \"The mailbox will auto-map in Outlook\" -ForegroundColor Cyan\n        }\n        \"SendAs\" {\n            Add-RecipientPermission -Identity $TargetMailbox -Trustee $UserEmail -AccessRights SendAs -Confirm:$false\n            Write-Host \"✅ Send As permission granted successfully!\" -ForegroundColor Green\n            Write-Host \"User can send emails as $TargetMailbox\" -ForegroundColor Cyan\n        }\n        \"SendOnBehalf\" {\n            Set-Mailbox -Identity $TargetMailbox -GrantSendOnBehalfTo @{Add=$UserEmail}\n            Write-Host \"✅ Send on Behalf permission granted successfully!\" -ForegroundColor Green\n            Write-Host \"User can send emails on behalf of $TargetMailbox\" -ForegroundColor Cyan\n        }\n    }\n    \n    Write-Host \"\"\n    Write-Host \"[NOTE] Changes may take up to 60 minutes to propagate\" -ForegroundColor Yellow\n    \n} catch {\n    Write-Host \"❌ Error granting permissions: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "m365-list-shared-mailboxes",
-      "name": "List All Shared Mailboxes",
-      "description": "Get all shared mailboxes in the organization",
+      "name": "M365 Connect",
+      "description": "Connect to Microsoft 365 - Use the Microsoft 365 section in the sidebar",
       "type": "powershell",
       "inputs": [],
-      "template": "# List All Shared Mailboxes\n# Generated: $(Get-Date)\n# NOTE: Must be connected to Exchange Online\n\nWrite-Host \"=== SHARED MAILBOXES REPORT ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Retrieving shared mailboxes...\" -ForegroundColor Yellow\nWrite-Host \"\"\n\ntry {\n    $SharedMailboxes = Get-Mailbox -RecipientTypeDetails SharedMailbox -ResultSize Unlimited | Sort-Object DisplayName\n    \n    if ($SharedMailboxes) {\n        Write-Host \"Found $($SharedMailboxes.Count) shared mailbox(es)\" -ForegroundColor Green\n        Write-Host \"\"\n        \n        foreach ($Mailbox in $SharedMailboxes) {\n            Write-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\n            Write-Host \"Display Name: $($Mailbox.DisplayName)\" -ForegroundColor Cyan\n            Write-Host \"Email: $($Mailbox.PrimarySmtpAddress)\" -ForegroundColor Gray\n            \n            # Get mailbox size\n            $Stats = Get-MailboxStatistics -Identity $Mailbox.PrimarySmtpAddress\n            Write-Host \"Size: $($Stats.TotalItemSize)\" -ForegroundColor Gray\n            Write-Host \"Items: $($Stats.ItemCount)\" -ForegroundColor Gray\n            \n            # Get users with access\n            $Permissions = Get-MailboxPermission -Identity $Mailbox.PrimarySmtpAddress | Where-Object {$_.User -notlike \"NT AUTHORITY\\*\" -and $_.User -notlike \"S-1-5-*\"}\n            if ($Permissions) {\n                Write-Host \"Users with access:\" -ForegroundColor Yellow\n                foreach ($Perm in $Permissions) {\n                    Write-Host \"  - $($Perm.User): $($Perm.AccessRights -join ', ')\" -ForegroundColor Gray\n                }\n            }\n            Write-Host \"\"\n        }\n        \n        Write-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\n        Write-Host \"\"\n        Write-Host \"Total: $($SharedMailboxes.Count) shared mailbox(es)\" -ForegroundColor Green\n        \n    } else {\n        Write-Host \"No shared mailboxes found\" -ForegroundColor Yellow\n    }\n    \n} catch {\n    Write-Host \"❌ Error retrieving shared mailboxes: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "m365-block-user",
-      "name": "Block M365 User Sign-In",
-      "description": "Block or unblock user from signing in to M365",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "user_email",
-          "label": "User Email",
-          "type": "text",
-          "placeholder": "user@company.com",
-          "required": true
-        },
-        {
-          "variable": "action",
-          "label": "Action",
-          "type": "select",
-          "options": [
-            {
-              "value": "Block",
-              "label": "Block Sign-In"
-            },
-            {
-              "value": "Unblock",
-              "label": "Unblock Sign-In"
-            }
-          ],
-          "defaultValue": "Block",
-          "required": true
-        }
-      ],
-      "template": "# Block/Unblock M365 User Sign-In\n# Generated: $(Get-Date)\n# NOTE: Must be connected to Azure AD\n\n$UserEmail = \"{{user_email}}\"\n$Action = \"{{action}}\"\n\nWrite-Host \"=== M365 USER SIGN-IN CONTROL ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"User: $UserEmail\" -ForegroundColor Yellow\nWrite-Host \"Action: $Action\" -ForegroundColor Yellow\nWrite-Host \"\"\n\ntry {\n    if ($Action -eq \"Block\") {\n        Set-AzureADUser -ObjectId $UserEmail -AccountEnabled $false\n        Write-Host \"✅ User sign-in BLOCKED successfully!\" -ForegroundColor Red\n        Write-Host \"\"\n        Write-Host \"The user will be signed out within 60 minutes\" -ForegroundColor Yellow\n        Write-Host \"They cannot sign in until unblocked\" -ForegroundColor Yellow\n    } else {\n        Set-AzureADUser -ObjectId $UserEmail -AccountEnabled $true\n        Write-Host \"✅ User sign-in UNBLOCKED successfully!\" -ForegroundColor Green\n        Write-Host \"\"\n        Write-Host \"The user can now sign in to Microsoft 365\" -ForegroundColor Cyan\n    }\n    \n} catch {\n    Write-Host \"❌ Error: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "m365-test-email-deliverability",
-      "name": "Test Email Deliverability (Mail-Tester)",
-      "description": "Send test email to mail-tester.com to check spam score and deliverability",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "from_email",
-          "label": "From Email Address (mailbox to test)",
-          "type": "text",
-          "placeholder": "user@company.com",
-          "required": true
-        },
-        {
-          "variable": "test_address",
-          "label": "Mail-Tester Address",
-          "type": "text",
-          "placeholder": "test-xxxxx@srv1.mail-tester.com",
-          "description": "Get this from https://www.mail-tester.com",
-          "required": true
-        }
-      ],
-      "template": "# Test Email Deliverability with Mail-Tester.com\n# Generated: $(Get-Date)\n# NOTE: Must be connected to Exchange Online\n\n$FromEmail = \"{{from_email}}\"\n$TestAddress = \"{{test_address}}\"\n\nWrite-Host \"=== EMAIL DELIVERABILITY TEST ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Testing mailbox: $FromEmail\" -ForegroundColor Yellow\nWrite-Host \"Sending to: $TestAddress\" -ForegroundColor Yellow\nWrite-Host \"\"\n\nWrite-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\nWrite-Host \"INSTRUCTIONS:\" -ForegroundColor Cyan\nWrite-Host \"1. Go to https://www.mail-tester.com\" -ForegroundColor Gray\nWrite-Host \"2. Copy the email address shown on the site\" -ForegroundColor Gray\nWrite-Host \"3. Paste it in the 'Mail-Tester Address' field above\" -ForegroundColor Gray\nWrite-Host \"4. Run this script to send the test email\" -ForegroundColor Gray\nWrite-Host \"5. Go back to mail-tester.com and click 'Then check your score'\" -ForegroundColor Gray\nWrite-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\nWrite-Host \"\"\n\n# Validate mail-tester address format\nif ($TestAddress -notlike \"*@*mail-tester.com\") {\n    Write-Host \"❌ ERROR: Invalid mail-tester address format\" -ForegroundColor Red\n    Write-Host \"The address should look like: test-xxxxx@srv1.mail-tester.com\" -ForegroundColor Yellow\n    Write-Host \"Get the correct address from https://www.mail-tester.com\" -ForegroundColor Yellow\n    exit 1\n}\n\ntry {\n    # Verify the sender mailbox exists\n    Write-Host \"Verifying sender mailbox...\" -ForegroundColor Cyan\n    $Mailbox = Get-Mailbox -Identity $FromEmail -ErrorAction Stop\n    Write-Host \"  ✅ Mailbox found: $($Mailbox.DisplayName)\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    # Create test email content\n    $Subject = \"Email Deliverability Test - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')\"\n    $Body = @\"\n<html>\n<head>\n    <style>\n        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n        .header { background-color: #0078d4; color: white; padding: 20px; text-align: center; }\n        .content { padding: 20px; }\n        .info-box { background-color: #f0f0f0; border-left: 4px solid #0078d4; padding: 15px; margin: 20px 0; }\n        .footer { background-color: #f8f8f8; padding: 15px; text-align: center; font-size: 12px; color: #666; }\n        table { border-collapse: collapse; width: 100%; margin: 20px 0; }\n        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }\n        th { background-color: #0078d4; color: white; }\n    </style>\n</head>\n<body>\n    <div class=\"header\">\n        <h1>📧 Email Deliverability Test</h1>\n    </div>\n    <div class=\"content\">\n        <h2>Test Information</h2>\n        <div class=\"info-box\">\n            <p><strong>From:</strong> $FromEmail</p>\n            <p><strong>Test Date:</strong> $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')</p>\n            <p><strong>Purpose:</strong> Testing email deliverability and spam score</p>\n        </div>\n        \n        <h3>What This Test Checks:</h3>\n        <table>\n            <tr>\n                <th>Category</th>\n                <th>Description</th>\n            </tr>\n            <tr>\n                <td>SPF Record</td>\n                <td>Sender Policy Framework authentication</td>\n            </tr>\n            <tr>\n                <td>DKIM Signature</td>\n                <td>DomainKeys Identified Mail signature</td>\n            </tr>\n            <tr>\n                <td>DMARC Policy</td>\n                <td>Domain-based Message Authentication</td>\n            </tr>\n            <tr>\n                <td>Spam Score</td>\n                <td>Content analysis and blacklist checks</td>\n            </tr>\n            <tr>\n                <td>IP Reputation</td>\n                <td>Sender IP address reputation</td>\n            </tr>\n            <tr>\n                <td>Reverse DNS</td>\n                <td>PTR record verification</td>\n            </tr>\n        </table>\n        \n        <h3>Sample Content</h3>\n        <p>This email contains various elements to test spam filters:</p>\n        <ul>\n            <li>HTML formatting and styling</li>\n            <li>Images and links (if applicable)</li>\n            <li>Text content with proper structure</li>\n            <li>Headers and authentication records</li>\n        </ul>\n        \n        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>\n        \n        <div class=\"info-box\">\n            <p><strong>Note:</strong> This is an automated test email sent to verify deliverability and spam scoring. No action is required.</p>\n        </div>\n    </div>\n    <div class=\"footer\">\n        <p>Generated by IT Administrator Script Generator</p>\n        <p>Test conducted on $(Get-Date -Format 'yyyy-MM-dd') at $(Get-Date -Format 'HH:mm:ss')</p>\n    </div>\n</body>\n</html>\n\"@\n    \n    # Send the test email\n    Write-Host \"Sending test email...\" -ForegroundColor Cyan\n    Write-Host \"This may take a few seconds...\" -ForegroundColor Gray\n    Write-Host \"\"\n    \n    # Use Send-MailMessage via Exchange Online\n    $MessageParams = @{\n        From = $FromEmail\n        To = $TestAddress\n        Subject = $Subject\n        Body = $Body\n        BodyAsHtml = $true\n    }\n    \n    # Send using Exchange Online PowerShell\n    $Message = New-Object Microsoft.Exchange.WebServices.Data.EmailMessage -ArgumentList (Get-EWSService)\n    $Message.Subject = $Subject\n    $Message.Body = New-Object Microsoft.Exchange.WebServices.Data.MessageBody\n    $Message.Body.BodyType = [Microsoft.Exchange.WebServices.Data.BodyType]::HTML\n    $Message.Body.Text = $Body\n    $Message.ToRecipients.Add($TestAddress) | Out-Null\n    $Message.SendAndSaveCopy() | Out-Null\n    \n    Write-Host \"✅ TEST EMAIL SENT SUCCESSFULLY!\" -ForegroundColor Green\n    Write-Host \"\"\n    Write-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\n    Write-Host \"NEXT STEPS:\" -ForegroundColor Cyan\n    Write-Host \"1. Go back to https://www.mail-tester.com\" -ForegroundColor Yellow\n    Write-Host \"2. Click the 'Then check your score' button\" -ForegroundColor Yellow\n    Write-Host \"3. Review your spam score (aim for 10/10)\" -ForegroundColor Yellow\n    Write-Host \"4. Check the detailed report for issues\" -ForegroundColor Yellow\n    Write-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\n    Write-Host \"\"\n    \n    Write-Host \"Score Interpretation:\" -ForegroundColor Cyan\n    Write-Host \"  10/10 - Excellent! Email should deliver perfectly\" -ForegroundColor Green\n    Write-Host \"  8-9/10 - Good, but minor improvements possible\" -ForegroundColor Green\n    Write-Host \"  6-7/10 - Fair, some issues need attention\" -ForegroundColor Yellow\n    Write-Host \"  Below 6 - Poor, likely to be marked as spam\" -ForegroundColor Red\n    Write-Host \"\"\n    \n    Write-Host \"Common Issues to Fix:\" -ForegroundColor Cyan\n    Write-Host \"  • Missing or incorrect SPF record\" -ForegroundColor Gray\n    Write-Host \"  • DKIM signature not configured\" -ForegroundColor Gray\n    Write-Host \"  • No DMARC policy\" -ForegroundColor Gray\n    Write-Host \"  • IP address on blacklist\" -ForegroundColor Gray\n    Write-Host \"  • Missing reverse DNS (PTR record)\" -ForegroundColor Gray\n    Write-Host \"  • Content triggers spam filters\" -ForegroundColor Gray\n    \n} catch {\n    Write-Host \"❌ ERROR: Failed to send test email\" -ForegroundColor Red\n    Write-Host \"Error details: $_\" -ForegroundColor Red\n    Write-Host \"\"\n    Write-Host \"Troubleshooting:\" -ForegroundColor Yellow\n    Write-Host \"  • Ensure you're connected to Exchange Online\" -ForegroundColor Gray\n    Write-Host \"  • Verify the sender mailbox exists and is active\" -ForegroundColor Gray\n    Write-Host \"  • Check that the mail-tester address is valid\" -ForegroundColor Gray\n    Write-Host \"  • Make sure the mailbox has send permissions\" -ForegroundColor Gray\n}"
-    },
-    {
-      "id": "m365-export-mailboxes",
-      "name": "Export All Active Mailboxes",
-      "description": "Export all active mailboxes with detailed information to CSV",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "export_path",
-          "label": "Export Path",
-          "type": "text",
-          "placeholder": "C:\\Reports\\Mailboxes.csv",
-          "defaultValue": "C:\\Temp\\M365_Mailboxes_Export.csv",
-          "required": true
-        },
-        {
-          "variable": "mailbox_type",
-          "label": "Mailbox Type",
-          "type": "select",
-          "options": [
-            {
-              "value": "UserMailbox",
-              "label": "User Mailboxes Only"
-            },
-            {
-              "value": "SharedMailbox",
-              "label": "Shared Mailboxes Only"
-            },
-            {
-              "value": "All",
-              "label": "All Mailboxes"
-            }
-          ],
-          "defaultValue": "UserMailbox",
-          "required": true
-        }
-      ],
-      "template": "# Export All Active Mailboxes to CSV\n# Generated: $(Get-Date)\n# NOTE: Must be connected to Exchange Online and Azure AD\n\n$ExportPath = \"{{export_path}}\"\n$MailboxType = \"{{mailbox_type}}\"\n\nWrite-Host \"=== EXPORT M365 MAILBOXES ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Export Path: $ExportPath\" -ForegroundColor Yellow\nWrite-Host \"Mailbox Type: $MailboxType\" -ForegroundColor Yellow\nWrite-Host \"\"\n\n# Ensure export directory exists\n$ExportDir = Split-Path $ExportPath -Parent\nif (!(Test-Path $ExportDir)) {\n    Write-Host \"Creating directory: $ExportDir\" -ForegroundColor Yellow\n    New-Item -ItemType Directory -Path $ExportDir -Force | Out-Null\n}\n\ntry {\n    Write-Host \"Retrieving mailboxes...\" -ForegroundColor Cyan\n    Write-Host \"This may take several minutes for large organizations...\" -ForegroundColor Gray\n    Write-Host \"\"\n    \n    # Get mailboxes based on type\n    if ($MailboxType -eq \"All\") {\n        $Mailboxes = Get-Mailbox -ResultSize Unlimited | Sort-Object DisplayName\n    } else {\n        $Mailboxes = Get-Mailbox -RecipientTypeDetails $MailboxType -ResultSize Unlimited | Sort-Object DisplayName\n    }\n    \n    if (!$Mailboxes) {\n        Write-Host \"No mailboxes found\" -ForegroundColor Yellow\n        exit\n    }\n    \n    Write-Host \"Found $($Mailboxes.Count) mailbox(es)\" -ForegroundColor Green\n    Write-Host \"Processing mailbox details...\" -ForegroundColor Cyan\n    Write-Host \"\"\n    \n    $Results = @()\n    $Counter = 0\n    \n    foreach ($Mailbox in $Mailboxes) {\n        $Counter++\n        Write-Progress -Activity \"Processing Mailboxes\" -Status \"$Counter of $($Mailboxes.Count): $($Mailbox.DisplayName)\" -PercentComplete (($Counter / $Mailboxes.Count) * 100)\n        \n        try {\n            # Get mailbox statistics\n            $Stats = Get-MailboxStatistics -Identity $Mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue\n            \n            # Get Azure AD user info for additional details\n            $AzureUser = $null\n            try {\n                $AzureUser = Get-AzureADUser -ObjectId $Mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue\n            } catch {}\n            \n            # Get licenses\n            $Licenses = \"\"\n            try {\n                $LicenseDetails = Get-AzureADUserLicenseDetail -ObjectId $Mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue\n                if ($LicenseDetails) {\n                    $Licenses = ($LicenseDetails.SkuPartNumber -join \"; \")\n                }\n            } catch {}\n            \n            # Create custom object with all info\n            $MailboxInfo = [PSCustomObject]@{\n                DisplayName = $Mailbox.DisplayName\n                UserPrincipalName = $Mailbox.UserPrincipalName\n                PrimarySmtpAddress = $Mailbox.PrimarySmtpAddress\n                MailboxType = $Mailbox.RecipientTypeDetails\n                AccountEnabled = if ($AzureUser) { $AzureUser.AccountEnabled } else { \"N/A\" }\n                Department = if ($AzureUser) { $AzureUser.Department } else { \"\" }\n                JobTitle = if ($AzureUser) { $AzureUser.JobTitle } else { \"\" }\n                Office = if ($AzureUser) { $AzureUser.PhysicalDeliveryOfficeName } else { \"\" }\n                City = if ($AzureUser) { $AzureUser.City } else { \"\" }\n                Country = if ($AzureUser) { $AzureUser.Country } else { \"\" }\n                MailboxSizeMB = if ($Stats) { [math]::Round(($Stats.TotalItemSize.ToString() -replace '.*\\(([0-9,]+).*','$1' -replace ',','' ) / 1MB, 2) } else { 0 }\n                MailboxSizeGB = if ($Stats) { [math]::Round(($Stats.TotalItemSize.ToString() -replace '.*\\(([0-9,]+).*','$1' -replace ',','' ) / 1GB, 2) } else { 0 }\n                ItemCount = if ($Stats) { $Stats.ItemCount } else { 0 }\n                DeletedItemCount = if ($Stats) { $Stats.DeletedItemCount } else { 0 }\n                LastLogonTime = if ($Stats) { $Stats.LastLogonTime } else { \"Never\" }\n                LastUserActionTime = if ($Stats) { $Stats.LastUserActionTime } else { \"Never\" }\n                Licenses = $Licenses\n                ArchiveStatus = $Mailbox.ArchiveStatus\n                LitigationHoldEnabled = $Mailbox.LitigationHoldEnabled\n                WhenCreated = $Mailbox.WhenCreated\n                EmailAddresses = ($Mailbox.EmailAddresses | Where-Object {$_ -like \"smtp:*\"}) -join \"; \"\n            }\n            \n            $Results += $MailboxInfo\n            \n        } catch {\n            Write-Host \"  Warning: Error processing $($Mailbox.DisplayName): $_\" -ForegroundColor Yellow\n        }\n    }\n    \n    Write-Progress -Activity \"Processing Mailboxes\" -Completed\n    \n    # Export to CSV\n    Write-Host \"\"\n    Write-Host \"Exporting to CSV...\" -ForegroundColor Cyan\n    $Results | Export-Csv -Path $ExportPath -NoTypeInformation -Encoding UTF8\n    \n    Write-Host \"\"\n    Write-Host \"✅ EXPORT COMPLETE!\" -ForegroundColor Green\n    Write-Host \"\"\n    Write-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\n    Write-Host \"Total Mailboxes: $($Results.Count)\" -ForegroundColor Cyan\n    Write-Host \"Export File: $ExportPath\" -ForegroundColor Cyan\n    Write-Host \"File Size: $([math]::Round((Get-Item $ExportPath).Length / 1KB, 2)) KB\" -ForegroundColor Cyan\n    Write-Host \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" -ForegroundColor DarkGray\n    Write-Host \"\"\n    \n    # Summary statistics\n    $TotalSizeGB = ($Results | Measure-Object -Property MailboxSizeGB -Sum).Sum\n    $TotalItems = ($Results | Measure-Object -Property ItemCount -Sum).Sum\n    $ActiveUsers = ($Results | Where-Object {$_.LastLogonTime -ne \"Never\"}).Count\n    \n    Write-Host \"Summary Statistics:\" -ForegroundColor Yellow\n    Write-Host \"  Total Mailbox Size: $([math]::Round($TotalSizeGB, 2)) GB\" -ForegroundColor Gray\n    Write-Host \"  Total Items: $TotalItems\" -ForegroundColor Gray\n    Write-Host \"  Active Users (logged in): $ActiveUsers\" -ForegroundColor Gray\n    Write-Host \"  Inactive Users: $($Results.Count - $ActiveUsers)\" -ForegroundColor Gray\n    \n    if ($Results.Count -gt 0) {\n        $AvgSizeGB = [math]::Round($TotalSizeGB / $Results.Count, 2)\n        Write-Host \"  Average Mailbox Size: $AvgSizeGB GB\" -ForegroundColor Gray\n    }\n    \n    Write-Host \"\"\n    Write-Host \"[TIP] Open the CSV file in Excel for detailed analysis\" -ForegroundColor Cyan\n    \n} catch {\n    Write-Host \"❌ Error during export: $_\" -ForegroundColor Red\n}"
-    }
-  ],
-  "troubleshooting": [
-    {
-      "id": "reset-windows-store",
-      "name": "Reset Windows Store",
-      "description": "Reset and repair Windows Store app",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Reset Windows Store\n# Generated: $(Get-Date)\n\nWrite-Host \"=== RESET WINDOWS STORE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Resetting Windows Store...\" -ForegroundColor Yellow\nWrite-Host \"This may take a few moments...\" -ForegroundColor Gray\nWrite-Host \"\"\n\nwsreset.exe\n\nWrite-Host \"✅ Windows Store has been reset\" -ForegroundColor Green\nWrite-Host \"The Store app should open automatically\" -ForegroundColor Cyan"
-    },
-    {
-      "id": "rebuild-icon-cache",
-      "name": "Rebuild Icon Cache",
-      "description": "Clear and rebuild Windows icon cache",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Rebuild Icon Cache\n# Generated: $(Get-Date)\n\nWrite-Host \"=== REBUILD ICON CACHE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Stopping Explorer...\" -ForegroundColor Yellow\nStop-Process -Name explorer -Force\n\nWrite-Host \"Clearing icon cache...\" -ForegroundColor Yellow\nRemove-Item \"$env:LOCALAPPDATA\\IconCache.db\" -Force -ErrorAction SilentlyContinue\nRemove-Item \"$env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer\\iconcache*\" -Force -ErrorAction SilentlyContinue\n\nWrite-Host \"Restarting Explorer...\" -ForegroundColor Yellow\nStart-Process explorer.exe\n\nWrite-Host \"\"\nWrite-Host \"✅ Icon cache rebuilt\" -ForegroundColor Green\nWrite-Host \"Icons should refresh shortly\" -ForegroundColor Cyan"
+      "template": "# Use the Microsoft 365 button in the sidebar to access M365 features"
     }
   ]
 }
