@@ -245,15 +245,32 @@ const ScriptPanel = ({ script }) => {
                   Download CSV Template
                 </button>
               )}
+              {script.id === 'domain-migration-smart-backup' && script.inputs.some(i => i.type === 'checkbox') && (
+                <button
+                  onClick={() => {
+                    const updates = {};
+                    script.inputs.filter(i => i.type === 'checkbox').forEach(i => { updates[i.variable] = 'false'; });
+                    setInputs(prev => ({ ...prev, ...updates }));
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition-colors border border-gray-600"
+                >
+                  Uncheck All
+                </button>
+              )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${
+              script.id === 'domain-migration-smart-backup'
+                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                : 'grid-cols-1 md:grid-cols-2'
+            }`}>
               {script.inputs.map(input => (
-                <InputField
-                  key={input.variable}
-                  input={input}
-                  value={inputs[input.variable] || ''}
-                  onChange={(value) => handleInputChange(input.variable, value)}
-                />
+                <div key={input.variable} className={input.type === 'checkbox' && script.id === 'domain-migration-smart-backup' ? '' : 'col-span-full'}>
+                  <InputField
+                    input={input}
+                    value={inputs[input.variable] ?? input.defaultValue ?? (input.type === 'checkbox' ? 'false' : '')}
+                    onChange={(value) => handleInputChange(input.variable, value)}
+                  />
+                </div>
               ))}
             </div>
           </div>

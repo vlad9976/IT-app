@@ -31,7 +31,6 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
     inputs: [],
     template: ''
   });
-  const [newInput, setNewInput] = useState({ variable: '', label: '', type: 'text', placeholder: '', defaultValue: '' });
 
   const handleAddCategory = () => {
     const key = toCategoryKey(newCategoryName);
@@ -51,16 +50,19 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
   };
 
   const handleAddInput = () => {
-    if (!newInput.variable.trim()) return;
-    const inp = {
-      variable: newInput.variable.trim(),
-      label: newInput.label || newInput.variable,
-      type: newInput.type || 'text',
-      placeholder: newInput.placeholder || '',
-      defaultValue: newInput.defaultValue || ''
-    };
-    setNewScript(prev => ({ ...prev, inputs: [...prev.inputs, inp] }));
-    setNewInput({ variable: '', label: '', type: 'text', placeholder: '', defaultValue: '' });
+    setNewScript(prev => ({
+      ...prev,
+      inputs: [...prev.inputs, { variable: '', label: '', type: 'text', placeholder: '', defaultValue: '' }]
+    }));
+  };
+
+  const handleUpdateInput = (idx, field, value) => {
+    setNewScript(prev => {
+      const next = [...prev.inputs];
+      next[idx] = { ...next[idx], [field]: value };
+      if (field === 'variable' && !next[idx].label) next[idx].label = value;
+      return { ...prev, inputs: next };
+    });
   };
 
   const handleRemoveInput = (idx) => {
@@ -78,12 +80,21 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
       return;
     }
     const id = editingScript ? editingScript.script.id : toScriptId(newScript.name);
+    const validInputs = (newScript.inputs || [])
+      .filter(inp => inp.variable?.trim())
+      .map(inp => ({
+        variable: inp.variable.trim(),
+        label: (inp.label || inp.variable).trim(),
+        type: inp.type || 'text',
+        placeholder: (inp.placeholder || '').trim(),
+        defaultValue: (inp.defaultValue || '').trim()
+      }));
     const script = {
       id,
       name: newScript.name.trim(),
       description: (newScript.description || '').trim(),
       type: newScript.type || 'powershell',
-      inputs: [...(newScript.inputs || [])],
+      inputs: validInputs,
       template: (newScript.template || '').trim()
     };
     let updated;
@@ -334,54 +345,99 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Inputs (use {'{{variable}}'} in template)</label>
-                <div className="space-y-2 mb-2">
-                  {newScript.inputs.map((inp, idx) => (
-                    <div key={idx} className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs bg-dark-surface px-2 py-1 rounded text-gray-300">
-                        {inp.variable} ({inp.type})
-                      </span>
-                      <button onClick={() => handleRemoveInput(idx)} className="text-red-400 hover:text-red-300 text-xs">
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  <input
-                    type="text"
-                    value={newInput.variable}
-                    onChange={(e) => setNewInput(prev => ({ ...prev, variable: e.target.value }))}
-                    placeholder="variable"
-                    className="w-24 px-2 py-1.5 bg-dark-surface border border-dark-border rounded text-sm text-white"
-                  />
-                  <input
-                    type="text"
-                    value={newInput.label}
-                    onChange={(e) => setNewInput(prev => ({ ...prev, label: e.target.value }))}
-                    placeholder="label"
-                    className="w-24 px-2 py-1.5 bg-dark-surface border border-dark-border rounded text-sm text-white"
-                  />
-                  <select
-                    value={newInput.type}
-                    onChange={(e) => setNewInput(prev => ({ ...prev, type: e.target.value }))}
-                    className="px-2 py-1.5 bg-dark-surface border border-dark-border rounded text-sm text-white"
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300">Parameters</label>
+                    <p className="text-xs text-gray-500 mt-0.5">Use {'{{variable}}'} in your script for each parameter</p>
+                  </div>
+                  <button
+                    onClick={handleAddInput}
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-sm font-medium border border-blue-500/30"
                   >
-                    <option value="text">text</option>
-                    <option value="password">password</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={newInput.placeholder}
-                    onChange={(e) => setNewInput(prev => ({ ...prev, placeholder: e.target.value }))}
-                    placeholder="placeholder"
-                    className="w-28 px-2 py-1.5 bg-dark-surface border border-dark-border rounded text-sm text-white"
-                  />
-                  <button onClick={handleAddInput} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm">
-                    Add Input
+                    <Plus className="w-4 h-4" />
+                    Add Parameter
                   </button>
                 </div>
+                {newScript.inputs.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center bg-dark-surface/50 rounded-lg border border-dashed border-dark-border">
+                    No parameters — click Add Parameter to create one
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {newScript.inputs.map((inp, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 bg-dark-surface rounded-lg border border-dark-border space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-gray-400">Parameter {idx + 1}</span>
+                          <button
+                            onClick={() => handleRemoveInput(idx)}
+                            className="p-1.5 rounded hover:bg-red-900/30 text-gray-400 hover:text-red-400 transition-colors"
+                            title="Remove"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Variable name *</label>
+                            <input
+                              type="text"
+                              value={inp.variable}
+                              onChange={(e) => handleUpdateInput(idx, 'variable', e.target.value)}
+                              placeholder="e.g. username"
+                              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Label</label>
+                            <input
+                              type="text"
+                              value={inp.label}
+                              onChange={(e) => handleUpdateInput(idx, 'label', e.target.value)}
+                              placeholder="e.g. Username"
+                              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Type</label>
+                            <select
+                              value={inp.type || 'text'}
+                              onChange={(e) => handleUpdateInput(idx, 'type', e.target.value)}
+                              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm text-white"
+                            >
+                              <option value="text">Text</option>
+                              <option value="password">Password</option>
+                              <option value="checkbox">Checkbox</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Placeholder</label>
+                            <input
+                              type="text"
+                              value={inp.placeholder || ''}
+                              onChange={(e) => handleUpdateInput(idx, 'placeholder', e.target.value)}
+                              placeholder="optional"
+                              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Default value</label>
+                          <input
+                            type="text"
+                            value={inp.defaultValue || ''}
+                            onChange={(e) => handleUpdateInput(idx, 'defaultValue', e.target.value)}
+                            placeholder="optional"
+                            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
