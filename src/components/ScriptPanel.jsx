@@ -273,6 +273,36 @@ const ScriptPanel = ({ script }) => {
                 </div>
               ))}
             </div>
+            {script.id === 'event-log-hunter' && (
+              <div className="mt-4 pt-4 border-t border-dark-border space-y-3">
+                <p className="text-sm text-amber-400/90">Security log requires running PowerShell as Administrator.</p>
+                <p className="text-sm font-medium text-gray-400">Quick presets (auto-selects log)</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: 'Auth', ids: '4624,4625,4634', log: 'Security' },
+                    { label: 'Account Mgmt', ids: '4720,4724,4726,4740', log: 'Security' },
+                    { label: 'Files', ids: '4656,4663,4660', log: 'Security' },
+                    { label: 'Privilege', ids: '4672,4673', log: 'Security' },
+                    { label: 'Boot/Shutdown', ids: '6008,41,1074', log: 'System' },
+                    { label: 'BSOD', ids: '1001', log: 'Application' },
+                    { label: 'Clear', ids: '', log: null }
+                  ].map(({ label, ids, log }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => {
+                        handleInputChange('event_ids', ids);
+                        if (log) handleInputChange('log_name', log);
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-dark-bg hover:bg-blue-900/40 border border-dark-border hover:border-blue-600/50 text-gray-300 hover:text-blue-300 transition-colors"
+                      title={label === 'Clear' ? 'Clear Event IDs' : `${ids} (${log || 'any'} log)`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Script Preview */}
