@@ -350,100 +350,180 @@
     }
     ]
   },
-  "local_machine": [
-    {
-      "id": "local-create-user",
-      "name": "Create Emergency Local Admin",
-      "description": "Create a local emergency IT administrator account on this computer",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Emergency admin username",
-          "type": "text",
-          "placeholder": "IT-BreakGlass",
-          "defaultValue": ""
-        },
-        {
-          "variable": "password",
-          "label": "Initial password",
-          "type": "password",
-          "placeholder": "StrongTempPassword123!",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Create Emergency Local IT Administrator\n# Generated: $(Get-Date)\n\n$UserName = \"{{username}}\"\n$PlainPassword = \"{{password}}\"\n$SecurePassword = ConvertTo-SecureString $PlainPassword -AsPlainText -Force\n\nWrite-Host \"=== EMERGENCY LOCAL ADMIN CREATION ===\" -ForegroundColor Cyan\nWrite-Host \"Target account: $UserName\" -ForegroundColor Gray\n\ntry {\n    $existing = Get-LocalUser -Name $UserName -ErrorAction SilentlyContinue\n    if (-not $existing) {\n        New-LocalUser -Name $UserName -Password $SecurePassword -FullName $UserName -Description \"Emergency IT administrator\" -PasswordNeverExpires:$true -UserMayNotChangePassword:$true -AccountNeverExpires:$true | Out-Null\n        Write-Host \"✅ Local user $UserName created\" -ForegroundColor Green\n    } else {\n        Write-Host \"ℹ Local user $UserName already exists - updating password and flags\" -ForegroundColor Yellow\n        $existing | Set-LocalUser -Password $SecurePassword -Description \"Emergency IT administrator\" -AccountNeverExpires:$true\n    }\n\n    $isAdmin = Get-LocalGroupMember -Group \"Administrators\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like \"*\\\\$UserName\" -or $_.Name -eq $UserName }\n    if (-not $isAdmin) {\n        Add-LocalGroupMember -Group \"Administrators\" -Member $UserName\n        Write-Host \"✅ Added $UserName to local Administrators\" -ForegroundColor Green\n    } else {\n        Write-Host \"ℹ $UserName is already a member of local Administrators\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] Failed to create or update emergency admin: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "ad-add-local-group-member",
-      "name": "Add Domain User to Local Administrators",
-      "description": "Add a domain user or group to the local Administrators group on this computer",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "account",
-          "label": "Domain account (user or group)",
-          "type": "text",
-          "placeholder": "DOMAIN\\\\user or DOMAIN\\\\Group",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Add domain user/group to local Administrators\nAdd-LocalGroupMember -Group \"Administrators\" -Member \"{{account}}\""
-    },
-    {
-      "id": "local-delete-user",
-      "name": "Delete Local User",
-      "description": "Remove a local user account",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "olduser",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Delete Local User\nRemove-LocalUser -Name '{{username}}'"
-    },
-    {
-      "id": "local-reset-password",
-      "name": "Reset Local User Password",
-      "description": "Reset password for a local user account",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username",
-          "type": "text",
-          "placeholder": "user",
-          "defaultValue": ""
-        },
-        {
-          "variable": "new_password",
-          "label": "New Password",
-          "type": "password",
-          "placeholder": "NewPassword123!",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Reset Local User Password\n$user = Get-LocalUser -Name '{{username}}'\n$user | Set-LocalUser -Password (ConvertTo-SecureString '{{new_password}}' -AsPlainText -Force)"
-    },
-    {
-      "id": "local-list-users",
-      "name": "List Local Users",
-      "description": "List all local user accounts on the computer",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# List Local Users\nGet-LocalUser | Format-Table Name, Enabled, LastLogon -AutoSize"
-    }
-  ],
+  "local_machine": {
+    "User Scripts": [
+      {
+        "id": "local-create-user",
+        "name": "Create Emergency Local Admin",
+        "description": "Create a local emergency IT administrator account on this computer",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Emergency admin username",
+            "type": "text",
+            "placeholder": "IT-BreakGlass",
+            "defaultValue": ""
+          },
+          {
+            "variable": "password",
+            "label": "Initial password",
+            "type": "password",
+            "placeholder": "StrongTempPassword123!",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Create Emergency Local IT Administrator\n# Generated: $(Get-Date)\n\n$UserName = \"{{username}}\"\n$PlainPassword = \"{{password}}\"\n$SecurePassword = ConvertTo-SecureString $PlainPassword -AsPlainText -Force\n\nWrite-Host \"=== EMERGENCY LOCAL ADMIN CREATION ===\" -ForegroundColor Cyan\nWrite-Host \"Target account: $UserName\" -ForegroundColor Gray\n\ntry {\n    $existing = Get-LocalUser -Name $UserName -ErrorAction SilentlyContinue\n    if (-not $existing) {\n        New-LocalUser -Name $UserName -Password $SecurePassword -FullName $UserName -Description \"Emergency IT administrator\" -PasswordNeverExpires:$true -UserMayNotChangePassword:$true -AccountNeverExpires:$true | Out-Null\n        Write-Host \"✅ Local user $UserName created\" -ForegroundColor Green\n    } else {\n        Write-Host \"ℹ Local user $UserName already exists - updating password and flags\" -ForegroundColor Yellow\n        $existing | Set-LocalUser -Password $SecurePassword -Description \"Emergency IT administrator\" -AccountNeverExpires:$true\n    }\n\n    $isAdmin = Get-LocalGroupMember -Group \"Administrators\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like \"*\\\\$UserName\" -or $_.Name -eq $UserName }\n    if (-not $isAdmin) {\n        Add-LocalGroupMember -Group \"Administrators\" -Member $UserName\n        Write-Host \"✅ Added $UserName to local Administrators\" -ForegroundColor Green\n    } else {\n        Write-Host \"ℹ $UserName is already a member of local Administrators\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] Failed to create or update emergency admin: $_\" -ForegroundColor Red\n}"
+      },
+      {
+        "id": "ad-add-local-group-member",
+        "name": "Add Domain User to Local Administrators",
+        "description": "Add a domain user or group to the local Administrators group on this computer",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "account",
+            "label": "Domain account (user or group)",
+            "type": "text",
+            "placeholder": "DOMAIN\\\\user or DOMAIN\\\\Group",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Add domain user/group to local Administrators\nAdd-LocalGroupMember -Group \"Administrators\" -Member \"{{account}}\""
+      },
+      {
+        "id": "local-delete-user",
+        "name": "Delete Local User",
+        "description": "Remove a local user account",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username",
+            "type": "text",
+            "placeholder": "olduser",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Delete Local User\nRemove-LocalUser -Name '{{username}}'"
+      },
+      {
+        "id": "local-reset-password",
+        "name": "Reset Local User Password",
+        "description": "Reset password for a local user account",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username",
+            "type": "text",
+            "placeholder": "user",
+            "defaultValue": ""
+          },
+          {
+            "variable": "new_password",
+            "label": "New Password",
+            "type": "password",
+            "placeholder": "NewPassword123!",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Reset Local User Password\n$user = Get-LocalUser -Name '{{username}}'\n$user | Set-LocalUser -Password (ConvertTo-SecureString '{{new_password}}' -AsPlainText -Force)"
+      },
+      {
+        "id": "local-list-users",
+        "name": "List Local Users",
+        "description": "List all local user accounts on the computer",
+        "type": "powershell",
+        "inputs": [],
+        "template": "# List Local Users\nGet-LocalUser | Format-Table Name, Enabled, LastLogon -AutoSize"
+      }
+    ],
+    "System": [
+      {
+        "id": "local-pc-hardening",
+        "name": "Local PC Hardening",
+        "description": "Harden a single Windows PC: Defender, firewall, RDP, SMBv1, UAC, password/lockout policy and more",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "MinPasswordLength",
+            "label": "Minimum password length",
+            "type": "text",
+            "placeholder": "12",
+            "defaultValue": "12"
+          },
+          {
+            "variable": "LockoutThreshold",
+            "label": "Lockout threshold (attempts)",
+            "type": "text",
+            "placeholder": "5",
+            "defaultValue": "5"
+          },
+          {
+            "variable": "LockoutDuration",
+            "label": "Lockout duration (minutes)",
+            "type": "text",
+            "placeholder": "30",
+            "defaultValue": "30"
+          },
+          {
+            "variable": "DisableRDP",
+            "label": "Disable RDP",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true"
+          },
+          {
+            "variable": "EnableControlledFolder",
+            "label": "Enable Defender Controlled Folder Access",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true"
+          }
+        ],
+        "template": "# Local PC Hardening\n# Generated: $(Get-Date)\n\n$MinPasswordLength = if ('{{MinPasswordLength}}' -match '^\\d+$') { [int]'{{MinPasswordLength}}' } else { 12 }\n$LockoutThreshold = if ('{{LockoutThreshold}}' -match '^\\d+$') { [int]'{{LockoutThreshold}}' } else { 5 }\n$LockoutDuration = if ('{{LockoutDuration}}' -match '^\\d+$') { [int]'{{LockoutDuration}}' } else { 30 }\n$DisableRDP = ('{{DisableRDP}}' -eq 'true')\n$EnableControlledFolder = ('{{EnableControlledFolder}}' -eq 'true')\n\nWrite-Host \"=== LOCAL PC HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\" \n\nWrite-Host \"[1] Windows Defender...\" -ForegroundColor Cyan\nSet-MpPreference -DisableRealtimeMonitoring $false -DisableBehaviorMonitoring $false -PUAProtection Enabled\nif ($EnableControlledFolder) { Set-MpPreference -EnableControlledFolderAccess Enabled }\nWrite-Host \"  ✅ Defender enabled\" -ForegroundColor Green\n\nWrite-Host \"[2] Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nSet-NetFirewallProfile -Profile Public,Private -DefaultInboundAction Block\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nif ($DisableRDP) {\n    Write-Host \"[3] Disable RDP...\" -ForegroundColor Cyan\n    Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 1\n    Disable-NetFirewallRule -DisplayGroup 'Remote Desktop'\n    Write-Host \"  ✅ RDP disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[3] RDP left enabled\" -ForegroundColor Yellow\n}\n\nWrite-Host \"[4] Disable Remote Assistance...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Remote Assistance' -Name 'fAllowToGetHelp' -Value 0\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"[5] Disable SMBv1...\" -ForegroundColor Cyan\nDisable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"[6] Disable AutoRun...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoDriveTypeAutoRun' -Value 255 -Type DWord\nWrite-Host \"  ✅ AutoRun disabled\" -ForegroundColor Green\n\nWrite-Host \"[7] UAC Maximum...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableLUA' -Value 1 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'ConsentPromptBehaviorAdmin' -Value 2 -Type DWord\nWrite-Host \"  ✅ UAC configured\" -ForegroundColor Green\n\nWrite-Host \"[8] Disable Guest...\" -ForegroundColor Cyan\nnet user guest /active:no\nWrite-Host \"  ✅ Guest disabled\" -ForegroundColor Green\n\nWrite-Host \"[9] Password Policy...\" -ForegroundColor Cyan\nnet accounts /minpwlen:$MinPasswordLength /maxpwage:90 /minpwage:1 /uniquepw:5\nWrite-Host \"  ✅ Min length: $MinPasswordLength\" -ForegroundColor Green\n\nWrite-Host \"[10] Account Lockout...\" -ForegroundColor Cyan\nnet accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\nWrite-Host \"  ✅ Lockout: $LockoutThreshold attempts\" -ForegroundColor Green\n\nWrite-Host \"[11] Disable WSH...\" -ForegroundColor Cyan\nNew-Item -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Force | Out-Null\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Name 'Enabled' -Value 0\nWrite-Host \"  ✅ WSH disabled\" -ForegroundColor Green\n\nWrite-Host \"[12] Disable Services...\" -ForegroundColor Cyan\n@('RemoteRegistry', 'SSDPSRV', 'upnphost', 'XblAuthManager', 'XblGameSave') | ForEach-Object { Stop-Service $_ -Force -EA SilentlyContinue; Set-Service $_ -StartupType Disabled -EA SilentlyContinue }\nWrite-Host \"  ✅ Services disabled\" -ForegroundColor Green\n\nWrite-Host \"[13] Windows Update...\" -ForegroundColor Cyan\nNew-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Force -EA SilentlyContinue | Out-Null\nSet-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU' -Name 'NoAutoUpdate' -Value 0 -Force -EA SilentlyContinue\nWrite-Host \"  ✅ Auto-update enabled\" -ForegroundColor Green\n\nWrite-Host \"[14] Audit Policies...\" -ForegroundColor Cyan\nauditpol /set /category:\"Account Logon\" /success:enable /failure:enable\nauditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\nWrite-Host \"  ✅ Auditing enabled\" -ForegroundColor Green\n\nWrite-Host \"\" \nWrite-Host \"=== COMPLETE - REBOOT RECOMMENDED ===\" -ForegroundColor Green"
+      },
+      {
+        "id": "enable-rdp",
+        "name": "Enable Remote Desktop",
+        "description": "Enable Remote Desktop on the computer",
+        "type": "powershell",
+        "inputs": [],
+        "template": "# Enable RDP (run as admin)\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 0\nEnable-NetFirewallRule -DisplayGroup 'Remote Desktop'"
+      },
+      {
+        "id": "disable-rdp",
+        "name": "Disable Remote Desktop",
+        "description": "Disable Remote Desktop on the computer",
+        "type": "powershell",
+        "inputs": [],
+        "template": "# Disable RDP (run as admin)\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 1\nDisable-NetFirewallRule -DisplayGroup 'Remote Desktop' -ErrorAction SilentlyContinue"
+      },
+      {
+        "id": "systeminfo",
+        "name": "System Info",
+        "description": "Display detailed system information",
+        "type": "cmd",
+        "inputs": [],
+        "template": "systeminfo"
+      },
+      {
+        "id": "disk-space",
+        "name": "Disk Space Report",
+        "description": "Report disk space on all drives",
+        "type": "powershell",
+        "inputs": [],
+        "template": "# Disk Space\nGet-PSDrive -PSProvider FileSystem | Select-Object Name, @{N='Used(GB)';E={[math]::Round($_.Used/1GB,2)}}, @{N='Free(GB)';E={[math]::Round($_.Free/1GB,2)}} | Format-Table -AutoSize"
+      }
+    ]
+  },
   "network_tools": [
     {
       "id": "ping-host",
       "name": "Ping Host",
       "description": "Ping a host to check connectivity",
-      "type": "cmd",
+      "type": "powershell",
       "inputs": [
         {
           "variable": "hostname",
@@ -453,13 +533,13 @@
           "defaultValue": ""
         }
       ],
-      "template": "ping {{hostname}} -n 4"
+      "template": "# Ping Connectivity Test\nWrite-Host \"\"\nWrite-Host \"=== PING: {{hostname}} ===\" -ForegroundColor Cyan\nWrite-Host \"\"\ntry {\n  $r = Test-Connection -ComputerName '{{hostname}}' -Count 4 -ErrorAction Stop\n  $avg = ($r | Measure-Object -Property ResponseTime -Average).Average\n  Write-Host \"  Status: \" -NoNewline; Write-Host \"Reachable\" -ForegroundColor Green\n  Write-Host \"  Average latency: $([math]::Round($avg,0)) ms\" -ForegroundColor White\n  Write-Host \"  Packets: 4 sent, 4 received\" -ForegroundColor Gray\n} catch {\n  Write-Host \"  Status: \" -NoNewline; Write-Host \"Unreachable\" -ForegroundColor Red\n  Write-Host \"  Error: $($_.Exception.Message)\" -ForegroundColor Gray\n}\nWrite-Host \"\""
     },
     {
       "id": "nslookup",
-      "name": "DNS Lookup (nslookup)",
+      "name": "DNS Lookup",
       "description": "Perform DNS lookup for a hostname",
-      "type": "cmd",
+      "type": "powershell",
       "inputs": [
         {
           "variable": "hostname",
@@ -469,13 +549,13 @@
           "defaultValue": ""
         }
       ],
-      "template": "nslookup {{hostname}}"
+      "template": "# DNS Lookup\nWrite-Host \"\"\nWrite-Host \"=== DNS LOOKUP: {{hostname}} ===\" -ForegroundColor Cyan\nWrite-Host \"\"\ntry {\n  $r = Resolve-DnsName -Name '{{hostname}}' -ErrorAction Stop\n  $a = $r | Where-Object { $_.Type -eq 'A' }\n  $cname = $r | Where-Object { $_.Type -eq 'CNAME' } | Select-Object -First 1\n  if ($cname) { Write-Host \"  Alias (CNAME): $($cname.NameHost)\" -ForegroundColor Gray; Write-Host \"\" }\n  Write-Host \"  IP Address(es):\" -ForegroundColor White\n  foreach ($rec in ($r | Where-Object { $_.Type -eq 'A' })) { Write-Host \"    - $($rec.IPAddress)\" -ForegroundColor Green }\n  Write-Host \"\"\n} catch {\n  Write-Host \"  Resolution failed: $($_.Exception.Message)\" -ForegroundColor Red\n  Write-Host \"\"\n}"
     },
     {
       "id": "tracert",
       "name": "Traceroute",
       "description": "Trace the route to a host",
-      "type": "cmd",
+      "type": "powershell",
       "inputs": [
         {
           "variable": "hostname",
@@ -485,23 +565,23 @@
           "defaultValue": ""
         }
       ],
-      "template": "tracert {{hostname}}"
+      "template": "# Traceroute\nWrite-Host \"\"\nWrite-Host \"=== TRACEROUTE: {{hostname}} ===\" -ForegroundColor Cyan\nWrite-Host \"\"\ntry {\n  $t = Test-NetConnection -ComputerName '{{hostname}}' -TraceRoute -WarningAction SilentlyContinue -ErrorAction Stop\n  $i = 1\n  foreach ($h in $t.TraceRoute) {\n    Write-Host \"  [$i]  $h\" -ForegroundColor $(if ($i -eq $t.TraceRoute.Count) { 'Green' } else { 'White' })\n    $i++\n  }\n  Write-Host \"\"\n  Write-Host \"  Total hops: $($t.TraceRoute.Count)\" -ForegroundColor Gray\n} catch {\n  Write-Host \"  Trace failed: $($_.Exception.Message)\" -ForegroundColor Red\n}\nWrite-Host \"\""
     },
     {
       "id": "ip-config",
       "name": "IP Configuration",
       "description": "Display full IP configuration",
-      "type": "cmd",
+      "type": "powershell",
       "inputs": [],
-      "template": "ipconfig /all"
+      "template": "# IP Configuration\nWrite-Host \"\"\nWrite-Host \"=== IP CONFIGURATION ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nGet-NetIPConfiguration | ForEach-Object {\n  $a = $_.IPv4Address; $g = $_.IPv4DefaultGateway\n  Write-Host \"  Interface: $($_.InterfaceAlias)\" -ForegroundColor Yellow\n  Write-Host \"  IPv4: $($a.IPAddress) / $($a.PrefixLength)\" -ForegroundColor White\n  if ($g) { Write-Host \"  Gateway: $($g.NextHop)\" -ForegroundColor Gray }\n  Write-Host \"  DNS: $(($_.DNSServer | Where-Object AddressFamily -eq 2).ServerAddresses -join ', ')\" -ForegroundColor Gray\n  Write-Host \"\"\n}\nWrite-Host \"  Status: Display complete\" -ForegroundColor Green\nWrite-Host \"\""
     },
     {
       "id": "flush-dns",
       "name": "Flush DNS Cache",
       "description": "Clear the DNS resolver cache",
-      "type": "cmd",
+      "type": "powershell",
       "inputs": [],
-      "template": "ipconfig /flushdns"
+      "template": "# Flush DNS Cache\nWrite-Host \"\"\nWrite-Host \"=== FLUSH DNS CACHE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nClear-DnsClientCache\nWrite-Host \"  Status: \" -NoNewline; Write-Host \"DNS cache cleared successfully\" -ForegroundColor Green\nWrite-Host \"  All cached DNS entries have been removed.\" -ForegroundColor Gray\nWrite-Host \"\""
     },
     {
       "id": "test-connection",
@@ -524,12 +604,12 @@
           "defaultValue": "443"
         }
       ],
-      "template": "# Test Connection\nTest-NetConnection -ComputerName '{{hostname}}' -Port {{port}}"
+      "template": "# Test Connection (Port)\nWrite-Host \"\"\nWrite-Host \"=== PORT TEST: {{hostname}}:{{port}} ===\" -ForegroundColor Cyan\nWrite-Host \"\"\ntry {\n  $r = Test-NetConnection -ComputerName '{{hostname}}' -Port {{port}} -WarningAction SilentlyContinue -ErrorAction Stop\n  if ($r.TcpTestSucceeded) {\n    Write-Host \"  Status: \" -NoNewline; Write-Host \"Port OPEN - Connection successful\" -ForegroundColor Green\n    Write-Host \"  Host: $($r.ComputerName) | Port: $($r.RemotePort)\" -ForegroundColor Gray\n  } else {\n    Write-Host \"  Status: \" -NoNewline; Write-Host \"Port closed or unreachable\" -ForegroundColor Red\n  }\n} catch {\n  Write-Host \"  Status: \" -NoNewline; Write-Host \"Connection failed\" -ForegroundColor Red\n  Write-Host \"  Error: $($_.Exception.Message)\" -ForegroundColor Gray\n}\nWrite-Host \"\""
     },
     {
       "id": "port-scan",
       "name": "Port Scan",
-      "description": "Scan common ports on a host",
+      "description": "Scan common ports on a host (comma-separated, or leave empty for defaults)",
       "type": "powershell",
       "inputs": [
         {
@@ -541,13 +621,13 @@
         },
         {
           "variable": "port",
-          "label": "Ports",
+          "label": "Ports (optional)",
           "type": "text",
-          "placeholder": "",
+          "placeholder": "21,22,80,443,445,3389 (or leave blank for defaults)",
           "defaultValue": ""
         }
       ],
-      "template": "# Port Scan (common ports)\n$ports = '{{port}}'\nforeach ($p in $ports) {\n    $result = Test-NetConnection -ComputerName '{{hostname}}' -Port $p -WarningAction SilentlyContinue -ErrorAction SilentlyContinue\n    if ($result.TcpTestSucceeded) { Write-Host \"Port $p - OPEN\" -ForegroundColor Green } else { Write-Host \"Port $p - Closed\" -ForegroundColor Gray }\n}"
+      "template": "# Port Scan\n$portsRaw = '{{port}}'.Trim()\n$ports = if ($portsRaw) { $portsRaw -split '[,\\s]+' | Where-Object { $_ -match '^\\d+$' } | ForEach-Object { [int]$_ } } else { @(21,22,23,25,53,80,110,143,443,445,3389) }\n$portNames = @{21='FTP';22='SSH';23='Telnet';25='SMTP';53='DNS';80='HTTP';110='POP3';143='IMAP';443='HTTPS';445='SMB';3389='RDP'}\nWrite-Host \"\"\nWrite-Host \"=== PORT SCAN: {{hostname}} ===\" -ForegroundColor Cyan\nWrite-Host \"  Scanning $($ports.Count) port(s)...\" -ForegroundColor Gray\nWrite-Host \"\"\nforeach ($p in $ports) {\n  $name = if ($portNames[$p]) { \" ($($portNames[$p]))\" } else { '' }\n  $result = Test-NetConnection -ComputerName '{{hostname}}' -Port $p -WarningAction SilentlyContinue -ErrorAction SilentlyContinue\n  if ($result.TcpTestSucceeded) {\n    Write-Host \"  Port $p$name : \" -NoNewline; Write-Host \"OPEN\" -ForegroundColor Green\n  } else {\n    Write-Host \"  Port $p$name : Closed\" -ForegroundColor DarkGray\n  }\n}\nWrite-Host \"\"\nWrite-Host \"  Scan complete\" -ForegroundColor Green\nWrite-Host \"\""
     }
   ],
   "security": [
@@ -624,7 +704,7 @@
           ]
         }
       ],
-      "template": "# Event Log Hunter - Human-readable output\r\n$idsRaw = '{{event_ids}}'.Trim()\r\nif (-not $idsRaw) { Write-Warning 'Enter Event IDs or use a preset.'; exit 1 }\r\n$ids = $idsRaw -split ',' | ForEach-Object { $t = $_.Trim(); if ($t) { [int]$t } } | Where-Object { $_ }\r\n$start = (Get-Date).AddHours(-[int]'{{hours}}')\r\n\r\n$eventNames = @{\r\n  4624='Successful Logon'; 4625='Failed Logon'; 4634='Logoff'; 4648='RunAs Logon'\r\n  4672='Admin Privileges Assigned'; 4673='Privilege Used'\r\n  4720='User Account Created'; 4722='User Enabled'; 4724='Password Reset'; 4725='User Disabled'; 4726='User Deleted'; 4740='Account Locked Out'; 4767='Account Unlocked'\r\n  4732='Member Added to Local Group'; 4733='Member Removed from Local Group'; 4728='Member Added to Global Group'; 4756='Member Added to Universal Group'\r\n  4688='Process Created'; 4689='Process Terminated'\r\n  4697='Service Installed'; 4698='Scheduled Task Created'; 4699='Scheduled Task Deleted'; 4702='Scheduled Task Updated'\r\n  4616='System Time Changed'; 4719='Audit Policy Changed'; 4608='Windows Starting'\r\n  6008='Unexpected Shutdown'; 1074='Shutdown Initiated'; 41='Kernel Power (unexpected loss)'\r\n  4656='Object Handle Requested'; 4663='Object Accessed'; 4660='Object Deleted'\r\n  1001='Blue Screen / WER'; 5140='Network Share Accessed'\r\n}\r\n\r\ntry {\r\n  $events = Get-WinEvent -FilterHashtable @{ LogName='{{log_name}}'; Id=$ids; StartTime=$start } -MaxEvents 5000 -ErrorAction Stop\r\n  $count = $events.Count\r\n  Write-Host \"`n  Found $count event(s) in {{log_name}} (last {{hours}} hours)`n\" -ForegroundColor Cyan\r\n\r\n  $i = 1\r\n  foreach ($e in $events) {\r\n    $time = $e.TimeCreated.ToString('yyyy-MM-dd  HH:mm:ss')\r\n    $name = if ($eventNames[$e.Id]) { \" - $($eventNames[$e.Id])\" } else { '' }\r\n    Write-Host ('=' * 70) -ForegroundColor DarkGray\r\n    Write-Host \"  [$i]  $time\" -ForegroundColor Gray\r\n    Write-Host \"  Event ID $($e.Id)$name\" -ForegroundColor Cyan\r\n    Write-Host \"  Level: $($e.LevelDisplayName)\" -ForegroundColor DarkYellow\r\n    # Use only the first line (avoids the massive Subject:/Logon Info/etc. block)\r\n    $raw = if ($e.Message) { $e.Message } else { '(no message)' }\r\n    $lines = $raw -split \"`r`n|`n\"\r\n    $summary = ($lines | Where-Object { $_.Trim().Length -gt 0 } | Select-Object -First 1)\r\n    if (-not $summary) { $summary = $raw }\r\n    $summary = ($summary -replace '\\s+', ' ').Trim()\r\n    if ($summary.Length -gt 350) { $summary = $summary.Substring(0,347) + '...' }\r\n    Write-Host \"  Summary: $summary\" -ForegroundColor White\r\n    Write-Host \"\"\r\n    $i++\r\n  }\r\n  Write-Host ('=' * 70) -ForegroundColor DarkGray\r\n  Write-Host \"  End of report ($count event(s))`n\" -ForegroundColor Cyan\r\n} catch {\r\n  if ($_.Exception.Message -match 'No events were found') {\r\n    Write-Host \"`n  No events found in the specified time range.\" -ForegroundColor Yellow\r\n    Write-Host \"  Try a longer time range, different Event IDs, or run as Administrator for Security log.`n\" -ForegroundColor Gray\r\n  } else { Write-Warning $_.Exception.Message }\r\n}\r\n"
+      "template": "# Event Log Hunter - User-friendly output\r\n$idsRaw = '{{event_ids}}'.Trim()\r\nif (-not $idsRaw) { Write-Host \"\"\nWrite-Host \"  Please enter Event IDs or select a preset above.\" -ForegroundColor Yellow\nWrite-Host \"\"\n; exit 1 }\r\n$ids = $idsRaw -split ',' | ForEach-Object { $t = $_.Trim(); if ($t) { [int]$t } } | Where-Object { $_ }\r\n$start = (Get-Date).AddHours(-[int]'{{hours}}')\r\n\r\n$eventNames = @{\r\n  1000='Application Error (crash)'; 1001='Windows Error Reporting'; 1002='Application Hang'\r\n  4624='Successful Logon'; 4625='Failed Logon'; 4634='Logoff'; 4648='RunAs Logon'\r\n  4672='Admin Privileges Assigned'; 4673='Privilege Used'\r\n  4720='User Account Created'; 4722='User Enabled'; 4724='Password Reset'; 4725='User Disabled'; 4726='User Deleted'; 4740='Account Locked Out'; 4767='Account Unlocked'\r\n  4732='Member Added to Local Group'; 4733='Member Removed from Local Group'; 4728='Member Added to Global Group'; 4756='Member Added to Universal Group'\r\n  4688='Process Created'; 4689='Process Terminated'\r\n  4697='Service Installed'; 4698='Scheduled Task Created'; 4699='Scheduled Task Deleted'; 4702='Scheduled Task Updated'\r\n  4616='System Time Changed'; 4719='Audit Policy Changed'; 4608='Windows Starting'\r\n  6008='Unexpected Shutdown'; 1074='Shutdown Initiated'; 41='Kernel Power (unexpected loss)'\r\n  4656='Object Handle Requested'; 4663='Object Accessed'; 4660='Object Deleted'\r\n  5140='Network Share Accessed'\r\n}\r\n\r\nfunction Parse-CrashMessage($msg) {\r\n  $o = @{}\r\n  if (-not $msg) { return $o }\r\n  if ($msg -match 'Faulting application name:\\s*([^,]+)') { $o['App'] = $matches[1].Trim() }\r\n  if ($msg -match 'Faulting module name:\\s*([^,]+)') { $o['Module'] = $matches[1].Trim() }\r\n  if ($msg -match 'Exception code:\\s*(0x[0-9a-fA-F]+)') { $o['Exception'] = $matches[1]; $o['ExceptionName'] = switch -Wildcard ($matches[1]) { '0xc0000005' {'Access Violation'}; '0xc0000409' {'Stack Overflow'}; '0xe0434352' {'.NET Exception'}; default {'Unknown'} } }\r\n  if ($msg -match 'Application: ([^\\s]+)') { $o['App'] = $o['App'] ?? $matches[1].Trim() }\r\n  return $o\r\n}\r\n\r\ntry {\r\n  $events = Get-WinEvent -FilterHashtable @{ LogName='{{log_name}}'; Id=$ids; StartTime=$start } -MaxEvents 5000 -ErrorAction Stop\r\n  $count = $events.Count\r\n  Write-Host \"\"\n  Write-Host \"  === EVENT LOG REPORT ===\" -ForegroundColor Cyan\r\n  Write-Host \"  Log: {{log_name}}  |  Time range: Last {{hours}} hours  |  Found: $count event(s)\" -ForegroundColor Gray\r\n  Write-Host \"\"\n\r\n  $i = 1\r\n  foreach ($e in $events) {\r\n    $time = $e.TimeCreated.ToString('yyyy-MM-dd  HH:mm:ss')\r\n    $name = if ($eventNames[$e.Id]) { $eventNames[$e.Id] } else { \"Event $($e.Id)\" }\r\n    $isCrash = $e.Id -in 1000,1001,1002\r\n    Write-Host \"  ----------------------------------------\" -ForegroundColor DarkGray\r\n    Write-Host \"  [#$i]  $time\" -ForegroundColor White\r\n    Write-Host \"  Type: $name\" -ForegroundColor $(if ($isCrash) { 'Red' } else { 'Cyan' })\r\n    Write-Host \"  Severity: $($e.LevelDisplayName)\" -ForegroundColor DarkYellow\r\n    $raw = if ($e.Message) { $e.Message } else { '' }\r\n    if ($isCrash -and $raw) {\r\n      $p = Parse-CrashMessage $raw\r\n      if ($p['App']) { Write-Host \"  Application: $($p['App'])\" -ForegroundColor Yellow }\r\n      if ($p['Module']) { Write-Host \"  Faulting module: $($p['Module'])\" -ForegroundColor Gray }\r\n      if ($p['Exception']) { Write-Host \"  Exception: $($p['Exception']) - $($p['ExceptionName'])\" -ForegroundColor Gray }\r\n      $rest = ($raw -split \"`r`n|`n\" | Where-Object { $_.Trim() -and $_ -notmatch '^(Faulting|Exception|Application:)' } | Select-Object -First 2) -join ' '\r\n      if ($rest) { $rest = ($rest -replace '\\s+',' ').Trim(); if ($rest.Length -gt 200) { $rest = $rest.Substring(0,197) + '...' }; Write-Host \"  Details: $rest\" -ForegroundColor DarkGray }\r\n    } else {\r\n      $lines = $raw -split \"`r`n|`n\"\r\n      $summary = ($lines | Where-Object { $_.Trim().Length -gt 0 } | Select-Object -First 2) -join ' '\r\n      if (-not $summary) { $summary = $raw }\r\n      $summary = ($summary -replace '\\s+',' ').Trim()\r\n      if ($summary.Length -gt 300) { $summary = $summary.Substring(0,297) + '...' }\r\n      if ($summary) { Write-Host \"  Summary: $summary\" -ForegroundColor White }\r\n    }\r\n    Write-Host \"\"\n    $i++\r\n  }\r\n  Write-Host \"  ----------------------------------------\" -ForegroundColor DarkGray\r\n  Write-Host \"  Report complete - $count event(s) listed\" -ForegroundColor Green\r\n  Write-Host \"\"\n} catch {\r\n  if ($_.Exception.Message -match 'No events were found') {\r\n    Write-Host \"\"\n    Write-Host \"  No events found for your criteria.\" -ForegroundColor Yellow\r\n    Write-Host \"  Try: longer time range, different Event IDs, or run as Administrator for Security log.\" -ForegroundColor Gray\r\n    Write-Host \"\"\n  } else { Write-Host \"  Error: $($_.Exception.Message)\" -ForegroundColor Red; Write-Host \"\" }\r\n}\r\n"
     },
     {
       "id": "check-firewall-status",
@@ -709,24 +789,6 @@
       "template": "# Restart Service (run as admin)\nRestart-Service -Name '{{service_name}}' -Force"
     }
   ],
-  "system_info": [
-    {
-      "id": "systeminfo",
-      "name": "System Info",
-      "description": "Display detailed system information",
-      "type": "cmd",
-      "inputs": [],
-      "template": "systeminfo"
-    },
-    {
-      "id": "disk-space",
-      "name": "Disk Space Report",
-      "description": "Report disk space on all drives",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Disk Space\nGet-PSDrive -PSProvider FileSystem | Select-Object Name, @{N='Used(GB)';E={[math]::Round($_.Used/1GB,2)}}, @{N='Free(GB)';E={[math]::Round($_.Free/1GB,2)}} | Format-Table -AutoSize"
-    }
-  ],
   "windows_updates": [
     {
       "id": "get-hotfix",
@@ -785,24 +847,6 @@
       "type": "cmd",
       "inputs": [],
       "template": "echo office2016 cd /d %ProgramFiles(x86)%\\Microsoft Office\\Office16\n\ncd /d %ProgramFiles%\\Microsoft Office\\Office16\n\nfor /f %x in ('dir /b ..\\root\\Licenses16\\ProPlus2021VL_KMS*.xrm-ms') do cscript ospp.vbs /inslic:\"..\\root\\Licenses16\\%x\"\n\ncscript ospp.vbs /setprt:1688\n\ncscript ospp.vbs /unpkey:6F7TH >nul\n\ncscript ospp.vbs /inpkey:FXYTK-NJJ8C-GB6DW-3DYQT-6F7TH\n\ncscript ospp.vbs /sethst:e8.us.to\n\ncscript ospp.vbs /act\nPAUSE\nexit\nexit\ncd /d %ProgramFiles(x86)%\\Microsoft Office\\Office16"
-    }
-  ],
-  "remote_desktop": [
-    {
-      "id": "enable-rdp",
-      "name": "Enable Remote Desktop",
-      "description": "Enable Remote Desktop on the computer",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Enable RDP (run as admin)\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 0\nEnable-NetFirewallRule -DisplayGroup 'Remote Desktop'"
-    },
-    {
-      "id": "disable-rdp",
-      "name": "Disable Remote Desktop",
-      "description": "Disable Remote Desktop",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Disable RDP (run as admin)\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 1"
     }
   ],
   "browser_tools": [

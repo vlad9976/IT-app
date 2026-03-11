@@ -294,12 +294,13 @@ const ScriptPanel = ({ script }) => {
                 <p className="text-sm font-medium text-gray-400">Quick presets (auto-selects log)</p>
                 <div className="flex flex-wrap gap-2">
                   {[
+                    { label: 'App Crashes', ids: '1000,1001,1002', log: 'Application' },
                     { label: 'Auth', ids: '4624,4625,4634', log: 'Security' },
                     { label: 'Account Mgmt', ids: '4720,4724,4726,4740', log: 'Security' },
                     { label: 'Files', ids: '4656,4663,4660', log: 'Security' },
                     { label: 'Privilege', ids: '4672,4673', log: 'Security' },
                     { label: 'Boot/Shutdown', ids: '6008,41,1074', log: 'System' },
-                    { label: 'BSOD', ids: '1001', log: 'Application' },
+                    { label: 'BSOD/WER', ids: '1001', log: 'Application' },
                     { label: 'Clear', ids: '', log: null }
                   ].map(({ label, ids, log }) => (
                     <button
