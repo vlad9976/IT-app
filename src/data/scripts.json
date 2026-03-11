@@ -1,353 +1,566 @@
 {
   "active_directory": {
     "User Scripts": [
-    {
-      "id": "ad-reset-password",
-      "name": "Reset AD User Password",
-      "description": "Reset an Active Directory user password",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username/UPN",
-          "type": "text",
-          "placeholder": "user@domain.com or DOMAIN\\user",
-          "defaultValue": ""
-        },
-        {
-          "variable": "new_password",
-          "label": "New Password",
-          "type": "password",
-          "placeholder": "NewPassword123!",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Reset AD Password\nSet-ADAccountPassword -Identity '{{username}}' -Reset -NewPassword (ConvertTo-SecureString -AsPlainText '{{new_password}}' -Force)\nSet-ADUser -Identity '{{username}}' -ChangePasswordAtLogon $true"
-    },
-    {
-      "id": "ad-unlock-account",
-      "name": "Unlock AD Account",
-      "description": "Unlock a locked Active Directory user account",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username/UPN",
-          "type": "text",
-          "placeholder": "user@domain.com",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Unlock AD Account\nUnlock-ADAccount -Identity '{{username}}'"
-    },
-    {
-      "id": "ad-disable-user",
-      "name": "Disable AD User",
-      "description": "Disable an Active Directory user account",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username/UPN",
-          "type": "text",
-          "placeholder": "user@domain.com",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Disable AD User\nDisable-ADAccount -Identity '{{username}}'"
-    },
-    {
-      "id": "ad-enable-user",
-      "name": "Enable AD User",
-      "description": "Enable a disabled Active Directory user account",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username/UPN",
-          "type": "text",
-          "placeholder": "user@domain.com",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Enable AD User\nEnable-ADAccount -Identity '{{username}}'"
-    },
-    {
-      "id": "ad-bulk-create-users-csv",
-      "name": "Bulk Create AD Users from CSV",
-      "description": "Create multiple AD users from a CSV file",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "csv_path",
-          "label": "CSV Path",
-          "type": "text",
-          "placeholder": "C:\\Data\\users.csv",
-          "defaultValue": ""
-        },
-        {
-          "variable": "initial_password",
-          "label": "Initial Password",
-          "type": "password",
-          "placeholder": "TempPassword123!",
-          "defaultValue": ""
-        },
-        {
-          "variable": "ou_path",
-          "label": "OU Path (optional)",
-          "type": "text",
-          "placeholder": "OU=Users,DC=domain,DC=com",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Bulk Create AD Users from CSV\n#Requires -Modules ActiveDirectory\n$csv = Import-Csv '{{csv_path}}'\n$securePass = ConvertTo-SecureString '{{initial_password}}' -AsPlainText -Force\nforeach ($row in $csv) {\n    $DisplayName = if ([string]::IsNullOrWhiteSpace($row.Surname)) { $row.GivenName } else { \"$($row.GivenName) $($row.Surname)\" }\n    $params = @{\n        Name = $DisplayName\n        SamAccountName = $row.SamAccountName\n        UserPrincipalName = $row.UserPrincipalName\n        GivenName = $row.GivenName\n        Surname = $row.Surname\n        AccountPassword = $securePass\n        Enabled = $true\n    }\n    if ($row.OU) { $params['Path'] = $row.OU }\n    elseif ('{{ou_path}}') { $params['Path'] = '{{ou_path}}' }\n    if ($row.Description) { $params['Description'] = $row.Description }\n    New-ADUser @params\n}"
-    },
-    {
-      "id": "ad-get-user-info",
-      "name": "Get AD User Info",
-      "description": "Display detailed information for an AD user",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username/UPN",
-          "type": "text",
-          "placeholder": "user@domain.com",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Get AD User Info\nGet-ADUser -Identity '{{username}}' -Properties * | Format-List"
-    },
-    {
-      "id": "ad-create-user",
-      "name": "Create New AD User",
-      "description": "Create a new Active Directory user with first/last name, username, password, and OU path",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username (sAMAccountName)",
-          "type": "text",
-          "placeholder": "jdoe",
-          "defaultValue": ""
-        },
-        {
-          "variable": "firstname",
-          "label": "First name",
-          "type": "text",
-          "placeholder": "John",
-          "defaultValue": ""
-        },
-        {
-          "variable": "lastname",
-          "label": "Last name",
-          "type": "text",
-          "placeholder": "Doe",
-          "defaultValue": ""
-        },
-        {
-          "variable": "password",
-          "label": "Initial password",
-          "type": "password",
-          "placeholder": "TempPassword123!",
-          "defaultValue": ""
-        },
-        {
-          "variable": "ou_path",
-          "label": "OU Path",
-          "type": "text",
-          "placeholder": "OU=Users,DC=company,DC=com",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Create New Active Directory User\n#Requires -Modules ActiveDirectory\n# Generated: $(Get-Date)\n\n$Username = \"{{username}}\"\n$FirstName = \"{{firstname}}\"\n$LastName = \"{{lastname}}\"\n$Password = ConvertTo-SecureString \"{{password}}\" -AsPlainText -Force\n$OUPath = \"{{ou_path}}\"\n\nWrite-Host \"=== CREATE ACTIVE DIRECTORY USER ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    New-ADUser -Name \"$FirstName $LastName\" `\n        -GivenName $FirstName `\n        -Surname $LastName `\n        -SamAccountName $Username `\n        -UserPrincipalName \"$Username@company.com\" `\n        -Path $OUPath `\n        -AccountPassword $Password `\n        -Enabled $true `\n        -ChangePasswordAtLogon $true\n    \n    Write-Host \"✅ User $Username created successfully!\" -ForegroundColor Green\n    Write-Host \"Full Name: $FirstName $LastName\" -ForegroundColor Gray\n    Write-Host \"OU Path: $OUPath\" -ForegroundColor Gray\n    Write-Host \"User must change password at next logon\" -ForegroundColor Yellow\n}\ncatch {\n    Write-Host \"[ERROR] Failed to create user: $_\" -ForegroundColor Red\n}"
-    },
-    {
-      "id": "ad-add-domain-to-local-admins",
-      "name": "Add Domain User to Local Administrators",
-      "description": "Add a domain user or group to the local Administrators group on this computer",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "account",
-          "label": "Domain account (user or group)",
-          "type": "text",
-          "placeholder": "DOMAIN\\\\user or DOMAIN\\\\Group",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Add domain user/group to local Administrators\nAdd-LocalGroupMember -Group \"Administrators\" -Member \"{{account}}\""
-    }
+      {
+        "id": "ad-reset-password",
+        "name": "Reset AD User Password",
+        "description": "Reset an Active Directory user password",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username/UPN",
+            "type": "text",
+            "placeholder": "user@domain.com or DOMAIN\\user",
+            "defaultValue": ""
+          },
+          {
+            "variable": "new_password",
+            "label": "New Password",
+            "type": "password",
+            "placeholder": "NewPassword123!",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Reset AD Password\nSet-ADAccountPassword -Identity '{{username}}' -Reset -NewPassword (ConvertTo-SecureString -AsPlainText '{{new_password}}' -Force)\nSet-ADUser -Identity '{{username}}' -ChangePasswordAtLogon $true"
+      },
+      {
+        "id": "ad-unlock-account",
+        "name": "Unlock AD Account",
+        "description": "Unlock a locked Active Directory user account",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username/UPN",
+            "type": "text",
+            "placeholder": "user@domain.com",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Unlock AD Account\nUnlock-ADAccount -Identity '{{username}}'"
+      },
+      {
+        "id": "ad-disable-user",
+        "name": "Disable AD User",
+        "description": "Disable an Active Directory user account",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username/UPN",
+            "type": "text",
+            "placeholder": "user@domain.com",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Disable AD User\nDisable-ADAccount -Identity '{{username}}'"
+      },
+      {
+        "id": "ad-enable-user",
+        "name": "Enable AD User",
+        "description": "Enable a disabled Active Directory user account",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username/UPN",
+            "type": "text",
+            "placeholder": "user@domain.com",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Enable AD User\nEnable-ADAccount -Identity '{{username}}'"
+      },
+      {
+        "id": "ad-bulk-create-users-csv",
+        "name": "Bulk Create AD Users from CSV",
+        "description": "Create multiple AD users from a CSV file",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "csv_path",
+            "label": "CSV Path",
+            "type": "text",
+            "placeholder": "C:\\Data\\users.csv",
+            "defaultValue": ""
+          },
+          {
+            "variable": "initial_password",
+            "label": "Initial Password",
+            "type": "password",
+            "placeholder": "TempPassword123!",
+            "defaultValue": ""
+          },
+          {
+            "variable": "ou_path",
+            "label": "OU Path (optional)",
+            "type": "text",
+            "placeholder": "OU=Users,DC=domain,DC=com",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Bulk Create AD Users from CSV\n#Requires -Modules ActiveDirectory\n$csv = Import-Csv '{{csv_path}}'\n$securePass = ConvertTo-SecureString '{{initial_password}}' -AsPlainText -Force\nforeach ($row in $csv) {\n    $DisplayName = if ([string]::IsNullOrWhiteSpace($row.Surname)) { $row.GivenName } else { \"$($row.GivenName) $($row.Surname)\" }\n    $params = @{\n        Name = $DisplayName\n        SamAccountName = $row.SamAccountName\n        UserPrincipalName = $row.UserPrincipalName\n        GivenName = $row.GivenName\n        Surname = $row.Surname\n        AccountPassword = $securePass\n        Enabled = $true\n    }\n    if ($row.OU) { $params['Path'] = $row.OU }\n    elseif ('{{ou_path}}') { $params['Path'] = '{{ou_path}}' }\n    if ($row.Description) { $params['Description'] = $row.Description }\n    New-ADUser @params\n}"
+      },
+      {
+        "id": "ad-get-user-info",
+        "name": "Get AD User Info",
+        "description": "Display detailed information for an AD user",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username/UPN",
+            "type": "text",
+            "placeholder": "user@domain.com",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Get AD User Info\nGet-ADUser -Identity '{{username}}' -Properties * | Format-List"
+      },
+      {
+        "id": "ad-create-user",
+        "name": "Create New AD User",
+        "description": "Create a new Active Directory user with first/last name, username, password, and OU path",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username (sAMAccountName)",
+            "type": "text",
+            "placeholder": "jdoe",
+            "defaultValue": ""
+          },
+          {
+            "variable": "firstname",
+            "label": "First name",
+            "type": "text",
+            "placeholder": "John",
+            "defaultValue": ""
+          },
+          {
+            "variable": "lastname",
+            "label": "Last name",
+            "type": "text",
+            "placeholder": "Doe",
+            "defaultValue": ""
+          },
+          {
+            "variable": "password",
+            "label": "Initial password",
+            "type": "password",
+            "placeholder": "TempPassword123!",
+            "defaultValue": ""
+          },
+          {
+            "variable": "ou_path",
+            "label": "OU Path",
+            "type": "text",
+            "placeholder": "OU=Users,DC=company,DC=com",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Create New Active Directory User\n#Requires -Modules ActiveDirectory\n# Generated: $(Get-Date)\n\n$Username = \"{{username}}\"\n$FirstName = \"{{firstname}}\"\n$LastName = \"{{lastname}}\"\n$Password = ConvertTo-SecureString \"{{password}}\" -AsPlainText -Force\n$OUPath = \"{{ou_path}}\"\n\nWrite-Host \"=== CREATE ACTIVE DIRECTORY USER ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    New-ADUser -Name \"$FirstName $LastName\" `\n        -GivenName $FirstName `\n        -Surname $LastName `\n        -SamAccountName $Username `\n        -UserPrincipalName \"$Username@company.com\" `\n        -Path $OUPath `\n        -AccountPassword $Password `\n        -Enabled $true `\n        -ChangePasswordAtLogon $true\n    \n    Write-Host \"✅ User $Username created successfully!\" -ForegroundColor Green\n    Write-Host \"Full Name: $FirstName $LastName\" -ForegroundColor Gray\n    Write-Host \"OU Path: $OUPath\" -ForegroundColor Gray\n    Write-Host \"User must change password at next logon\" -ForegroundColor Yellow\n}\ncatch {\n    Write-Host \"[ERROR] Failed to create user: $_\" -ForegroundColor Red\n}"
+      },
+      {
+        "id": "ad-add-domain-to-local-admins",
+        "name": "Add Domain User to Local Administrators",
+        "description": "Add a domain user or group to the local Administrators group on this computer",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "account",
+            "label": "Domain account (user or group)",
+            "type": "text",
+            "placeholder": "DOMAIN\\\\user or DOMAIN\\\\Group",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Add domain user/group to local Administrators\nAdd-LocalGroupMember -Group \"Administrators\" -Member \"{{account}}\""
+      }
     ],
     "Group Scripts": [
-    {
-      "id": "ad-add-to-group",
-      "name": "Add User to AD Group",
-      "description": "Add a user to an Active Directory security group",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username/UPN",
-          "type": "text",
-          "placeholder": "user@domain.com",
-          "defaultValue": ""
-        },
-        {
-          "variable": "group_name",
-          "label": "Group Name",
-          "type": "text",
-          "placeholder": "Sales_Team",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Add User to AD Group\nAdd-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}'"
-    },
-    {
-      "id": "ad-remove-from-group",
-      "name": "Remove User from AD Group",
-      "description": "Remove a user from an Active Directory security group",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username/UPN",
-          "type": "text",
-          "placeholder": "user@domain.com",
-          "defaultValue": ""
-        },
-        {
-          "variable": "group_name",
-          "label": "Group Name",
-          "type": "text",
-          "placeholder": "Sales_Team",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Remove User from AD Group\nRemove-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}' -Confirm:$false"
-    },
-    {
-      "id": "ad-list-group-members",
-      "name": "List AD Group Members",
-      "description": "List all members of an Active Directory group",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "group_name",
-          "label": "Group Name",
-          "type": "text",
-          "placeholder": "Sales_Team",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# List AD Group Members\nGet-ADGroupMember -Identity '{{group_name}}' | Format-Table Name, SamAccountName, objectClass -AutoSize"
-    }
+      {
+        "id": "ad-add-to-group",
+        "name": "Add User to AD Group",
+        "description": "Add a user to an Active Directory security group",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username/UPN",
+            "type": "text",
+            "placeholder": "user@domain.com",
+            "defaultValue": ""
+          },
+          {
+            "variable": "group_name",
+            "label": "Group Name",
+            "type": "text",
+            "placeholder": "Sales_Team",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Add User to AD Group\nAdd-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}'"
+      },
+      {
+        "id": "ad-remove-from-group",
+        "name": "Remove User from AD Group",
+        "description": "Remove a user from an Active Directory security group",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "username",
+            "label": "Username/UPN",
+            "type": "text",
+            "placeholder": "user@domain.com",
+            "defaultValue": ""
+          },
+          {
+            "variable": "group_name",
+            "label": "Group Name",
+            "type": "text",
+            "placeholder": "Sales_Team",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Remove User from AD Group\nRemove-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}' -Confirm:$false"
+      },
+      {
+        "id": "ad-list-group-members",
+        "name": "List AD Group Members",
+        "description": "List all members of an Active Directory group",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "group_name",
+            "label": "Group Name",
+            "type": "text",
+            "placeholder": "Sales_Team",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# List AD Group Members\nGet-ADGroupMember -Identity '{{group_name}}' | Format-Table Name, SamAccountName, objectClass -AutoSize"
+      }
     ],
     "System": [
-    {
-      "id": "ad-dc-basic-hardening",
-      "name": "Domain Controller Basic Hardening",
-      "description": "Lockout, password policy, SMBv1, firewall, auditing, RDP security, disable Guest and risky services",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "LockoutThreshold",
-          "label": "Lockout threshold (attempts)",
-          "type": "text",
-          "placeholder": "5",
-          "defaultValue": "5"
-        },
-        {
-          "variable": "LockoutDuration",
-          "label": "Lockout duration (minutes)",
-          "type": "text",
-          "placeholder": "30",
-          "defaultValue": "30"
-        },
-        {
-          "variable": "MinPasswordLength",
-          "label": "Minimum password length",
-          "type": "text",
-          "placeholder": "14",
-          "defaultValue": "14"
-        },
-        {
-          "variable": "MaxPasswordAge",
-          "label": "Maximum password age (days)",
-          "type": "text",
-          "placeholder": "90",
-          "defaultValue": "90"
-        },
-        {
-          "variable": "PasswordHistory",
-          "label": "Password history (prevent reuse)",
-          "type": "text",
-          "placeholder": "24",
-          "defaultValue": "24"
-        }
-      ],
-      "template": "# Domain Controller Basic Hardening\n# Generated: $(Get-Date)\n# NOTE: Requires Domain Admin privileges\n\n$LockoutThreshold = if ('{{LockoutThreshold}}' -match '^\\d+$') { [int]'{{LockoutThreshold}}' } else { 5 }\n$LockoutDuration = if ('{{LockoutDuration}}' -match '^\\d+$') { [int]'{{LockoutDuration}}' } else { 30 }\n$MinPasswordLength = if ('{{MinPasswordLength}}' -match '^\\d+$') { [int]'{{MinPasswordLength}}' } else { 14 }\n$MaxPasswordAge = if ('{{MaxPasswordAge}}' -match '^\\d+$') { [int]'{{MaxPasswordAge}}' } else { 90 }\n$PasswordHistory = if ('{{PasswordHistory}}' -match '^\\d+$') { [int]'{{PasswordHistory}}' } else { 24 }\n\nWrite-Host \"=== DC BASIC HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Config: Lockout=$LockoutThreshold attempts, Duration=$LockoutDuration min, MinPwd=$MinPasswordLength chars\" -ForegroundColor Yellow\nWrite-Host \"\"\n\nWrite-Host \"[1/8] Account Lockout Policy...\" -ForegroundColor Cyan\nnet accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[2/8] Password Policy...\" -ForegroundColor Cyan\nnet accounts /minpwlen:$MinPasswordLength /maxpwage:$MaxPasswordAge /minpwage:1 /uniquepw:$PasswordHistory\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[3/8] Disable SMBv1...\" -ForegroundColor Cyan\nSet-SmbServerConfiguration -EnableSMB1Protocol $false -Force\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[4/8] Enable Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[5/8] Audit Policies...\" -ForegroundColor Cyan\nauditpol /set /category:\"Account Logon\" /success:enable /failure:enable\nauditpol /set /category:\"Account Management\" /success:enable /failure:enable\nauditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\nWrite-Host \"  ✅ Auditing enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[6/8] Disable Guest...\" -ForegroundColor Cyan\nnet user guest /active:no\nWrite-Host \"  ✅ Guest disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[7/8] RDP Security...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'MinEncryptionLevel' -Value 3\nWrite-Host \"  ✅ RDP hardened\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[8/8] Disable Services...\" -ForegroundColor Cyan\n@('RemoteRegistry', 'SSDPSRV', 'upnphost') | ForEach-Object { Stop-Service $_ -Force -EA SilentlyContinue; Set-Service $_ -StartupType Disabled -EA SilentlyContinue }\nWrite-Host \"  ✅ Services disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE ===\" -ForegroundColor Green"
-    },
-    {
-      "id": "ad-dc-advanced-hardening",
-      "name": "Domain Controller Advanced Hardening",
-      "description": "LDAP signing, channel binding, Kerberos, NTLM restriction, AdminSDHolder, PrintNightmare, log size, Credential Guard",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "AdminSDProtectFrequency",
-          "label": "AdminSDHolder check interval (seconds)",
-          "type": "text",
-          "placeholder": "600",
-          "defaultValue": "600"
-        },
-        {
-          "variable": "SecurityLogSizeMB",
-          "label": "Security event log size (MB)",
-          "type": "text",
-          "placeholder": "4000",
-          "defaultValue": "4000"
-        }
-      ],
-      "template": "# DC Advanced Hardening\n# Generated: $(Get-Date)\n# NOTE: Requires Domain Admin privileges\n\n$AdminSDProtectFrequency = if ('{{AdminSDProtectFrequency}}' -match '^\\d+$') { [int]'{{AdminSDProtectFrequency}}' } else { 600 }\n$SecurityLogSizeMB = if ('{{SecurityLogSizeMB}}' -match '^\\d+$') { [int]'{{SecurityLogSizeMB}}' } else { 4000 }\n$SecurityLogSizeBytes = $SecurityLogSizeMB * 1024 * 1024\n\nWrite-Host \"=== DC ADVANCED HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"[1/10] LDAP Signing...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LDAPServerIntegrity' -Value 2 -Type DWord\nWrite-Host \"  ✅ LDAP signing enforced\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[2/10] LDAP Channel Binding...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LdapEnforceChannelBinding' -Value 2 -Type DWord\nWrite-Host \"  ✅ Channel binding enforced\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[3/10] Kerberos Encryption (AES only)...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\Kerberos\\Parameters' -Name 'SupportedEncryptionTypes' -Value 0x18 -Type DWord -Force\nWrite-Host \"  ✅ Weak encryption disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[4/10] Restrict NTLM...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictSendingNTLMTraffic' -Value 2 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LmCompatibilityLevel' -Value 5 -Type DWord\nWrite-Host \"  ✅ NTLM restricted\" -ForegroundColor Green\nWrite-Host \"  ⚠ Ensure Kerberos support\" -ForegroundColor Yellow\n\nWrite-Host \"\"\nWrite-Host \"[5/10] AdminSDHolder...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'AdminSDProtectFrequency' -Value $AdminSDProtectFrequency -Type DWord\nWrite-Host \"  ✅ Check interval: $($AdminSDProtectFrequency / 60) min\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[6/10] Disable Print Spooler...\" -ForegroundColor Cyan\nStop-Service Spooler -Force -EA SilentlyContinue\nSet-Service Spooler -StartupType Disabled\nWrite-Host \"  ✅ PrintNightmare protection\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[7/10] Security Log Size...\" -ForegroundColor Cyan\nwevtutil sl Security /ms:$SecurityLogSizeBytes\nWrite-Host \"  ✅ Log size: $SecurityLogSizeMB MB\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[8/10] Credential Guard...\" -ForegroundColor Cyan\nNew-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\nWrite-Host \"  ✅ Enabled (reboot required)\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[9/10] Restrict Anonymous...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymous' -Value 1 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymousSAM' -Value 1 -Type DWord\nWrite-Host \"  ✅ Anonymous restricted\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[10/10] Protected Users Group...\" -ForegroundColor Cyan\ntry {\n    Get-ADGroup -Identity 'Protected Users' | Out-Null\n    Write-Host \"  ✅ Available - add privileged accounts manually\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ⚠ Not available (2012 R2+ required)\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE - REBOOT REQUIRED ===\" -ForegroundColor Green"
-    },
-    {
-      "id": "ad-endpoint-hardening",
-      "name": "AD Endpoint Hardening",
-      "description": "Harden domain-joined endpoints: LLMNR, NetBIOS, WPAD, PowerShell logging, Defender, SMBv1, AutoRun, UAC, firewall",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "DisableLLMNR",
-          "label": "Disable LLMNR",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true"
-        },
-        {
-          "variable": "DisableNetBIOS",
-          "label": "Disable NetBIOS",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true"
-        },
-        {
-          "variable": "DisableWSH",
-          "label": "Disable Windows Script Host (WSH)",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true"
-        },
-        {
-          "variable": "EnableControlledFolder",
-          "label": "Enable Defender Controlled Folder Access",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true"
-        }
-      ],
-      "template": "# AD Endpoint Hardening\n# Generated: $(Get-Date)\n# NOTE: Run on domain-joined endpoints (preferably via GPO script)\n\n$DisableLLMNR = ('{{DisableLLMNR}}' -eq 'true')\n$DisableNetBIOS = ('{{DisableNetBIOS}}' -eq 'true')\n$DisableWSH = ('{{DisableWSH}}' -eq 'true')\n$EnableControlledFolder = ('{{EnableControlledFolder}}' -eq 'true')\n\nWrite-Host \"=== AD ENDPOINT HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nif ($DisableLLMNR) {\n    Write-Host \"[1] Disable LLMNR...\" -ForegroundColor Cyan\n    New-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Name 'EnableMulticast' -Value 0 -Type DWord\n    Write-Host \"  ✅ LLMNR disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[1] LLMNR left as-is (not disabled)\" -ForegroundColor Yellow\n}\n\nif ($DisableNetBIOS) {\n    Write-Host \"[2] Disable NetBIOS...\" -ForegroundColor Cyan\n    Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled} | ForEach-Object { $_.SetTcpipNetbios(2) | Out-Null }\n    Write-Host \"  ✅ NetBIOS disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[2] NetBIOS left as-is (not disabled)\" -ForegroundColor Yellow\n}\n\nWrite-Host \"[3] Disable WPAD...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Wpad' -Name 'WpadOverride' -Value 1 -Type DWord -Force\nWrite-Host \"  ✅ WPAD disabled\" -ForegroundColor Green\n\nWrite-Host \"[4] Credential Guard...\" -ForegroundColor Cyan\nNew-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\nWrite-Host \"  ✅ Enabled\" -ForegroundColor Green\n\nif ($DisableWSH) {\n    Write-Host \"[5] Disable WSH...\" -ForegroundColor Cyan\n    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Name 'Enabled' -Value 0 -Type DWord\n    Write-Host \"  ✅ WSH disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[5] WSH left enabled\" -ForegroundColor Yellow\n}\n\nWrite-Host \"[6] PowerShell Policy...\" -ForegroundColor Cyan\nSet-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force\nWrite-Host \"  ✅ RemoteSigned\" -ForegroundColor Green\n\nWrite-Host \"[7] PowerShell Logging...\" -ForegroundColor Cyan\nNew-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Force | Out-Null\nSet-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Name 'EnableScriptBlockLogging' -Value 1 -Type DWord\nWrite-Host \"  ✅ Logging enabled\" -ForegroundColor Green\n\nWrite-Host \"[8] Disable SMBv1...\" -ForegroundColor Cyan\nDisable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"[9] Windows Defender...\" -ForegroundColor Cyan\nSet-MpPreference -DisableRealtimeMonitoring $false -DisableBehaviorMonitoring $false -DisableIOAVProtection $false\nif ($EnableControlledFolder) { Set-MpPreference -EnableControlledFolderAccess Enabled }\nWrite-Host \"  ✅ Defender enabled\" -ForegroundColor Green\n\nWrite-Host \"[10] Disable AutoRun...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoDriveTypeAutoRun' -Value 255 -Type DWord\nWrite-Host \"  ✅ AutoRun disabled\" -ForegroundColor Green\n\nWrite-Host \"[11] UAC...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableLUA' -Value 1 -Type DWord\nWrite-Host \"  ✅ UAC enabled\" -ForegroundColor Green\n\nWrite-Host \"[12] Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE - REBOOT REQUIRED ===\" -ForegroundColor Green"
-    }
+      {
+        "id": "ad-dc-basic-hardening",
+        "name": "Domain Controller Basic Hardening",
+        "description": "Lockout, password policy, SMBv1, firewall, auditing, RDP security, disable Guest and risky services",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "LockoutThreshold",
+            "label": "Lockout threshold (attempts)",
+            "type": "text",
+            "placeholder": "5",
+            "defaultValue": "5"
+          },
+          {
+            "variable": "LockoutDuration",
+            "label": "Lockout duration (minutes)",
+            "type": "text",
+            "placeholder": "30",
+            "defaultValue": "30"
+          },
+          {
+            "variable": "MinPasswordLength",
+            "label": "Minimum password length",
+            "type": "text",
+            "placeholder": "14",
+            "defaultValue": "14"
+          },
+          {
+            "variable": "MaxPasswordAge",
+            "label": "Maximum password age (days)",
+            "type": "text",
+            "placeholder": "90",
+            "defaultValue": "90"
+          },
+          {
+            "variable": "PasswordHistory",
+            "label": "Password history (prevent reuse)",
+            "type": "text",
+            "placeholder": "24",
+            "defaultValue": "24"
+          }
+        ],
+        "template": "# Domain Controller Basic Hardening\n# Generated: $(Get-Date)\n# NOTE: Requires Domain Admin privileges\n\n$LockoutThreshold = if ('{{LockoutThreshold}}' -match '^\\d+$') { [int]'{{LockoutThreshold}}' } else { 5 }\n$LockoutDuration = if ('{{LockoutDuration}}' -match '^\\d+$') { [int]'{{LockoutDuration}}' } else { 30 }\n$MinPasswordLength = if ('{{MinPasswordLength}}' -match '^\\d+$') { [int]'{{MinPasswordLength}}' } else { 14 }\n$MaxPasswordAge = if ('{{MaxPasswordAge}}' -match '^\\d+$') { [int]'{{MaxPasswordAge}}' } else { 90 }\n$PasswordHistory = if ('{{PasswordHistory}}' -match '^\\d+$') { [int]'{{PasswordHistory}}' } else { 24 }\n\nWrite-Host \"=== DC BASIC HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Config: Lockout=$LockoutThreshold attempts, Duration=$LockoutDuration min, MinPwd=$MinPasswordLength chars\" -ForegroundColor Yellow\nWrite-Host \"\"\n\nWrite-Host \"[1/8] Account Lockout Policy...\" -ForegroundColor Cyan\nnet accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[2/8] Password Policy...\" -ForegroundColor Cyan\nnet accounts /minpwlen:$MinPasswordLength /maxpwage:$MaxPasswordAge /minpwage:1 /uniquepw:$PasswordHistory\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[3/8] Disable SMBv1...\" -ForegroundColor Cyan\nSet-SmbServerConfiguration -EnableSMB1Protocol $false -Force\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[4/8] Enable Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[5/8] Audit Policies...\" -ForegroundColor Cyan\nauditpol /set /category:\"Account Logon\" /success:enable /failure:enable\nauditpol /set /category:\"Account Management\" /success:enable /failure:enable\nauditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\nWrite-Host \"  ✅ Auditing enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[6/8] Disable Guest...\" -ForegroundColor Cyan\nnet user guest /active:no\nWrite-Host \"  ✅ Guest disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[7/8] RDP Security...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'MinEncryptionLevel' -Value 3\nWrite-Host \"  ✅ RDP hardened\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[8/8] Disable Services...\" -ForegroundColor Cyan\n@('RemoteRegistry', 'SSDPSRV', 'upnphost') | ForEach-Object { Stop-Service $_ -Force -EA SilentlyContinue; Set-Service $_ -StartupType Disabled -EA SilentlyContinue }\nWrite-Host \"  ✅ Services disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE ===\" -ForegroundColor Green"
+      },
+      {
+        "id": "ad-dc-advanced-hardening",
+        "name": "Domain Controller Advanced Hardening",
+        "description": "LDAP signing, channel binding, Kerberos, NTLM restriction, AdminSDHolder, PrintNightmare, log size, Credential Guard",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "AdminSDProtectFrequency",
+            "label": "AdminSDHolder check interval (seconds)",
+            "type": "text",
+            "placeholder": "600",
+            "defaultValue": "600"
+          },
+          {
+            "variable": "SecurityLogSizeMB",
+            "label": "Security event log size (MB)",
+            "type": "text",
+            "placeholder": "4000",
+            "defaultValue": "4000"
+          }
+        ],
+        "template": "# DC Advanced Hardening\n# Generated: $(Get-Date)\n# NOTE: Requires Domain Admin privileges\n\n$AdminSDProtectFrequency = if ('{{AdminSDProtectFrequency}}' -match '^\\d+$') { [int]'{{AdminSDProtectFrequency}}' } else { 600 }\n$SecurityLogSizeMB = if ('{{SecurityLogSizeMB}}' -match '^\\d+$') { [int]'{{SecurityLogSizeMB}}' } else { 4000 }\n$SecurityLogSizeBytes = $SecurityLogSizeMB * 1024 * 1024\n\nWrite-Host \"=== DC ADVANCED HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"[1/10] LDAP Signing...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LDAPServerIntegrity' -Value 2 -Type DWord\nWrite-Host \"  ✅ LDAP signing enforced\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[2/10] LDAP Channel Binding...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LdapEnforceChannelBinding' -Value 2 -Type DWord\nWrite-Host \"  ✅ Channel binding enforced\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[3/10] Kerberos Encryption (AES only)...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\Kerberos\\Parameters' -Name 'SupportedEncryptionTypes' -Value 0x18 -Type DWord -Force\nWrite-Host \"  ✅ Weak encryption disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[4/10] Restrict NTLM...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictSendingNTLMTraffic' -Value 2 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LmCompatibilityLevel' -Value 5 -Type DWord\nWrite-Host \"  ✅ NTLM restricted\" -ForegroundColor Green\nWrite-Host \"  ⚠ Ensure Kerberos support\" -ForegroundColor Yellow\n\nWrite-Host \"\"\nWrite-Host \"[5/10] AdminSDHolder...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'AdminSDProtectFrequency' -Value $AdminSDProtectFrequency -Type DWord\nWrite-Host \"  ✅ Check interval: $($AdminSDProtectFrequency / 60) min\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[6/10] Disable Print Spooler...\" -ForegroundColor Cyan\nStop-Service Spooler -Force -EA SilentlyContinue\nSet-Service Spooler -StartupType Disabled\nWrite-Host \"  ✅ PrintNightmare protection\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[7/10] Security Log Size...\" -ForegroundColor Cyan\nwevtutil sl Security /ms:$SecurityLogSizeBytes\nWrite-Host \"  ✅ Log size: $SecurityLogSizeMB MB\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[8/10] Credential Guard...\" -ForegroundColor Cyan\nNew-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\nWrite-Host \"  ✅ Enabled (reboot required)\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[9/10] Restrict Anonymous...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymous' -Value 1 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymousSAM' -Value 1 -Type DWord\nWrite-Host \"  ✅ Anonymous restricted\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[10/10] Protected Users Group...\" -ForegroundColor Cyan\ntry {\n    Get-ADGroup -Identity 'Protected Users' | Out-Null\n    Write-Host \"  ✅ Available - add privileged accounts manually\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ⚠ Not available (2012 R2+ required)\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE - REBOOT REQUIRED ===\" -ForegroundColor Green"
+      },
+      {
+        "id": "ad-endpoint-hardening",
+        "name": "AD Endpoint Hardening",
+        "description": "Harden domain-joined endpoints: LLMNR, NetBIOS, WPAD, PowerShell logging, Defender, SMBv1, AutoRun, UAC, firewall",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "DisableLLMNR",
+            "label": "Disable LLMNR",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true"
+          },
+          {
+            "variable": "DisableNetBIOS",
+            "label": "Disable NetBIOS",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true"
+          },
+          {
+            "variable": "DisableWSH",
+            "label": "Disable Windows Script Host (WSH)",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true"
+          },
+          {
+            "variable": "EnableControlledFolder",
+            "label": "Enable Defender Controlled Folder Access",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true"
+          }
+        ],
+        "template": "# AD Endpoint Hardening\n# Generated: $(Get-Date)\n# NOTE: Run on domain-joined endpoints (preferably via GPO script)\n\n$DisableLLMNR = ('{{DisableLLMNR}}' -eq 'true')\n$DisableNetBIOS = ('{{DisableNetBIOS}}' -eq 'true')\n$DisableWSH = ('{{DisableWSH}}' -eq 'true')\n$EnableControlledFolder = ('{{EnableControlledFolder}}' -eq 'true')\n\nWrite-Host \"=== AD ENDPOINT HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nif ($DisableLLMNR) {\n    Write-Host \"[1] Disable LLMNR...\" -ForegroundColor Cyan\n    New-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Name 'EnableMulticast' -Value 0 -Type DWord\n    Write-Host \"  ✅ LLMNR disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[1] LLMNR left as-is (not disabled)\" -ForegroundColor Yellow\n}\n\nif ($DisableNetBIOS) {\n    Write-Host \"[2] Disable NetBIOS...\" -ForegroundColor Cyan\n    Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled} | ForEach-Object { $_.SetTcpipNetbios(2) | Out-Null }\n    Write-Host \"  ✅ NetBIOS disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[2] NetBIOS left as-is (not disabled)\" -ForegroundColor Yellow\n}\n\nWrite-Host \"[3] Disable WPAD...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Wpad' -Name 'WpadOverride' -Value 1 -Type DWord -Force\nWrite-Host \"  ✅ WPAD disabled\" -ForegroundColor Green\n\nWrite-Host \"[4] Credential Guard...\" -ForegroundColor Cyan\nNew-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\nWrite-Host \"  ✅ Enabled\" -ForegroundColor Green\n\nif ($DisableWSH) {\n    Write-Host \"[5] Disable WSH...\" -ForegroundColor Cyan\n    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Name 'Enabled' -Value 0 -Type DWord\n    Write-Host \"  ✅ WSH disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[5] WSH left enabled\" -ForegroundColor Yellow\n}\n\nWrite-Host \"[6] PowerShell Policy...\" -ForegroundColor Cyan\nSet-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force\nWrite-Host \"  ✅ RemoteSigned\" -ForegroundColor Green\n\nWrite-Host \"[7] PowerShell Logging...\" -ForegroundColor Cyan\nNew-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Force | Out-Null\nSet-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Name 'EnableScriptBlockLogging' -Value 1 -Type DWord\nWrite-Host \"  ✅ Logging enabled\" -ForegroundColor Green\n\nWrite-Host \"[8] Disable SMBv1...\" -ForegroundColor Cyan\nDisable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"[9] Windows Defender...\" -ForegroundColor Cyan\nSet-MpPreference -DisableRealtimeMonitoring $false -DisableBehaviorMonitoring $false -DisableIOAVProtection $false\nif ($EnableControlledFolder) { Set-MpPreference -EnableControlledFolderAccess Enabled }\nWrite-Host \"  ✅ Defender enabled\" -ForegroundColor Green\n\nWrite-Host \"[10] Disable AutoRun...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoDriveTypeAutoRun' -Value 255 -Type DWord\nWrite-Host \"  ✅ AutoRun disabled\" -ForegroundColor Green\n\nWrite-Host \"[11] UAC...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableLUA' -Value 1 -Type DWord\nWrite-Host \"  ✅ UAC enabled\" -ForegroundColor Green\n\nWrite-Host \"[12] Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE - REBOOT REQUIRED ===\" -ForegroundColor Green"
+      }
+    ],
+    "Domain Migration": [
+      {
+        "id": "domain-migration-smart-backup",
+        "name": "01. Domain migration smart backup (user)",
+        "description": "BreakGlass admin + profile backup. Select what to back up.",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "Destination",
+            "label": "Destination path (optional)",
+            "type": "text",
+            "placeholder": "C:\\Backup or leave empty for C:\\DomainMigration",
+            "defaultValue": ""
+          },
+          {
+            "variable": "BackupDesktop",
+            "label": "Desktop",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\Desktop\\*"
+          },
+          {
+            "variable": "BackupDocuments",
+            "label": "Documents",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\Documents\\*"
+          },
+          {
+            "variable": "BackupPictures",
+            "label": "Pictures",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\Pictures\\*"
+          },
+          {
+            "variable": "BackupDownloads",
+            "label": "Downloads",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\Downloads\\*"
+          },
+          {
+            "variable": "BackupFavorites",
+            "label": "Favorites",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\Favorites\\* (IE/Edge bookmarks)"
+          },
+          {
+            "variable": "BackupLinks",
+            "label": "Links",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\Links\\*"
+          },
+          {
+            "variable": "BackupContacts",
+            "label": "Contacts",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\Contacts\\*"
+          },
+          {
+            "variable": "BackupSearches",
+            "label": "Searches",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\Searches\\*"
+          },
+          {
+            "variable": "BackupOutlook",
+            "label": "Outlook",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Outlook (.pst, .ost, autocomplete). Not profiles."
+          },
+          {
+            "variable": "BackupChrome",
+            "label": "Chrome",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\AppData\\Local\\Google\\Chrome\\User Data (bookmarks, history)"
+          },
+          {
+            "variable": "BackupEdge",
+            "label": "Edge",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\AppData\\Local\\Microsoft\\Edge\\User Data"
+          },
+          {
+            "variable": "BackupFirefox",
+            "label": "Firefox",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "%USERPROFILE%\\AppData\\Roaming\\Mozilla (profiles, bookmarks)"
+          },
+          {
+            "variable": "BackupPrinters",
+            "label": "Printers",
+            "type": "checkbox",
+            "placeholder": "",
+            "defaultValue": "true",
+            "description": "System printers config + drivers (Printers.json)"
+          }
+        ],
+        "template": "# ==========================================================\r\n# DOMAIN MIGRATION – SMART BACKUP + ONEDRIVE VALIDATION + BREAKGLASS\r\n# ==========================================================\r\n\r\nparam(\r\n    [string]$Destination = \"{{Destination}}\",\r\n    [string]$BackupDesktop = \"{{BackupDesktop}}\",\r\n    [string]$BackupDocuments = \"{{BackupDocuments}}\",\r\n    [string]$BackupPictures = \"{{BackupPictures}}\",\r\n    [string]$BackupDownloads = \"{{BackupDownloads}}\",\r\n    [string]$BackupFavorites = \"{{BackupFavorites}}\",\r\n    [string]$BackupLinks = \"{{BackupLinks}}\",\r\n    [string]$BackupContacts = \"{{BackupContacts}}\",\r\n    [string]$BackupSearches = \"{{BackupSearches}}\",\r\n    [string]$BackupOutlook = \"{{BackupOutlook}}\",\r\n    [string]$BackupChrome = \"{{BackupChrome}}\",\r\n    [string]$BackupEdge = \"{{BackupEdge}}\",\r\n    [string]$BackupFirefox = \"{{BackupFirefox}}\",\r\n    [string]$BackupPrinters = \"{{BackupPrinters}}\"\r\n)\r\n\r\n# Fix unreplaced placeholders (when form fields left empty)\r\nif ([string]::IsNullOrWhiteSpace($Destination) -or $Destination -match '^\\{\\{') { $Destination = '' }\r\n\r\ntrap {\r\n    Write-Host \"`n*** SCRIPT ERROR ***\" -ForegroundColor Red\r\n    Write-Host $_.Exception.Message -ForegroundColor Red\r\n    Read-Host \"`nPress Enter to close\"\r\n    exit 1\r\n}\r\n\r\nWrite-Host \"=== DOMAIN MIGRATION SMART BACKUP STARTED ===\"\r\n\r\nif (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]\"Administrator\")) {\r\n    Write-Error \"Run this script as Administrator.\"\r\n    exit 1\r\n}\r\n\r\n# CREATE / VERIFY BREAKGLASS\r\n$BreakGlassUserName   = \"IT-BreakGlass\"\r\n$BreakGlassPlainPass  = \"S0mething!VeryStr0ng#2026\"\r\n$BreakGlassSecurePass = ConvertTo-SecureString $BreakGlassPlainPass -AsPlainText -Force\r\n\r\ntry {\r\n    $ExistingLocalUser = Get-LocalUser -Name $BreakGlassUserName -ErrorAction SilentlyContinue\r\n    if (-not $ExistingLocalUser) {\r\n        New-LocalUser -Name $BreakGlassUserName -Password $BreakGlassSecurePass -FullName \"IT Emergency Admin\" -Description \"Local emergency admin\" -PasswordNeverExpires:$true -UserMayNotChangePassword:$true -AccountNeverExpires:$true | Out-Null\r\n    }\r\n    elseif ($ExistingLocalUser.Enabled -eq $false) { Enable-LocalUser -Name $BreakGlassUserName }\r\n    $IsBreakGlassAdmin = Get-LocalGroupMember -Group \"Administrators\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like \"*\\$BreakGlassUserName\" -or $_.Name -eq $BreakGlassUserName }\r\n    if (-not $IsBreakGlassAdmin) { Add-LocalGroupMember -Group \"Administrators\" -Member $BreakGlassUserName }\r\n} catch { Write-Error \"Failed BreakGlass: $($_.Exception.Message)\"; exit 1 }\r\n\r\n# FUNCTIONS\r\nfunction Test-ValidUserProfile { param([string]$Path)\r\n    if (-not (Test-Path $Path)) { return $false }\r\n    $Leaf = Split-Path $Path -Leaf\r\n    $Excluded = @('Public','Default','Default User','All Users','Administrator','WDAGUtilityAccount')\r\n    if ($Leaf -in $Excluded -or $Leaf -match '^TEMP\\.') { return $false }\r\n    return (Test-Path (Join-Path $Path 'NTUSER.DAT'))\r\n}\r\n\r\nfunction Get-TargetUserProfile {\r\n    $CandidatePaths = [System.Collections.Generic.List[string]]::new()\r\n    try { $LastUser = (Get-ItemProperty \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\" -ErrorAction Stop).LastLoggedOnUser } catch { $LastUser = $null }\r\n    if ($LastUser) {\r\n        $UserPart = ($LastUser -split \"\\\\\")[-1]; if ($UserPart.StartsWith(\".\\\")) { $UserPart = $UserPart.Substring(2) }\r\n        if ($UserPart) { $CandidatePaths.Add(\"C:\\Users\\$UserPart\") }\r\n    }\r\n    try {\r\n        foreach ($p in Get-ChildItem 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList' -ErrorAction SilentlyContinue) {\r\n            $pi = Get-ItemProperty $p.PSPath -ErrorAction SilentlyContinue\r\n            if ($pi.ProfileImagePath -like 'C:\\Users\\*') {\r\n                $exp = [Environment]::ExpandEnvironmentVariables($pi.ProfileImagePath)\r\n                $CandidatePaths.Add($exp)\r\n            }\r\n        }\r\n    } catch {}\r\n    $Seen = @{}\r\n    foreach ($Path in $CandidatePaths) {\r\n        if ([string]::IsNullOrWhiteSpace($Path) -or $Seen[$Path.ToLower()]) { continue }\r\n        $Seen[$Path.ToLower()] = $true\r\n        if (Test-ValidUserProfile -Path $Path) {\r\n            return [pscustomobject]@{ UserName = (Split-Path $Path -Leaf); ProfileDir = $Path }\r\n        }\r\n    }\r\n    return $null\r\n}\r\n\r\nfunction Expand-UserPath { param([string]$PathValue, [string]$UserProfileDir = $null)\r\n    if ([string]::IsNullOrWhiteSpace($PathValue)) { return $null }\r\n    if ($UserProfileDir) { $PathValue = $PathValue -replace '%USERPROFILE%',$UserProfileDir -replace '\\$env:USERPROFILE',$UserProfileDir }\r\n    return [Environment]::ExpandEnvironmentVariables($PathValue)\r\n}\r\n\r\nfunction Invoke-RoboBackup { param([string]$Source, [string]$Destination)\r\n    if (-not (Test-Path $Source)) { return }\r\n    New-Item -ItemType Directory -Path $Destination -Force | Out-Null\r\n    & robocopy $Source $Destination /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NP /XJ | Out-Null\r\n    if ($LASTEXITCODE -ge 8) { throw \"Robocopy failed: $Source -> $Destination\" }\r\n}\r\n\r\n# DETECT PROFILE\r\n$ProfileInfo = Get-TargetUserProfile\r\nif (-not $ProfileInfo) { Write-Error \"No valid user profile found.\"; exit 1 }\r\n$User = $ProfileInfo.UserName\r\n$ProfileDir = $ProfileInfo.ProfileDir\r\n$BackupRoot = if ($Destination -and $Destination -notmatch '^\\{\\{') { (Join-Path $Destination.TrimEnd('\\') $User) } else { \"C:\\DomainMigration\\$User\" }\r\nNew-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null\r\n\r\n# Create BackupSummary early so restore can find this folder (even if script fails later)\r\n\"User: $User`nProfileDir: $ProfileDir`nBackupRoot: $BackupRoot`nComputerName: $env:COMPUTERNAME`nStarted: $(Get-Date)\" | Out-File (Join-Path $BackupRoot \"BackupSummary.txt\") -Encoding UTF8 -Force\r\n\r\n# RESOLVE SID (only needed for Desktop/Documents/Pictures - skip if printers-only)\r\n$Sid = $null\r\n$DesktopPath = Join-Path $ProfileDir 'Desktop'\r\n$DocsPath = Join-Path $ProfileDir 'Documents'\r\n$PicturesPath = Join-Path $ProfileDir 'Pictures'\r\n$NeedUserPaths = ($BackupDesktop -eq 'true' -or $BackupDocuments -eq 'true' -or $BackupPictures -eq 'true')\r\nif ($NeedUserPaths) {\r\n    try { $Sid = (New-Object System.Security.Principal.NTAccount($User)).Translate([System.Security.Principal.SecurityIdentifier]).Value }\r\n    catch { Write-Error \"Could not resolve SID for $User\"; exit 1 }\r\n    $CurrentSid = ([Security.Principal.WindowsIdentity]::GetCurrent().User).Value\r\n    $RunningAsSystem = ($CurrentSid -eq 'S-1-5-18')\r\n    $UserShellKey = \"Registry::HKEY_USERS\\$Sid\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders\"\r\n    if (-not $RunningAsSystem -and (Test-Path $UserShellKey)) {\r\n        try {\r\n            $UShell = Get-ItemProperty $UserShellKey -ErrorAction Stop\r\n            $DesktopPath = Expand-UserPath $UShell.Desktop -UserProfileDir $ProfileDir\r\n            $DocsPath = Expand-UserPath $UShell.Personal -UserProfileDir $ProfileDir\r\n            $PicturesPath = Expand-UserPath $UShell.'My Pictures' -UserProfileDir $ProfileDir\r\n            if (-not $DesktopPath) { $DesktopPath = Join-Path $ProfileDir 'Desktop' }\r\n            if (-not $DocsPath) { $DocsPath = Join-Path $ProfileDir 'Documents' }\r\n            if (-not $PicturesPath) { $PicturesPath = Join-Path $ProfileDir 'Pictures' }\r\n        } catch {\r\n            $DesktopPath = Join-Path $ProfileDir 'Desktop'\r\n            $DocsPath = Join-Path $ProfileDir 'Documents'\r\n            $PicturesPath = Join-Path $ProfileDir 'Pictures'\r\n        }\r\n    }\r\n}\r\n\r\n# Check if folder is in OneDrive (already synced to cloud - skip backup)\r\nfunction Test-OneDriveFolder { param([string]$Path) return $Path -and $Path -like '*OneDrive*' }\r\n\r\n$BackupLog = [System.Collections.ArrayList]::new()\r\n\r\n$DesktopInOD = Test-OneDriveFolder $DesktopPath\r\n$DocsInOD = Test-OneDriveFolder $DocsPath\r\n$PicturesInOD = Test-OneDriveFolder $PicturesPath\r\n\r\n# CORE FOLDERS (Desktop, Documents, Pictures) - skip if in OneDrive\r\nif ($BackupDesktop -eq 'true' -and (Test-Path $DesktopPath)) {\r\n    if ($DesktopInOD) { Write-Host \"Desktop in OneDrive - skipping (already in cloud)\" -ForegroundColor Cyan; $BackupLog.Add(\"Desktop: SKIPPED (in OneDrive)\") | Out-Null }\r\n    else { Write-Host \"Backing up Desktop...\"; try { Invoke-RoboBackup -Source $DesktopPath -Destination (Join-Path $BackupRoot \"Desktop\"); $BackupLog.Add(\"Desktop: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Desktop: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\nif ($BackupDocuments -eq 'true' -and (Test-Path $DocsPath)) {\r\n    if ($DocsInOD) { Write-Host \"Documents in OneDrive - skipping (already in cloud)\" -ForegroundColor Cyan; $BackupLog.Add(\"Documents: SKIPPED (in OneDrive)\") | Out-Null }\r\n    else { Write-Host \"Backing up Documents...\"; try { Invoke-RoboBackup -Source $DocsPath -Destination (Join-Path $BackupRoot \"Documents\"); $BackupLog.Add(\"Documents: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Documents: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\nif ($BackupPictures -eq 'true' -and (Test-Path $PicturesPath)) {\r\n    if ($PicturesInOD) { Write-Host \"Pictures in OneDrive - skipping (already in cloud)\" -ForegroundColor Cyan; $BackupLog.Add(\"Pictures: SKIPPED (in OneDrive)\") | Out-Null }\r\n    else { Write-Host \"Backing up Pictures...\"; try { Invoke-RoboBackup -Source $PicturesPath -Destination (Join-Path $BackupRoot \"Pictures\"); $BackupLog.Add(\"Pictures: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Pictures: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\n\r\n# EXTRA FOLDERS - skip Downloads if in OneDrive\r\n$ExtraMap = @{\r\n    Downloads = @{ Backup = $BackupDownloads; Path = (Join-Path $ProfileDir 'Downloads') }\r\n    Favorites = @{ Backup = $BackupFavorites; Path = (Join-Path $ProfileDir 'Favorites') }\r\n    Links = @{ Backup = $BackupLinks; Path = (Join-Path $ProfileDir 'Links') }\r\n    Contacts = @{ Backup = $BackupContacts; Path = (Join-Path $ProfileDir 'Contacts') }\r\n    Searches = @{ Backup = $BackupSearches; Path = (Join-Path $ProfileDir 'Searches') }\r\n}\r\nforeach ($Folder in $ExtraMap.Keys) {\r\n    $cfg = $ExtraMap[$Folder]\r\n    if ($cfg.Backup -eq 'true' -and (Test-Path $cfg.Path)) {\r\n        if ((Test-OneDriveFolder $cfg.Path)) { Write-Host \"$Folder in OneDrive - skipping (already in cloud)\" -ForegroundColor Cyan; $BackupLog.Add(\"$Folder`: SKIPPED (in OneDrive)\") | Out-Null }\r\n        else { Write-Host \"Backing up $Folder...\"; try { Invoke-RoboBackup -Source $cfg.Path -Destination (Join-Path $BackupRoot $Folder); $BackupLog.Add(\"$Folder`: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"$Folder`: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n    }\r\n}\r\n\r\n# OUTLOOK\r\nif ($BackupOutlook -eq 'true') {\r\n    $Outlook = Join-Path $ProfileDir \"AppData\\Roaming\\Microsoft\\Outlook\"\r\n    if (Test-Path $Outlook) { Write-Host \"Backing up Outlook...\"; try { Invoke-RoboBackup -Source $Outlook -Destination (Join-Path $BackupRoot \"Outlook\"); $BackupLog.Add(\"Outlook: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Outlook: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\n# BROWSERS\r\nif ($BackupChrome -eq 'true') {\r\n    $Chrome = Join-Path $ProfileDir \"AppData\\Local\\Google\\Chrome\\User Data\"\r\n    if (Test-Path $Chrome) { Write-Host \"Backing up Chrome...\"; try { Invoke-RoboBackup -Source $Chrome -Destination (Join-Path $BackupRoot \"Chrome\"); $BackupLog.Add(\"Chrome: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Chrome: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\nif ($BackupEdge -eq 'true') {\r\n    $Edge = Join-Path $ProfileDir \"AppData\\Local\\Microsoft\\Edge\\User Data\"\r\n    if (Test-Path $Edge) { Write-Host \"Backing up Edge...\"; try { Invoke-RoboBackup -Source $Edge -Destination (Join-Path $BackupRoot \"Edge\"); $BackupLog.Add(\"Edge: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Edge: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\nif ($BackupFirefox -eq 'true') {\r\n    $Firefox = Join-Path $ProfileDir \"AppData\\Roaming\\Mozilla\"\r\n    if (Test-Path $Firefox) { Write-Host \"Backing up Firefox...\"; try { Invoke-RoboBackup -Source $Firefox -Destination (Join-Path $BackupRoot \"Firefox\"); $BackupLog.Add(\"Firefox: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Firefox: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\n\r\n# PRINTERS - full backup with PrintBrm (drivers, ports, printers) for restore\r\nif ($BackupPrinters -eq 'true') {\r\n    $PrinterDir = Join-Path $BackupRoot \"Printers\"\r\n    New-Item -ItemType Directory -Path $PrinterDir -Force | Out-Null\r\n    try {\r\n        Import-Module PrintManagement -ErrorAction Stop\r\n        $Printers = Get-Printer -ErrorAction SilentlyContinue | Sort-Object Name\r\n        if ($Printers.Count -eq 0) {\r\n            Write-Host \"No printers found on this system.\" -ForegroundColor Yellow\r\n            $BackupLog.Add(\"Printers: SKIPPED (none found)\") | Out-Null\r\n        } else {\r\n            Write-Host \"Found $($Printers.Count) printer(s): $($Printers.Name -join ', ')\"\r\n            $Default = ($Printers | Where-Object Default | Select-Object -First 1).Name\r\n            $PrintersList = @()\r\n            foreach ($p in $Printers) {\r\n                $PortInfo = $null\r\n                try { $PortInfo = Get-PrinterPort -Name $p.PortName -ErrorAction SilentlyContinue } catch {}\r\n                $pi = @{ Name=$p.Name; DriverName=$p.DriverName; PortName=$p.PortName; IsDefault=($p.Name -eq $Default) }\r\n                if ($PortInfo -and $PortInfo.PrinterHostAddress) { $pi.PortAddress = $PortInfo.PrinterHostAddress }\r\n                $PrintersList += [pscustomobject]$pi\r\n            }\r\n            $Ports = Get-PrinterPort -ErrorAction SilentlyContinue\r\n            $Drivers = Get-PrinterDriver -ErrorAction SilentlyContinue\r\n            @{ ComputerName=$env:COMPUTERNAME; CollectedAt=(Get-Date).ToString(\"s\"); Printers=$PrintersList; Ports=$Ports; Drivers=$Drivers } | ConvertTo-Json -Depth 6 | Out-File (Join-Path $PrinterDir \"Printers.json\") -Encoding UTF8\r\n\r\n            $PrintBrmPath = Join-Path $env:SystemRoot \"System32\\spool\\tools\\printbrm.exe\"\r\n            $ExportPath = Join-Path $PrinterDir \"Printers.printerExport\"\r\n            if (Test-Path $PrintBrmPath) {\r\n                Write-Host \"Backing up printers (PrintBrm) - drivers, ports, queues...\"\r\n                try {\r\n                    $pinfo = New-Object System.Diagnostics.ProcessStartInfo\r\n                    $pinfo.FileName = $PrintBrmPath\r\n                    $pinfo.Arguments = \"-b -s \\\\$env:COMPUTERNAME -f `\"$ExportPath`\"\"\r\n                    $pinfo.RedirectStandardError = $true\r\n                    $pinfo.RedirectStandardOutput = $true\r\n                    $pinfo.UseShellExecute = $false\r\n                    $p = New-Object System.Diagnostics.Process\r\n                    $p.StartInfo = $pinfo\r\n                    $p.Start() | Out-Null\r\n                    $out = $p.StandardOutput.ReadToEnd()\r\n                    $err = $p.StandardError.ReadToEnd()\r\n                    $p.WaitForExit()\r\n                    if ($p.ExitCode -ne 0 -or -not (Test-Path $ExportPath)) {\r\n                        Write-Warning \"PrintBrm exit code: $($p.ExitCode). Printers.json saved - use for manual restore.\"\r\n                        if ($err) { Write-Host $err -ForegroundColor Yellow }\r\n                    } else {\r\n                        Write-Host \"Printer backup complete: $ExportPath\" -ForegroundColor Green\r\n                    }\r\n                } catch {\r\n                    Write-Warning \"PrintBrm failed: $($_.Exception.Message). Printers.json saved for reference.\"\r\n                }\r\n                if (-not (Test-Path $ExportPath)) {\r\n                    Write-Host \"Exporting printer drivers only (PrintBrm fallback)...\"\r\n                    $DriversDir = Join-Path $PrinterDir \"Drivers\"\r\n                    New-Item -ItemType Directory -Path $DriversDir -Force | Out-Null\r\n                    $UsedDrivers = $PrintersList | Select-Object -ExpandProperty DriverName -Unique\r\n                    foreach ($dName in $UsedDrivers) {\r\n                        $drv = Get-PrinterDriver -Name $dName -ErrorAction SilentlyContinue\r\n                        if ($drv -and $drv.InfPath -and $drv.Manufacturer -notmatch 'Microsoft') {\r\n                            $src = Split-Path $drv.InfPath -Parent\r\n                            if (Test-Path $src) {\r\n                                $dest = Join-Path $DriversDir ($dName -replace '[\\\\/:*?\"<>|]','_')\r\n                                New-Item $dest -ItemType Directory -Force | Out-Null\r\n                                Copy-Item \"$src\\*\" $dest -Recurse -Force -ErrorAction SilentlyContinue\r\n                            }\r\n                        }\r\n                    }\r\n                }\r\n            } else {\r\n                Write-Warning \"PrintBrm not found. Exporting printer drivers only.\"\r\n                $DriversDir = Join-Path $PrinterDir \"Drivers\"\r\n                New-Item -ItemType Directory -Path $DriversDir -Force | Out-Null\r\n                $UsedDrivers = $PrintersList | Select-Object -ExpandProperty DriverName -Unique\r\n                foreach ($dName in $UsedDrivers) {\r\n                    $drv = Get-PrinterDriver -Name $dName -ErrorAction SilentlyContinue\r\n                    if ($drv -and $drv.InfPath -and $drv.Manufacturer -notmatch 'Microsoft') {\r\n                        $src = Split-Path $drv.InfPath -Parent\r\n                        if (Test-Path $src) {\r\n                            $dest = Join-Path $DriversDir ($dName -replace '[\\\\/:*?\"<>|]','_')\r\n                            New-Item $dest -ItemType Directory -Force | Out-Null\r\n                            Copy-Item \"$src\\*\" $dest -Recurse -Force -ErrorAction SilentlyContinue\r\n                        }\r\n                    }\r\n                }\r\n            }\r\n            $BackupLog.Add(\"Printers: BACKED UP ($($Printers.Count) printer(s) - $($Printers.Name -join ', '))\") | Out-Null\r\n        }\r\n    } catch { Write-Warning \"Printer backup failed: $($_.Exception.Message)\"; $BackupLog.Add(\"Printers: FAILED - $($_.Exception.Message)\") | Out-Null }\r\n}\r\n\r\n# SUMMARY\r\n$TotalItems = (Get-ChildItem $BackupRoot -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object).Count\r\n$LogSection = if ($BackupLog.Count -gt 0) { \"`n--- BACKUP LOG ---`n\" + ($BackupLog -join \"`n\") } else { \"\" }\r\n$Summary = \"User: $User`nProfileDir: $ProfileDir`nSID: $Sid`nBackupRoot: $BackupRoot`nTotalItems: $TotalItems`nComputerName: $env:COMPUTERNAME`nExecutedAs: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)`nCompleted: $(Get-Date)$LogSection\"\r\n$Summary | Out-File (Join-Path $BackupRoot \"BackupSummary.txt\") -Encoding UTF8\r\nNew-Item (Join-Path $BackupRoot \"BACKUP_COMPLETED.txt\") -ItemType File -Force | Out-Null\r\nWrite-Host \"=== DOMAIN MIGRATION BACKUP COMPLETED ===\" -ForegroundColor Green\r\nWrite-Host \"Backup location: $BackupRoot\"\r\nRead-Host \"`nPress Enter to close\"\r\n"
+      },
+      {
+        "id": "unjoin-old-domain",
+        "name": "02. Unjoin Old Domain",
+        "description": "Stop user processes, unjoin from old domain. Runs in PowerShell (as Admin) or as SYSTEM.",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "OldDomainUser",
+            "label": "Old Domain Admin User",
+            "type": "text",
+            "placeholder": "OLDDOMAIN\\\\admin or admin@olddomain.com",
+            "defaultValue": ""
+          },
+          {
+            "variable": "OldDomainPass",
+            "label": "Old Domain Admin Password",
+            "type": "password",
+            "placeholder": "",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# ==========================================================\r\n# UNJOIN OLD DOMAIN\r\n# Local admin + stop user processes + unjoin\r\n# Works in plain PowerShell (run as Admin) or as SYSTEM\r\n# ==========================================================\r\n\r\nparam(\r\n    [string]$OldDomainUser = \"{{OldDomainUser}}\",\r\n    [string]$OldDomainPass = \"{{OldDomainPass}}\"\r\n)\r\n\r\nWrite-Host \"=== Pre-Unjoin Domain Started ===\"\r\n\r\n# GUARDRAILS - MUST RUN AS ADMIN OR SYSTEM\r\n$identity = [Security.Principal.WindowsIdentity]::GetCurrent()\r\n$principal = New-Object Security.Principal.WindowsPrincipal($identity)\r\n$isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\r\n$isSystem = ($identity.User.Value -eq 'S-1-5-18')\r\n\r\nif (-not $isAdmin -and -not $isSystem) {\r\n    Write-Error \"Run as Administrator or SYSTEM. Current user: $($identity.Name)\"\r\n    exit 1\r\n}\r\n\r\nif ([string]::IsNullOrWhiteSpace($OldDomainUser)) {\r\n    Write-Error \"Old domain admin username is required (e.g. OLDDOMAIN\\\\admin)\"\r\n    exit 1\r\n}\r\nif ([string]::IsNullOrWhiteSpace($OldDomainPass)) {\r\n    Write-Error \"Old domain admin password is required\"\r\n    exit 1\r\n}\r\n\r\n# STOP USER-DEPENDENT PROCESSES\r\nWrite-Host \"Stopping user-dependent processes...\"\r\n$Processes = @(\r\n    \"OneDrive.exe\",\r\n    \"ms-teams.exe\",\r\n    \"Teams.exe\",\r\n    \"msedge.exe\",\r\n    \"chrome.exe\"\r\n)\r\nforeach ($p in $Processes) {\r\n    taskkill /f /im $p 2>$null\r\n}\r\nWrite-Host \"Processes stopped.\"\r\n\r\n# BUILD CREDENTIAL AND UNJOIN\r\nWrite-Host \"Unjoining from old domain...\"\r\n$SecurePass = ConvertTo-SecureString $OldDomainPass -AsPlainText -Force\r\n$OldDomainCred = New-Object System.Management.Automation.PSCredential($OldDomainUser, $SecurePass)\r\n\r\nRemove-Computer -UnjoinDomainCredential $OldDomainCred -Force -Restart\r\n"
+      },
+      {
+        "id": "join-new-domain",
+        "name": "03. Join New Domain",
+        "description": "Join computer to new domain. Runs in PowerShell (as Admin) or as SYSTEM.",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "DomainFQDN",
+            "label": "Domain FQDN",
+            "type": "text",
+            "placeholder": "contoso.com",
+            "defaultValue": ""
+          },
+          {
+            "variable": "DomainJoinUser",
+            "label": "Domain Join User",
+            "type": "text",
+            "placeholder": "DOMAIN\\\\joiner or joiner@domain.com",
+            "defaultValue": ""
+          },
+          {
+            "variable": "DomainJoinPassword",
+            "label": "Domain Join Password",
+            "type": "password",
+            "placeholder": "",
+            "defaultValue": ""
+          },
+          {
+            "variable": "DnsServer",
+            "label": "DNS to New DC",
+            "type": "text",
+            "placeholder": "192.168.1.10 or dc.contoso.com",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# ==========================================================\r\n# JOIN NEW DOMAIN\r\n# Works in plain PowerShell (run as Admin) or as SYSTEM\r\n# All values from script parameters - no Ninja/env vars required\r\n# ==========================================================\r\n\r\nparam(\r\n    [string]$DomainFQDN = \"{{DomainFQDN}}\",\r\n    [string]$DomainJoinUser = \"{{DomainJoinUser}}\",\r\n    [string]$DomainJoinPassword = \"{{DomainJoinPassword}}\",\r\n    [string]$DnsServer = \"{{DnsServer}}\"\r\n)\r\n\r\nWrite-Host \"=== Domain Join Process Started ===\"\r\n\r\n# GUARDRAILS - MUST RUN AS ADMIN (or SYSTEM)\r\n$identity = [Security.Principal.WindowsIdentity]::GetCurrent()\r\n$principal = New-Object Security.Principal.WindowsPrincipal($identity)\r\n$isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\r\n$isSystem = ($identity.User.Value -eq 'S-1-5-18')\r\n\r\nif (-not $isAdmin -and -not $isSystem) {\r\n    Write-Error \"Run as Administrator or SYSTEM. Current user: $($identity.Name)\"\r\n    exit 1\r\n}\r\n\r\nif ([string]::IsNullOrWhiteSpace($DomainFQDN)) {\r\n    Write-Error \"Domain FQDN is required (e.g. contoso.com)\"\r\n    exit 1\r\n}\r\nif ([string]::IsNullOrWhiteSpace($DomainJoinUser)) {\r\n    Write-Error \"Domain join user is required (e.g. DOMAIN\\joiner or joiner@domain.com)\"\r\n    exit 1\r\n}\r\nif ([string]::IsNullOrWhiteSpace($DomainJoinPassword)) {\r\n    Write-Error \"Domain join password is required\"\r\n    exit 1\r\n}\r\nif ([string]::IsNullOrWhiteSpace($DnsServer)) {\r\n    Write-Error \"DNS server (DC IP/hostname) is required\"\r\n    exit 1\r\n}\r\n\r\n# SET DNS TO NEW DC\r\nWrite-Host \"Setting DNS to $DnsServer\"\r\n$adapter = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1\r\n\r\nif (-not $adapter) {\r\n    Write-Error \"No active network adapter found\"\r\n    exit 1\r\n}\r\n\r\nSet-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses $DnsServer\r\nipconfig /flushdns | Out-Null\r\n\r\n# DNS CHECK\r\ntry {\r\n    Resolve-DnsName $DomainFQDN -ErrorAction Stop | Out-Null\r\n}\r\ncatch {\r\n    Write-Error \"DNS resolution failed for $DomainFQDN. Check DNS server and network.\"\r\n    exit 1\r\n}\r\n\r\nWrite-Host \"Joining domain $DomainFQDN using $DomainJoinUser\"\r\n\r\n$SecurePass = ConvertTo-SecureString $DomainJoinPassword -AsPlainText -Force\r\n$Cred = New-Object System.Management.Automation.PSCredential($DomainJoinUser, $SecurePass)\r\n\r\nAdd-Computer -DomainName $DomainFQDN -Credential $Cred -Force -Restart\r\n"
+      },
+      {
+        "id": "04-full-restore",
+        "name": "04. FULL RESTORE",
+        "description": "Auto-detects what was backed up and restores it. No checkboxes needed.",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "Source",
+            "label": "Backup source",
+            "type": "text",
+            "placeholder": "C:\\\\DomainMigration\\\\YourUser or C:\\\\Backup\\\\YourUser",
+            "defaultValue": "",
+            "description": "Path to backup folder (must contain BackupSummary.txt). Empty = auto-search C:\\DomainMigration, C:\\Backup."
+          },
+          {
+            "variable": "UserName",
+            "label": "Target username (optional)",
+            "type": "text",
+            "placeholder": "hint for profile lookup",
+            "defaultValue": ""
+          },
+          {
+            "variable": "TargetProfilePath",
+            "label": "Target profile path (optional)",
+            "type": "text",
+            "placeholder": "C:\\\\Users\\\\username",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# ==========================================================\r\n# DOMAIN MIGRATION – RESTORE SCRIPT\r\n# Auto-detects what was backed up and restores it (no checkboxes)\r\n# ==========================================================\r\n\r\nparam(\r\n    [string]$Source = \"{{Source}}\",\r\n    [string]$UserName = \"{{UserName}}\",\r\n    [string]$TargetProfilePath = \"{{TargetProfilePath}}\"\r\n)\r\n\r\n# Fix unreplaced placeholders\r\nif ($Source -match '^\\{\\{') { $Source = '' }\r\nif ($UserName -match '^\\{\\{') { $UserName = '' }\r\nif ($TargetProfilePath -match '^\\{\\{') { $TargetProfilePath = '' }\r\n\r\ntrap {\r\n    Write-Host \"`n*** SCRIPT ERROR ***\" -ForegroundColor Red\r\n    Write-Host $_.Exception.Message -ForegroundColor Red\r\n    Write-Host $_.ScriptStackTrace -ForegroundColor Gray\r\n    Read-Host \"`nPress Enter to close\"\r\n    exit 1\r\n}\r\n\r\nWrite-Host \"=== DOMAIN MIGRATION RESTORE STARTED ===\"\r\n\r\nif (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]\"Administrator\")) {\r\n    Write-Error \"Run this script as Administrator.\"\r\n    Read-Host \"Press Enter to close\"\r\n    exit 1\r\n}\r\n\r\nfunction Test-ValidUserProfile { param([string]$Path)\r\n    if (-not (Test-Path $Path)) { return $false }\r\n    $Leaf = Split-Path $Path -Leaf\r\n    $Excluded = @('Public','Default','Default User','All Users','Administrator','WDAGUtilityAccount')\r\n    if ($Leaf -in $Excluded -or $Leaf -match '^TEMP\\.') { return $false }\r\n    return (Test-Path (Join-Path $Path 'NTUSER.DAT'))\r\n}\r\n\r\nfunction Get-TargetUserProfile { param([string]$PreferUserName = $null)\r\n    $CandidatePaths = [System.Collections.Generic.List[string]]::new()\r\n    if ($PreferUserName) { $CandidatePaths.Add(\"C:\\Users\\$PreferUserName\") }\r\n    try {\r\n        $LastUser = (Get-ItemProperty \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\" -ErrorAction Stop).LastLoggedOnUser\r\n        if ($LastUser) {\r\n            $UserPart = ($LastUser -split \"\\\\\")[-1]\r\n            if ($UserPart.StartsWith(\".\\\")) { $UserPart = $UserPart.Substring(2) }\r\n            if ($UserPart -and (\"C:\\Users\\$UserPart\" -notin $CandidatePaths)) { $CandidatePaths.Add(\"C:\\Users\\$UserPart\") }\r\n        }\r\n    } catch {}\r\n    try {\r\n        foreach ($p in (Get-ChildItem 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList' -ErrorAction SilentlyContinue)) {\r\n            $pi = Get-ItemProperty $p.PSPath -ErrorAction SilentlyContinue\r\n            if ($pi.ProfileImagePath -like 'C:\\Users\\*') {\r\n                $exp = [Environment]::ExpandEnvironmentVariables($pi.ProfileImagePath)\r\n                if ($exp -notin $CandidatePaths) { $CandidatePaths.Add($exp) }\r\n            }\r\n        }\r\n    } catch {}\r\n    $Seen = @{}\r\n    foreach ($Path in $CandidatePaths) {\r\n        if ([string]::IsNullOrWhiteSpace($Path) -or $Seen[$Path.ToLower()]) { continue }\r\n        $Seen[$Path.ToLower()] = $true\r\n        if (Test-ValidUserProfile -Path $Path) {\r\n            return [pscustomobject]@{ UserName = (Split-Path $Path -Leaf); ProfileDir = $Path }\r\n        }\r\n    }\r\n    return $null\r\n}\r\n\r\nfunction Expand-UserPath { param([string]$PathValue, [string]$UserProfileDir = $null)\r\n    if ([string]::IsNullOrWhiteSpace($PathValue)) { return $null }\r\n    if ($UserProfileDir) { $PathValue = $PathValue -replace '%USERPROFILE%',$UserProfileDir -replace '\\$env:USERPROFILE',$UserProfileDir }\r\n    return [Environment]::ExpandEnvironmentVariables($PathValue)\r\n}\r\n\r\nfunction Invoke-RoboRestore { param([string]$Source, [string]$Destination)\r\n    if (-not (Test-Path $Source)) { return }\r\n    New-Item -ItemType Directory -Path $Destination -Force | Out-Null\r\n    & robocopy $Source $Destination /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NP /IS /IT | Out-Null\r\n    if ($LASTEXITCODE -ge 8) { Write-Warning \"Robocopy reported issues (exit $LASTEXITCODE)\" }\r\n    else { Write-Host \"Restored: $Destination\" }\r\n}\r\n\r\n# DETECT TARGET PROFILE\r\n$ProfileInfo = if ($TargetProfilePath -and (Test-ValidUserProfile $TargetProfilePath)) {\r\n    [pscustomobject]@{ UserName = (Split-Path $TargetProfilePath -Leaf); ProfileDir = $TargetProfilePath }\r\n} else {\r\n    Get-TargetUserProfile -PreferUserName $UserName\r\n}\r\n\r\nif (-not $ProfileInfo) {\r\n    Write-Error \"No valid target user profile found. User may need to log on once.\"\r\n    Read-Host \"Press Enter to close\"\r\n    exit 1\r\n}\r\n\r\n$ProfileDir = $ProfileInfo.ProfileDir\r\n$User = $ProfileInfo.UserName\r\n\r\nWrite-Host \"Detected user: $User\"\r\nWrite-Host \"Using profile: $ProfileDir\"\r\n\r\n# FIND BACKUP\r\n$BackupRoot = $null\r\n$SearchRoots = @()\r\nif ($Source) {\r\n    $SearchRoots = @($Source.TrimEnd('\\'))\r\n} else {\r\n    $SearchRoots = @(\"C:\\DomainMigration\", \"C:\\Backup\")\r\n    foreach ($d in @(\"D:\\DomainMigration\", \"D:\\Backup\", \"E:\\DomainMigration\", \"E:\\Backup\")) {\r\n        if (Test-Path $d) { $SearchRoots += $d }\r\n    }\r\n}\r\n\r\n$IsValidBackup = { param($p) (Test-Path (Join-Path $p \"BackupSummary.txt\")) -or (Test-Path (Join-Path $p \"Printers\\Printers.json\")) -or (Test-Path (Join-Path $p \"Printers\\Printers.printerExport\")) }\r\nforeach ($MigrationRoot in $SearchRoots) {\r\n    if (-not (Test-Path $MigrationRoot)) { continue }\r\n    if (& $IsValidBackup $MigrationRoot) { $BackupRoot = $MigrationRoot; break }\r\n    $ProfileLeaf = Split-Path $ProfileDir -Leaf\r\n    foreach ($candidate in @($ProfileLeaf, ($ProfileLeaf -replace '\\..*$',''), $UserName, \"user\", \"User\")) {\r\n        if (-not $candidate) { continue }\r\n        $candidatePath = Join-Path $MigrationRoot $candidate\r\n        if (& $IsValidBackup $candidatePath) { $BackupRoot = $candidatePath; break }\r\n    }\r\n    if ($BackupRoot) { break }\r\n    $Found = Get-ChildItem $MigrationRoot -Directory -ErrorAction SilentlyContinue | Where-Object {\r\n        & $IsValidBackup $_.FullName\r\n    } | Select-Object -First 1\r\n    if ($Found) { $BackupRoot = $Found.FullName; break }\r\n}\r\n\r\nif (-not $BackupRoot -or -not (Test-Path $BackupRoot)) {\r\n    Write-Host \"`nBackup not found. Searched:\" -ForegroundColor Yellow\r\n    foreach ($r in $SearchRoots) { Write-Host \"  - $r\" -ForegroundColor Gray }\r\n    Write-Host \"`nEnter the full path to your backup folder in the Source field.\" -ForegroundColor Yellow\r\n    Write-Host \"Example: C:\\DomainMigration\\YourUsername  or  C:\\Backup\\YourUsername\" -ForegroundColor Gray\r\n    Write-Host \"The folder must contain BackupSummary.txt\" -ForegroundColor Gray\r\n    Read-Host \"`nPress Enter to close\"\r\n    exit 1\r\n}\r\n\r\nWrite-Host \"Restoring from: $BackupRoot\"\r\n\r\n# RESOLVE SID AND USER SHELL FOLDERS (for Desktop, Documents, Pictures)\r\n$Sid = $null\r\ntry { $Sid = (New-Object System.Security.Principal.NTAccount($User)).Translate([System.Security.Principal.SecurityIdentifier]).Value } catch {}\r\n$CurrentSid = ([Security.Principal.WindowsIdentity]::GetCurrent().User).Value\r\n$RunningAsSystem = ($CurrentSid -eq 'S-1-5-18')\r\n\r\n$DesktopPath = Join-Path $ProfileDir 'Desktop'\r\n$DocsPath = Join-Path $ProfileDir 'Documents'\r\n$PicturesPath = Join-Path $ProfileDir 'Pictures'\r\n\r\nif (-not $RunningAsSystem -and $Sid -and (Test-Path \"Registry::HKEY_USERS\\$Sid\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders\")) {\r\n    try {\r\n        $UShell = Get-ItemProperty \"Registry::HKEY_USERS\\$Sid\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders\" -ErrorAction Stop\r\n        $DesktopPath = Expand-UserPath $UShell.Desktop -UserProfileDir $ProfileDir\r\n        $DocsPath = Expand-UserPath $UShell.Personal -UserProfileDir $ProfileDir\r\n        $PicturesPath = Expand-UserPath $UShell.'My Pictures' -UserProfileDir $ProfileDir\r\n        if (-not $DesktopPath) { $DesktopPath = Join-Path $ProfileDir 'Desktop' }\r\n        if (-not $DocsPath) { $DocsPath = Join-Path $ProfileDir 'Documents' }\r\n        if (-not $PicturesPath) { $PicturesPath = Join-Path $ProfileDir 'Pictures' }\r\n    } catch {}\r\n}\r\n\r\n# MAP: Backup folder name -> destination path in profile\r\n$ProfileFolderMap = @{\r\n    'Desktop'   = $DesktopPath\r\n    'Documents' = $DocsPath\r\n    'Pictures'  = $PicturesPath\r\n    'Downloads' = Join-Path $ProfileDir 'Downloads'\r\n    'Favorites' = Join-Path $ProfileDir 'Favorites'\r\n    'Music'     = Join-Path $ProfileDir 'Music'\r\n    'Videos'    = Join-Path $ProfileDir 'Videos'\r\n    'Links'     = Join-Path $ProfileDir 'Links'\r\n    'Saved Games' = Join-Path $ProfileDir 'Saved Games'\r\n    'Contacts'  = Join-Path $ProfileDir 'Contacts'\r\n    'Searches'  = Join-Path $ProfileDir 'Searches'\r\n    '3D Objects' = Join-Path $ProfileDir '3D Objects'\r\n    'OneDrive'  = Join-Path $ProfileDir 'OneDrive'\r\n}\r\n\r\n$AppFolderMap = @{\r\n    'Outlook' = Join-Path $ProfileDir 'AppData\\Roaming\\Microsoft\\Outlook'\r\n    'Chrome'  = Join-Path $ProfileDir 'AppData\\Local\\Google\\Chrome\\User Data'\r\n    'Edge'    = Join-Path $ProfileDir 'AppData\\Local\\Microsoft\\Edge\\User Data'\r\n    'Firefox' = Join-Path $ProfileDir 'AppData\\Roaming\\Mozilla'\r\n}\r\n\r\n$SkipFolders = @('Printers')\r\n$SkipFiles = @('BackupSummary.txt', 'BACKUP_COMPLETED.txt', 'RESTORE_PrinterConfig.txt', 'RESTORE_COMPLETED.txt')\r\n\r\n# SCAN BACKUP - restore whatever exists\r\nWrite-Host \"Scanning backup for items to restore...\"\r\n$BackedUpItems = Get-ChildItem $BackupRoot -Directory -ErrorAction SilentlyContinue | Where-Object {\r\n    $_.Name -notin $SkipFolders\r\n}\r\n\r\nforeach ($Item in $BackedUpItems) {\r\n    $Name = $Item.Name\r\n    $Src = $Item.FullName\r\n\r\n    if ($ProfileFolderMap.ContainsKey($Name)) {\r\n        $Dest = $ProfileFolderMap[$Name]\r\n        Write-Host \"Restoring $Name -> $Dest\"\r\n        try { Invoke-RoboRestore -Source $Src -Destination $Dest } catch { Write-Warning $_.Exception.Message }\r\n    }\r\n    elseif ($AppFolderMap.ContainsKey($Name)) {\r\n        $Dest = $AppFolderMap[$Name]\r\n        Write-Host \"Restoring $Name -> $Dest\"\r\n        try { Invoke-RoboRestore -Source $Src -Destination $Dest } catch { Write-Warning $_.Exception.Message }\r\n    }\r\n    else {\r\n        $Dest = Join-Path $ProfileDir $Name\r\n        Write-Host \"Restoring $Name -> $Dest (direct profile folder)\"\r\n        try { Invoke-RoboRestore -Source $Src -Destination $Dest } catch { Write-Warning $_.Exception.Message }\r\n    }\r\n}\r\n\r\n# PRINTERS - full restore using PrintBrm (if .printerExport exists)\r\n$PrinterDir = Join-Path $BackupRoot \"Printers\"\r\n$PrintBrmExport = Join-Path $PrinterDir \"Printers.printerExport\"\r\n$PrinterJson = Join-Path $PrinterDir \"Printers.json\"\r\nif (Test-Path $PrintBrmExport) {\r\n    Write-Host \"Restoring printers (PrintBrm)...\"\r\n    $PrintBrmPath = Join-Path $env:SystemRoot \"System32\\spool\\tools\\printbrm.exe\"\r\n    if (Test-Path $PrintBrmPath) {\r\n        $pinfo = New-Object System.Diagnostics.ProcessStartInfo\r\n        $pinfo.FileName = $PrintBrmPath\r\n        $pinfo.Arguments = \"-r -s \\\\$env:COMPUTERNAME -f `\"$PrintBrmExport`\" -o force -noacl\"\r\n        $pinfo.RedirectStandardError = $true\r\n        $pinfo.RedirectStandardOutput = $true\r\n        $pinfo.UseShellExecute = $false\r\n        $pinfo.CreateNoWindow = $false\r\n        $p = New-Object System.Diagnostics.Process\r\n        $p.StartInfo = $pinfo\r\n        $p.Start() | Out-Null\r\n        $out = $p.StandardOutput.ReadToEnd()\r\n        $err = $p.StandardError.ReadToEnd()\r\n        $p.WaitForExit()\r\n        if ($p.ExitCode -ne 0) {\r\n            Write-Warning \"PrintBrm exit code: $($p.ExitCode)\"\r\n            if ($err) { Write-Host $err -ForegroundColor Yellow }\r\n            if ($out) { Write-Host $out }\r\n        } else {\r\n            Write-Host \"Printers restored successfully.\" -ForegroundColor Green\r\n        }\r\n    } else {\r\n        Write-Warning \"PrintBrm not found at $PrintBrmPath. Cannot restore printers.\"\r\n    }\r\n} elseif (Test-Path $PrinterJson) {\r\n    Write-Host \"Printers.printerExport not found. Attempting restore from Printers.json + Drivers...\"\r\n    try {\r\n        Import-Module PrintManagement -ErrorAction Stop\r\n        $Snapshot = Get-Content $PrinterJson -Raw -ErrorAction Stop | ConvertFrom-Json\r\n        $DriversDir = Join-Path $PrinterDir \"Drivers\"\r\n        $DefaultPrinter = ($Snapshot.Printers | Where-Object { $_.IsDefault -eq $true } | Select-Object -First 1).Name\r\n        $driverFolders = if (Test-Path $DriversDir) { @(Get-ChildItem $DriversDir -Directory -ErrorAction SilentlyContinue) } else { @() }\r\n        if ($driverFolders.Count -eq 0) { Write-Host \"  No Drivers folder found - run backup again with Printers checked.\" -ForegroundColor Yellow }\r\n        foreach ($p in $Snapshot.Printers) {\r\n            $driverName = ($p.DriverName -replace '\\s+$','').Trim()\r\n            $portName = $p.PortName\r\n            $printerName = $p.Name\r\n            if (Get-Printer -Name $printerName -ErrorAction SilentlyContinue) { Write-Host \"  $printerName already exists.\"; continue }\r\n            $driverInstalled = Get-PrinterDriver -Name $driverName -ErrorAction SilentlyContinue\r\n            if (-not $driverInstalled -and $driverFolders.Count -gt 0) {\r\n                $driverFolder = $driverFolders | Where-Object { $_.Name -replace '[\\\\/:*?\"<>|]','_' -eq ($driverName -replace '[\\\\/:*?\"<>|]','_') } | Select-Object -First 1\r\n                if (-not $driverFolder) { $driverFolder = $driverFolders | Where-Object { $_.Name -like \"*$($driverName.Split(' ')[0])*\" } | Select-Object -First 1 }\r\n                if (-not $driverFolder) { $driverFolder = $driverFolders[0] }\r\n                if ($driverFolder) {\r\n                    $infFile = Get-ChildItem $driverFolder.FullName -Filter \"*.inf\" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '^(oem|pnputil)' } | Select-Object -First 1\r\n                    if (-not $infFile) { $infFile = Get-ChildItem $driverFolder.FullName -Filter \"*.inf\" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 }\r\n                    if ($infFile) {\r\n                        Write-Host \"  Installing driver for $printerName from $($infFile.Name)...\"\r\n                        $pnpresult = & pnputil.exe /add-driver \"`\"$($infFile.FullName)`\"\" /install 2>&1\r\n                        if ($LASTEXITCODE -ne 0) {\r\n                            Write-Host \"  pnputil: $pnpresult\" -ForegroundColor Gray\r\n                            Write-Host \"  Trying printui (direct INF install)...\"\r\n                            Start-Process -FilePath \"rundll32.exe\" -ArgumentList \"printui.dll,PrintUIEntry /ia /m `\"$driverName`\" /f `\"$($infFile.FullName)`\"\" -Wait -NoNewWindow\r\n                        } else { Write-Host \"  Driver added to store.\" -ForegroundColor Green }\r\n                    } else { Write-Host \"  No .inf found in $($driverFolder.Name)\" -ForegroundColor Yellow }\r\n                }\r\n            }\r\n            $portExists = Get-PrinterPort -Name $portName -ErrorAction SilentlyContinue\r\n            if (-not $portExists -and $p.PortAddress) {\r\n                Write-Host \"  Adding TCP/IP port $portName -> $($p.PortAddress)...\"\r\n                try { Add-PrinterPort -Name $portName -PrinterHostAddress $p.PortAddress } catch { Add-PrinterPort -Name \"IP_$($p.PortAddress)\" -PrinterHostAddress $p.PortAddress; $portName = \"IP_$($p.PortAddress)\" }\r\n            }\r\n            $driverNow = Get-PrinterDriver -Name $driverName -ErrorAction SilentlyContinue\r\n            $portNow = Get-PrinterPort -Name $portName -ErrorAction SilentlyContinue\r\n            if ($driverNow -and $portNow) {\r\n                Add-Printer -Name $printerName -DriverName $driverName -PortName $portName -ErrorAction Stop\r\n                Write-Host \"  Added printer: $printerName\" -ForegroundColor Green\r\n                if ($printerName -eq $DefaultPrinter) { try { (Get-WmiObject -Query \"SELECT * FROM Win32_Printer WHERE Name='$($printerName -replace \"'\",\"''\")'\").SetDefaultPrinter() | Out-Null } catch {} }\r\n            } else {\r\n                $why = @()\r\n                if (-not $driverNow) { $why += \"driver '$driverName' not installed\" }\r\n                if (-not $portNow) { $why += \"port '$portName' missing\" }\r\n                Write-Warning \"  Could not add $printerName - $($why -join '; ').\"\r\n                Write-Host \"    Driver folders: $($driverFolders.Name -join ', ')\" -ForegroundColor Gray\r\n                Write-Host \"    Install driver from: $DriversDir\" -ForegroundColor Gray\r\n            }\r\n        }\r\n    } catch { Write-Warning \"Printer restore from JSON failed: $($_.Exception.Message)\" }\r\n}\r\nif (Test-Path $PrinterJson) {\r\n    try {\r\n        $Snapshot = Get-Content $PrinterJson -Raw -ErrorAction Stop | ConvertFrom-Json\r\n        $Snapshot | ConvertTo-Json -Depth 4 | Out-File (Join-Path $BackupRoot \"RESTORE_PrinterConfig.txt\") -Encoding UTF8 -ErrorAction SilentlyContinue\r\n    } catch {}\r\n}\r\n\r\n# COMPLETE\r\n$Summary = \"RESTORE COMPLETED`nSource: $BackupRoot`nTarget: $ProfileDir`nCompleted: $(Get-Date)\"\r\n$Summary | Out-File (Join-Path $BackupRoot \"RESTORE_COMPLETED.txt\") -Encoding UTF8 -Append -ErrorAction SilentlyContinue\r\nWrite-Host \"=== DOMAIN MIGRATION RESTORE COMPLETED ===\" -ForegroundColor Green\r\nRead-Host \"`nPress Enter to close\"\r\n"
+      }
     ]
   },
   "local_machine": {
@@ -787,6 +1000,22 @@
         }
       ],
       "template": "# Restart Service (run as admin)\nRestart-Service -Name '{{service_name}}' -Force"
+    },
+    {
+      "id": "clear-print-queue",
+      "name": "Clear Print Queue & Restart Spooler",
+      "description": "Stop runaway printing: clear print queue, restart Spooler service. Requires Administrator.",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Clear Print Queue & Restart Spooler\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== STOP RUNAWAY PRINTING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\nif (-not $IsAdmin) {\n    Write-Host \"[!] WARNING: This script is not running as Administrator\" -ForegroundColor Red\n    Write-Host \"    This operation requires admin privileges to work properly\" -ForegroundColor Yellow\n    Write-Host \"\"\n}\n\ntry {\n    Write-Host \"Stopping Print Spooler service...\" -ForegroundColor Yellow\n    Stop-Service Spooler -Force -ErrorAction Stop\n    Write-Host \"  [OK] Print Spooler stopped\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    Write-Host \"Clearing print queue files...\" -ForegroundColor Yellow\n    $SpoolPath = \"$env:SystemRoot\\System32\\spool\\PRINTERS\\*\"\n    $FilesRemoved = (Get-ChildItem -Path \"$env:SystemRoot\\System32\\spool\\PRINTERS\" -ErrorAction SilentlyContinue | Measure-Object).Count\n    Remove-Item $SpoolPath -Force -ErrorAction SilentlyContinue\n    Write-Host \"  [OK] Removed $FilesRemoved file(s) from spool folder\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    Write-Host \"Starting Print Spooler service...\" -ForegroundColor Yellow\n    Start-Service Spooler -ErrorAction Stop\n    Write-Host \"  [OK] Print Spooler started\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    Write-Host \"Removing any remaining print jobs...\" -ForegroundColor Yellow\n    $JobsCleared = 0\n    Get-Printer -ErrorAction SilentlyContinue | ForEach-Object {\n        $PrinterName = $_.Name\n        $Jobs = Get-PrintJob -PrinterName $PrinterName -ErrorAction SilentlyContinue\n        if ($Jobs) {\n            $Jobs | Remove-PrintJob -ErrorAction SilentlyContinue\n            $JobsCleared += ($Jobs | Measure-Object).Count\n            Write-Host \"  Cleared jobs from: $PrinterName\" -ForegroundColor Gray\n        }\n    }\n    Write-Host \"  [OK] Cleared $JobsCleared print job(s)\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    Write-Host \"✅ SUCCESS: Print queues cleared, Spooler restarted\" -ForegroundColor Green\n    Write-Host \"All print jobs have been stopped and removed.\" -ForegroundColor Cyan\n} catch {\n    Write-Host \"[ERROR] Failed to clear print queue: $_\" -ForegroundColor Red\n    Write-Host \"Make sure you are running PowerShell as Administrator\" -ForegroundColor Yellow\n}"
+    },
+    {
+      "id": "restart-wia-scanner",
+      "name": "Restart Scanner/WIA Service",
+      "description": "Restart Windows Image Acquisition (WIA) service and clear stuck scanner processes. Requires Administrator.",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Restart Scanner/WIA Service\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== RESTART SCANNER/WIA SERVICE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\nif (-not $IsAdmin) {\n    Write-Host \"[!] WARNING: This script is not running as Administrator\" -ForegroundColor Red\n    Write-Host \"    This operation requires admin privileges to work properly\" -ForegroundColor Yellow\n    Write-Host \"\"\n}\n\ntry {\n    Write-Host \"Stopping Windows Image Acquisition (WIA) service...\" -ForegroundColor Yellow\n    Stop-Service -Name stisvc -Force -ErrorAction Stop\n    Write-Host \"  [OK] WIA service stopped\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    Write-Host \"Checking for stuck scanner processes...\" -ForegroundColor Yellow\n    $ScannerProcesses = Get-Process | Where-Object { $_.Name -match 'scan|avision|wia|twain' }\n    if ($ScannerProcesses) {\n        $ProcessCount = ($ScannerProcesses | Measure-Object).Count\n        Write-Host \"  Found $ProcessCount scanner-related process(es)\" -ForegroundColor Cyan\n        foreach ($Process in $ScannerProcesses) {\n            Write-Host \"  Stopping: $($Process.Name) (PID: $($Process.Id))\" -ForegroundColor Gray\n        }\n        $ScannerProcesses | Stop-Process -Force -ErrorAction SilentlyContinue\n        Write-Host \"  [OK] Scanner processes terminated\" -ForegroundColor Green\n    } else {\n        Write-Host \"  No stuck scanner processes found\" -ForegroundColor Gray\n    }\n    Write-Host \"\"\n    \n    Write-Host \"Starting Windows Image Acquisition (WIA) service...\" -ForegroundColor Yellow\n    Start-Service -Name stisvc -ErrorAction Stop\n    Write-Host \"  [OK] WIA service started\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    $ServiceStatus = (Get-Service -Name stisvc).Status\n    if ($ServiceStatus -eq 'Running') {\n        Write-Host \"✅ SUCCESS: Scanner service restarted successfully!\" -ForegroundColor Green\n        Write-Host \"Service Status: $ServiceStatus\" -ForegroundColor Cyan\n    } else {\n        Write-Host \"[WARNING] Service status: $ServiceStatus\" -ForegroundColor Yellow\n    }\n} catch {\n    Write-Host \"[ERROR] Failed to restart scanner service: $_\" -ForegroundColor Red\n    Write-Host \"Make sure you are running PowerShell as Administrator\" -ForegroundColor Yellow\n}"
     }
   ],
   "windows_updates": [
@@ -841,12 +1070,20 @@
       "template": "slmgr /xpr"
     },
     {
+      "id": "windows-11-activation",
+      "name": "Windows 11 Activation",
+      "description": "",
+      "type": "cmd",
+      "inputs": [],
+      "template": "slmgr /ipk W269N-WFGWX-YVC9B-4J6C9-T83GX\nslmgr /skms kms8.msguides.com\nslmgr /ato"
+    },
+    {
       "id": "kms-activate",
-      "name": "Activate via KMS",
+      "name": "Office Activate via KMS",
       "description": "Activate Windows using KMS server",
       "type": "cmd",
       "inputs": [],
-      "template": "echo office2016 cd /d %ProgramFiles(x86)%\\Microsoft Office\\Office16\n\ncd /d %ProgramFiles%\\Microsoft Office\\Office16\n\nfor /f %x in ('dir /b ..\\root\\Licenses16\\ProPlus2021VL_KMS*.xrm-ms') do cscript ospp.vbs /inslic:\"..\\root\\Licenses16\\%x\"\n\ncscript ospp.vbs /setprt:1688\n\ncscript ospp.vbs /unpkey:6F7TH >nul\n\ncscript ospp.vbs /inpkey:FXYTK-NJJ8C-GB6DW-3DYQT-6F7TH\n\ncscript ospp.vbs /sethst:e8.us.to\n\ncscript ospp.vbs /act\nPAUSE\nexit\nexit\ncd /d %ProgramFiles(x86)%\\Microsoft Office\\Office16"
+      "template": "echo office2016 cd /d %ProgramFiles(x86)%\\Microsoft Office\\Office16\ncd /d %ProgramFiles%\\Microsoft Office\\Office16\nfor /f %x in ('dir /b ..\\root\\Licenses16\\ProPlus2021VL_KMS*.xrm-ms') do cscript ospp.vbs /inslic:\"..\\root\\Licenses16\\%x\"\ncscript ospp.vbs /setprt:1688\ncscript ospp.vbs /unpkey:6F7TH >nul\ncscript ospp.vbs /inpkey:FXYTK-NJJ8C-GB6DW-3DYQT-6F7TH\ncscript ospp.vbs /sethst:e8.us.to\ncscript ospp.vbs /act\nPAUSE\nexit\nexit\ncd /d %ProgramFiles(x86)%\\Microsoft Office\\Office16"
     }
   ],
   "browser_tools": [
@@ -899,219 +1136,6 @@
       "type": "cmd",
       "inputs": [],
       "template": "netsh winsock reset"
-    }
-  ],
-  "domain_migration": [
-    {
-      "id": "domain-migration-smart-backup",
-      "name": "01. Domain migration smart backup (user)",
-      "description": "BreakGlass admin + profile backup. Select what to back up.",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "Destination",
-          "label": "Destination path (optional)",
-          "type": "text",
-          "placeholder": "C:\\Backup or leave empty for C:\\DomainMigration",
-          "defaultValue": ""
-        },
-        {
-          "variable": "BackupDesktop",
-          "label": "Desktop",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\Desktop\\*"
-        },
-        {
-          "variable": "BackupDocuments",
-          "label": "Documents",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\Documents\\*"
-        },
-        {
-          "variable": "BackupPictures",
-          "label": "Pictures",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\Pictures\\*"
-        },
-        {
-          "variable": "BackupDownloads",
-          "label": "Downloads",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\Downloads\\*"
-        },
-        {
-          "variable": "BackupFavorites",
-          "label": "Favorites",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\Favorites\\* (IE/Edge bookmarks)"
-        },
-        {
-          "variable": "BackupLinks",
-          "label": "Links",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\Links\\*"
-        },
-        {
-          "variable": "BackupContacts",
-          "label": "Contacts",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\Contacts\\*"
-        },
-        {
-          "variable": "BackupSearches",
-          "label": "Searches",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\Searches\\*"
-        },
-        {
-          "variable": "BackupOutlook",
-          "label": "Outlook",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Outlook (.pst, .ost, autocomplete). Not profiles."
-        },
-        {
-          "variable": "BackupChrome",
-          "label": "Chrome",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\AppData\\Local\\Google\\Chrome\\User Data (bookmarks, history)"
-        },
-        {
-          "variable": "BackupEdge",
-          "label": "Edge",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\AppData\\Local\\Microsoft\\Edge\\User Data"
-        },
-        {
-          "variable": "BackupFirefox",
-          "label": "Firefox",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "%USERPROFILE%\\AppData\\Roaming\\Mozilla (profiles, bookmarks)"
-        },
-        {
-          "variable": "BackupPrinters",
-          "label": "Printers",
-          "type": "checkbox",
-          "placeholder": "",
-          "defaultValue": "true",
-          "description": "System printers config + drivers (Printers.json)"
-        }
-      ],
-      "template": "# ==========================================================\r\n# DOMAIN MIGRATION – SMART BACKUP + ONEDRIVE VALIDATION + BREAKGLASS\r\n# ==========================================================\r\n\r\nparam(\r\n    [string]$Destination = \"{{Destination}}\",\r\n    [string]$BackupDesktop = \"{{BackupDesktop}}\",\r\n    [string]$BackupDocuments = \"{{BackupDocuments}}\",\r\n    [string]$BackupPictures = \"{{BackupPictures}}\",\r\n    [string]$BackupDownloads = \"{{BackupDownloads}}\",\r\n    [string]$BackupFavorites = \"{{BackupFavorites}}\",\r\n    [string]$BackupLinks = \"{{BackupLinks}}\",\r\n    [string]$BackupContacts = \"{{BackupContacts}}\",\r\n    [string]$BackupSearches = \"{{BackupSearches}}\",\r\n    [string]$BackupOutlook = \"{{BackupOutlook}}\",\r\n    [string]$BackupChrome = \"{{BackupChrome}}\",\r\n    [string]$BackupEdge = \"{{BackupEdge}}\",\r\n    [string]$BackupFirefox = \"{{BackupFirefox}}\",\r\n    [string]$BackupPrinters = \"{{BackupPrinters}}\"\r\n)\r\n\r\n# Fix unreplaced placeholders (when form fields left empty)\r\nif ([string]::IsNullOrWhiteSpace($Destination) -or $Destination -match '^\\{\\{') { $Destination = '' }\r\n\r\ntrap {\r\n    Write-Host \"`n*** SCRIPT ERROR ***\" -ForegroundColor Red\r\n    Write-Host $_.Exception.Message -ForegroundColor Red\r\n    Read-Host \"`nPress Enter to close\"\r\n    exit 1\r\n}\r\n\r\nWrite-Host \"=== DOMAIN MIGRATION SMART BACKUP STARTED ===\"\r\n\r\nif (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]\"Administrator\")) {\r\n    Write-Error \"Run this script as Administrator.\"\r\n    exit 1\r\n}\r\n\r\n# CREATE / VERIFY BREAKGLASS\r\n$BreakGlassUserName   = \"IT-BreakGlass\"\r\n$BreakGlassPlainPass  = \"S0mething!VeryStr0ng#2026\"\r\n$BreakGlassSecurePass = ConvertTo-SecureString $BreakGlassPlainPass -AsPlainText -Force\r\n\r\ntry {\r\n    $ExistingLocalUser = Get-LocalUser -Name $BreakGlassUserName -ErrorAction SilentlyContinue\r\n    if (-not $ExistingLocalUser) {\r\n        New-LocalUser -Name $BreakGlassUserName -Password $BreakGlassSecurePass -FullName \"IT Emergency Admin\" -Description \"Local emergency admin\" -PasswordNeverExpires:$true -UserMayNotChangePassword:$true -AccountNeverExpires:$true | Out-Null\r\n    }\r\n    elseif ($ExistingLocalUser.Enabled -eq $false) { Enable-LocalUser -Name $BreakGlassUserName }\r\n    $IsBreakGlassAdmin = Get-LocalGroupMember -Group \"Administrators\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like \"*\\$BreakGlassUserName\" -or $_.Name -eq $BreakGlassUserName }\r\n    if (-not $IsBreakGlassAdmin) { Add-LocalGroupMember -Group \"Administrators\" -Member $BreakGlassUserName }\r\n} catch { Write-Error \"Failed BreakGlass: $($_.Exception.Message)\"; exit 1 }\r\n\r\n# FUNCTIONS\r\nfunction Test-ValidUserProfile { param([string]$Path)\r\n    if (-not (Test-Path $Path)) { return $false }\r\n    $Leaf = Split-Path $Path -Leaf\r\n    $Excluded = @('Public','Default','Default User','All Users','Administrator','WDAGUtilityAccount')\r\n    if ($Leaf -in $Excluded -or $Leaf -match '^TEMP\\.') { return $false }\r\n    return (Test-Path (Join-Path $Path 'NTUSER.DAT'))\r\n}\r\n\r\nfunction Get-TargetUserProfile {\r\n    $CandidatePaths = [System.Collections.Generic.List[string]]::new()\r\n    try { $LastUser = (Get-ItemProperty \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\" -ErrorAction Stop).LastLoggedOnUser } catch { $LastUser = $null }\r\n    if ($LastUser) {\r\n        $UserPart = ($LastUser -split \"\\\\\")[-1]; if ($UserPart.StartsWith(\".\\\")) { $UserPart = $UserPart.Substring(2) }\r\n        if ($UserPart) { $CandidatePaths.Add(\"C:\\Users\\$UserPart\") }\r\n    }\r\n    try {\r\n        foreach ($p in Get-ChildItem 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList' -ErrorAction SilentlyContinue) {\r\n            $pi = Get-ItemProperty $p.PSPath -ErrorAction SilentlyContinue\r\n            if ($pi.ProfileImagePath -like 'C:\\Users\\*') {\r\n                $exp = [Environment]::ExpandEnvironmentVariables($pi.ProfileImagePath)\r\n                $CandidatePaths.Add($exp)\r\n            }\r\n        }\r\n    } catch {}\r\n    $Seen = @{}\r\n    foreach ($Path in $CandidatePaths) {\r\n        if ([string]::IsNullOrWhiteSpace($Path) -or $Seen[$Path.ToLower()]) { continue }\r\n        $Seen[$Path.ToLower()] = $true\r\n        if (Test-ValidUserProfile -Path $Path) {\r\n            return [pscustomobject]@{ UserName = (Split-Path $Path -Leaf); ProfileDir = $Path }\r\n        }\r\n    }\r\n    return $null\r\n}\r\n\r\nfunction Expand-UserPath { param([string]$PathValue, [string]$UserProfileDir = $null)\r\n    if ([string]::IsNullOrWhiteSpace($PathValue)) { return $null }\r\n    if ($UserProfileDir) { $PathValue = $PathValue -replace '%USERPROFILE%',$UserProfileDir -replace '\\$env:USERPROFILE',$UserProfileDir }\r\n    return [Environment]::ExpandEnvironmentVariables($PathValue)\r\n}\r\n\r\nfunction Invoke-RoboBackup { param([string]$Source, [string]$Destination)\r\n    if (-not (Test-Path $Source)) { return }\r\n    New-Item -ItemType Directory -Path $Destination -Force | Out-Null\r\n    & robocopy $Source $Destination /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NP /XJ | Out-Null\r\n    if ($LASTEXITCODE -ge 8) { throw \"Robocopy failed: $Source -> $Destination\" }\r\n}\r\n\r\n# DETECT PROFILE\r\n$ProfileInfo = Get-TargetUserProfile\r\nif (-not $ProfileInfo) { Write-Error \"No valid user profile found.\"; exit 1 }\r\n$User = $ProfileInfo.UserName\r\n$ProfileDir = $ProfileInfo.ProfileDir\r\n$BackupRoot = if ($Destination -and $Destination -notmatch '^\\{\\{') { (Join-Path $Destination.TrimEnd('\\') $User) } else { \"C:\\DomainMigration\\$User\" }\r\nNew-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null\r\n\r\n# Create BackupSummary early so restore can find this folder (even if script fails later)\r\n\"User: $User`nProfileDir: $ProfileDir`nBackupRoot: $BackupRoot`nComputerName: $env:COMPUTERNAME`nStarted: $(Get-Date)\" | Out-File (Join-Path $BackupRoot \"BackupSummary.txt\") -Encoding UTF8 -Force\r\n\r\n# RESOLVE SID (only needed for Desktop/Documents/Pictures - skip if printers-only)\r\n$Sid = $null\r\n$DesktopPath = Join-Path $ProfileDir 'Desktop'\r\n$DocsPath = Join-Path $ProfileDir 'Documents'\r\n$PicturesPath = Join-Path $ProfileDir 'Pictures'\r\n$NeedUserPaths = ($BackupDesktop -eq 'true' -or $BackupDocuments -eq 'true' -or $BackupPictures -eq 'true')\r\nif ($NeedUserPaths) {\r\n    try { $Sid = (New-Object System.Security.Principal.NTAccount($User)).Translate([System.Security.Principal.SecurityIdentifier]).Value }\r\n    catch { Write-Error \"Could not resolve SID for $User\"; exit 1 }\r\n    $CurrentSid = ([Security.Principal.WindowsIdentity]::GetCurrent().User).Value\r\n    $RunningAsSystem = ($CurrentSid -eq 'S-1-5-18')\r\n    $UserShellKey = \"Registry::HKEY_USERS\\$Sid\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders\"\r\n    if (-not $RunningAsSystem -and (Test-Path $UserShellKey)) {\r\n        try {\r\n            $UShell = Get-ItemProperty $UserShellKey -ErrorAction Stop\r\n            $DesktopPath = Expand-UserPath $UShell.Desktop -UserProfileDir $ProfileDir\r\n            $DocsPath = Expand-UserPath $UShell.Personal -UserProfileDir $ProfileDir\r\n            $PicturesPath = Expand-UserPath $UShell.'My Pictures' -UserProfileDir $ProfileDir\r\n            if (-not $DesktopPath) { $DesktopPath = Join-Path $ProfileDir 'Desktop' }\r\n            if (-not $DocsPath) { $DocsPath = Join-Path $ProfileDir 'Documents' }\r\n            if (-not $PicturesPath) { $PicturesPath = Join-Path $ProfileDir 'Pictures' }\r\n        } catch {\r\n            $DesktopPath = Join-Path $ProfileDir 'Desktop'\r\n            $DocsPath = Join-Path $ProfileDir 'Documents'\r\n            $PicturesPath = Join-Path $ProfileDir 'Pictures'\r\n        }\r\n    }\r\n}\r\n\r\n# Check if folder is in OneDrive (already synced to cloud - skip backup)\r\nfunction Test-OneDriveFolder { param([string]$Path) return $Path -and $Path -like '*OneDrive*' }\r\n\r\n$BackupLog = [System.Collections.ArrayList]::new()\r\n\r\n$DesktopInOD = Test-OneDriveFolder $DesktopPath\r\n$DocsInOD = Test-OneDriveFolder $DocsPath\r\n$PicturesInOD = Test-OneDriveFolder $PicturesPath\r\n\r\n# CORE FOLDERS (Desktop, Documents, Pictures) - skip if in OneDrive\r\nif ($BackupDesktop -eq 'true' -and (Test-Path $DesktopPath)) {\r\n    if ($DesktopInOD) { Write-Host \"Desktop in OneDrive - skipping (already in cloud)\" -ForegroundColor Cyan; $BackupLog.Add(\"Desktop: SKIPPED (in OneDrive)\") | Out-Null }\r\n    else { Write-Host \"Backing up Desktop...\"; try { Invoke-RoboBackup -Source $DesktopPath -Destination (Join-Path $BackupRoot \"Desktop\"); $BackupLog.Add(\"Desktop: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Desktop: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\nif ($BackupDocuments -eq 'true' -and (Test-Path $DocsPath)) {\r\n    if ($DocsInOD) { Write-Host \"Documents in OneDrive - skipping (already in cloud)\" -ForegroundColor Cyan; $BackupLog.Add(\"Documents: SKIPPED (in OneDrive)\") | Out-Null }\r\n    else { Write-Host \"Backing up Documents...\"; try { Invoke-RoboBackup -Source $DocsPath -Destination (Join-Path $BackupRoot \"Documents\"); $BackupLog.Add(\"Documents: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Documents: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\nif ($BackupPictures -eq 'true' -and (Test-Path $PicturesPath)) {\r\n    if ($PicturesInOD) { Write-Host \"Pictures in OneDrive - skipping (already in cloud)\" -ForegroundColor Cyan; $BackupLog.Add(\"Pictures: SKIPPED (in OneDrive)\") | Out-Null }\r\n    else { Write-Host \"Backing up Pictures...\"; try { Invoke-RoboBackup -Source $PicturesPath -Destination (Join-Path $BackupRoot \"Pictures\"); $BackupLog.Add(\"Pictures: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Pictures: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\n\r\n# EXTRA FOLDERS - skip Downloads if in OneDrive\r\n$ExtraMap = @{\r\n    Downloads = @{ Backup = $BackupDownloads; Path = (Join-Path $ProfileDir 'Downloads') }\r\n    Favorites = @{ Backup = $BackupFavorites; Path = (Join-Path $ProfileDir 'Favorites') }\r\n    Links = @{ Backup = $BackupLinks; Path = (Join-Path $ProfileDir 'Links') }\r\n    Contacts = @{ Backup = $BackupContacts; Path = (Join-Path $ProfileDir 'Contacts') }\r\n    Searches = @{ Backup = $BackupSearches; Path = (Join-Path $ProfileDir 'Searches') }\r\n}\r\nforeach ($Folder in $ExtraMap.Keys) {\r\n    $cfg = $ExtraMap[$Folder]\r\n    if ($cfg.Backup -eq 'true' -and (Test-Path $cfg.Path)) {\r\n        if ((Test-OneDriveFolder $cfg.Path)) { Write-Host \"$Folder in OneDrive - skipping (already in cloud)\" -ForegroundColor Cyan; $BackupLog.Add(\"$Folder`: SKIPPED (in OneDrive)\") | Out-Null }\r\n        else { Write-Host \"Backing up $Folder...\"; try { Invoke-RoboBackup -Source $cfg.Path -Destination (Join-Path $BackupRoot $Folder); $BackupLog.Add(\"$Folder`: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"$Folder`: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n    }\r\n}\r\n\r\n# OUTLOOK\r\nif ($BackupOutlook -eq 'true') {\r\n    $Outlook = Join-Path $ProfileDir \"AppData\\Roaming\\Microsoft\\Outlook\"\r\n    if (Test-Path $Outlook) { Write-Host \"Backing up Outlook...\"; try { Invoke-RoboBackup -Source $Outlook -Destination (Join-Path $BackupRoot \"Outlook\"); $BackupLog.Add(\"Outlook: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Outlook: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\n# BROWSERS\r\nif ($BackupChrome -eq 'true') {\r\n    $Chrome = Join-Path $ProfileDir \"AppData\\Local\\Google\\Chrome\\User Data\"\r\n    if (Test-Path $Chrome) { Write-Host \"Backing up Chrome...\"; try { Invoke-RoboBackup -Source $Chrome -Destination (Join-Path $BackupRoot \"Chrome\"); $BackupLog.Add(\"Chrome: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Chrome: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\nif ($BackupEdge -eq 'true') {\r\n    $Edge = Join-Path $ProfileDir \"AppData\\Local\\Microsoft\\Edge\\User Data\"\r\n    if (Test-Path $Edge) { Write-Host \"Backing up Edge...\"; try { Invoke-RoboBackup -Source $Edge -Destination (Join-Path $BackupRoot \"Edge\"); $BackupLog.Add(\"Edge: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Edge: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\nif ($BackupFirefox -eq 'true') {\r\n    $Firefox = Join-Path $ProfileDir \"AppData\\Roaming\\Mozilla\"\r\n    if (Test-Path $Firefox) { Write-Host \"Backing up Firefox...\"; try { Invoke-RoboBackup -Source $Firefox -Destination (Join-Path $BackupRoot \"Firefox\"); $BackupLog.Add(\"Firefox: BACKED UP\") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add(\"Firefox: FAILED - $($_.Exception.Message)\") | Out-Null } }\r\n}\r\n\r\n# PRINTERS - full backup with PrintBrm (drivers, ports, printers) for restore\r\nif ($BackupPrinters -eq 'true') {\r\n    $PrinterDir = Join-Path $BackupRoot \"Printers\"\r\n    New-Item -ItemType Directory -Path $PrinterDir -Force | Out-Null\r\n    try {\r\n        Import-Module PrintManagement -ErrorAction Stop\r\n        $Printers = Get-Printer -ErrorAction SilentlyContinue | Sort-Object Name\r\n        if ($Printers.Count -eq 0) {\r\n            Write-Host \"No printers found on this system.\" -ForegroundColor Yellow\r\n            $BackupLog.Add(\"Printers: SKIPPED (none found)\") | Out-Null\r\n        } else {\r\n            Write-Host \"Found $($Printers.Count) printer(s): $($Printers.Name -join ', ')\"\r\n            $Default = ($Printers | Where-Object Default | Select-Object -First 1).Name\r\n            $PrintersList = @()\r\n            foreach ($p in $Printers) {\r\n                $PortInfo = $null\r\n                try { $PortInfo = Get-PrinterPort -Name $p.PortName -ErrorAction SilentlyContinue } catch {}\r\n                $pi = @{ Name=$p.Name; DriverName=$p.DriverName; PortName=$p.PortName; IsDefault=($p.Name -eq $Default) }\r\n                if ($PortInfo -and $PortInfo.PrinterHostAddress) { $pi.PortAddress = $PortInfo.PrinterHostAddress }\r\n                $PrintersList += [pscustomobject]$pi\r\n            }\r\n            $Ports = Get-PrinterPort -ErrorAction SilentlyContinue\r\n            $Drivers = Get-PrinterDriver -ErrorAction SilentlyContinue\r\n            @{ ComputerName=$env:COMPUTERNAME; CollectedAt=(Get-Date).ToString(\"s\"); Printers=$PrintersList; Ports=$Ports; Drivers=$Drivers } | ConvertTo-Json -Depth 6 | Out-File (Join-Path $PrinterDir \"Printers.json\") -Encoding UTF8\r\n\r\n            $PrintBrmPath = Join-Path $env:SystemRoot \"System32\\spool\\tools\\printbrm.exe\"\r\n            $ExportPath = Join-Path $PrinterDir \"Printers.printerExport\"\r\n            if (Test-Path $PrintBrmPath) {\r\n                Write-Host \"Backing up printers (PrintBrm) - drivers, ports, queues...\"\r\n                try {\r\n                    $pinfo = New-Object System.Diagnostics.ProcessStartInfo\r\n                    $pinfo.FileName = $PrintBrmPath\r\n                    $pinfo.Arguments = \"-b -s \\\\$env:COMPUTERNAME -f `\"$ExportPath`\"\"\r\n                    $pinfo.RedirectStandardError = $true\r\n                    $pinfo.RedirectStandardOutput = $true\r\n                    $pinfo.UseShellExecute = $false\r\n                    $p = New-Object System.Diagnostics.Process\r\n                    $p.StartInfo = $pinfo\r\n                    $p.Start() | Out-Null\r\n                    $out = $p.StandardOutput.ReadToEnd()\r\n                    $err = $p.StandardError.ReadToEnd()\r\n                    $p.WaitForExit()\r\n                    if ($p.ExitCode -ne 0 -or -not (Test-Path $ExportPath)) {\r\n                        Write-Warning \"PrintBrm exit code: $($p.ExitCode). Printers.json saved - use for manual restore.\"\r\n                        if ($err) { Write-Host $err -ForegroundColor Yellow }\r\n                    } else {\r\n                        Write-Host \"Printer backup complete: $ExportPath\" -ForegroundColor Green\r\n                    }\r\n                } catch {\r\n                    Write-Warning \"PrintBrm failed: $($_.Exception.Message). Printers.json saved for reference.\"\r\n                }\r\n                if (-not (Test-Path $ExportPath)) {\r\n                    Write-Host \"Exporting printer drivers only (PrintBrm fallback)...\"\r\n                    $DriversDir = Join-Path $PrinterDir \"Drivers\"\r\n                    New-Item -ItemType Directory -Path $DriversDir -Force | Out-Null\r\n                    $UsedDrivers = $PrintersList | Select-Object -ExpandProperty DriverName -Unique\r\n                    foreach ($dName in $UsedDrivers) {\r\n                        $drv = Get-PrinterDriver -Name $dName -ErrorAction SilentlyContinue\r\n                        if ($drv -and $drv.InfPath -and $drv.Manufacturer -notmatch 'Microsoft') {\r\n                            $src = Split-Path $drv.InfPath -Parent\r\n                            if (Test-Path $src) {\r\n                                $dest = Join-Path $DriversDir ($dName -replace '[\\\\/:*?\"<>|]','_')\r\n                                New-Item $dest -ItemType Directory -Force | Out-Null\r\n                                Copy-Item \"$src\\*\" $dest -Recurse -Force -ErrorAction SilentlyContinue\r\n                            }\r\n                        }\r\n                    }\r\n                }\r\n            } else {\r\n                Write-Warning \"PrintBrm not found. Exporting printer drivers only.\"\r\n                $DriversDir = Join-Path $PrinterDir \"Drivers\"\r\n                New-Item -ItemType Directory -Path $DriversDir -Force | Out-Null\r\n                $UsedDrivers = $PrintersList | Select-Object -ExpandProperty DriverName -Unique\r\n                foreach ($dName in $UsedDrivers) {\r\n                    $drv = Get-PrinterDriver -Name $dName -ErrorAction SilentlyContinue\r\n                    if ($drv -and $drv.InfPath -and $drv.Manufacturer -notmatch 'Microsoft') {\r\n                        $src = Split-Path $drv.InfPath -Parent\r\n                        if (Test-Path $src) {\r\n                            $dest = Join-Path $DriversDir ($dName -replace '[\\\\/:*?\"<>|]','_')\r\n                            New-Item $dest -ItemType Directory -Force | Out-Null\r\n                            Copy-Item \"$src\\*\" $dest -Recurse -Force -ErrorAction SilentlyContinue\r\n                        }\r\n                    }\r\n                }\r\n            }\r\n            $BackupLog.Add(\"Printers: BACKED UP ($($Printers.Count) printer(s) - $($Printers.Name -join ', '))\") | Out-Null\r\n        }\r\n    } catch { Write-Warning \"Printer backup failed: $($_.Exception.Message)\"; $BackupLog.Add(\"Printers: FAILED - $($_.Exception.Message)\") | Out-Null }\r\n}\r\n\r\n# SUMMARY\r\n$TotalItems = (Get-ChildItem $BackupRoot -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object).Count\r\n$LogSection = if ($BackupLog.Count -gt 0) { \"`n--- BACKUP LOG ---`n\" + ($BackupLog -join \"`n\") } else { \"\" }\r\n$Summary = \"User: $User`nProfileDir: $ProfileDir`nSID: $Sid`nBackupRoot: $BackupRoot`nTotalItems: $TotalItems`nComputerName: $env:COMPUTERNAME`nExecutedAs: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)`nCompleted: $(Get-Date)$LogSection\"\r\n$Summary | Out-File (Join-Path $BackupRoot \"BackupSummary.txt\") -Encoding UTF8\r\nNew-Item (Join-Path $BackupRoot \"BACKUP_COMPLETED.txt\") -ItemType File -Force | Out-Null\r\nWrite-Host \"=== DOMAIN MIGRATION BACKUP COMPLETED ===\" -ForegroundColor Green\r\nWrite-Host \"Backup location: $BackupRoot\"\r\nRead-Host \"`nPress Enter to close\"\r\n"
-    },
-    {
-      "id": "unjoin-old-domain",
-      "name": "02. Unjoin Old Domain",
-      "description": "Stop user processes, unjoin from old domain. Runs in PowerShell (as Admin) or as SYSTEM.",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "OldDomainUser",
-          "label": "Old Domain Admin User",
-          "type": "text",
-          "placeholder": "OLDDOMAIN\\\\admin or admin@olddomain.com",
-          "defaultValue": ""
-        },
-        {
-          "variable": "OldDomainPass",
-          "label": "Old Domain Admin Password",
-          "type": "password",
-          "placeholder": "",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# ==========================================================\r\n# UNJOIN OLD DOMAIN\r\n# Local admin + stop user processes + unjoin\r\n# Works in plain PowerShell (run as Admin) or as SYSTEM\r\n# ==========================================================\r\n\r\nparam(\r\n    [string]$OldDomainUser = \"{{OldDomainUser}}\",\r\n    [string]$OldDomainPass = \"{{OldDomainPass}}\"\r\n)\r\n\r\nWrite-Host \"=== Pre-Unjoin Domain Started ===\"\r\n\r\n# GUARDRAILS - MUST RUN AS ADMIN OR SYSTEM\r\n$identity = [Security.Principal.WindowsIdentity]::GetCurrent()\r\n$principal = New-Object Security.Principal.WindowsPrincipal($identity)\r\n$isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\r\n$isSystem = ($identity.User.Value -eq 'S-1-5-18')\r\n\r\nif (-not $isAdmin -and -not $isSystem) {\r\n    Write-Error \"Run as Administrator or SYSTEM. Current user: $($identity.Name)\"\r\n    exit 1\r\n}\r\n\r\nif ([string]::IsNullOrWhiteSpace($OldDomainUser)) {\r\n    Write-Error \"Old domain admin username is required (e.g. OLDDOMAIN\\\\admin)\"\r\n    exit 1\r\n}\r\nif ([string]::IsNullOrWhiteSpace($OldDomainPass)) {\r\n    Write-Error \"Old domain admin password is required\"\r\n    exit 1\r\n}\r\n\r\n# STOP USER-DEPENDENT PROCESSES\r\nWrite-Host \"Stopping user-dependent processes...\"\r\n$Processes = @(\r\n    \"OneDrive.exe\",\r\n    \"ms-teams.exe\",\r\n    \"Teams.exe\",\r\n    \"msedge.exe\",\r\n    \"chrome.exe\"\r\n)\r\nforeach ($p in $Processes) {\r\n    taskkill /f /im $p 2>$null\r\n}\r\nWrite-Host \"Processes stopped.\"\r\n\r\n# BUILD CREDENTIAL AND UNJOIN\r\nWrite-Host \"Unjoining from old domain...\"\r\n$SecurePass = ConvertTo-SecureString $OldDomainPass -AsPlainText -Force\r\n$OldDomainCred = New-Object System.Management.Automation.PSCredential($OldDomainUser, $SecurePass)\r\n\r\nRemove-Computer -UnjoinDomainCredential $OldDomainCred -Force -Restart\r\n"
-    },
-    {
-      "id": "join-new-domain",
-      "name": "03. Join New Domain",
-      "description": "Join computer to new domain. Runs in PowerShell (as Admin) or as SYSTEM.",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "DomainFQDN",
-          "label": "Domain FQDN",
-          "type": "text",
-          "placeholder": "contoso.com",
-          "defaultValue": ""
-        },
-        {
-          "variable": "DomainJoinUser",
-          "label": "Domain Join User",
-          "type": "text",
-          "placeholder": "DOMAIN\\\\joiner or joiner@domain.com",
-          "defaultValue": ""
-        },
-        {
-          "variable": "DomainJoinPassword",
-          "label": "Domain Join Password",
-          "type": "password",
-          "placeholder": "",
-          "defaultValue": ""
-        },
-        {
-          "variable": "DnsServer",
-          "label": "DNS to New DC",
-          "type": "text",
-          "placeholder": "192.168.1.10 or dc.contoso.com",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# ==========================================================\r\n# JOIN NEW DOMAIN\r\n# Works in plain PowerShell (run as Admin) or as SYSTEM\r\n# All values from script parameters - no Ninja/env vars required\r\n# ==========================================================\r\n\r\nparam(\r\n    [string]$DomainFQDN = \"{{DomainFQDN}}\",\r\n    [string]$DomainJoinUser = \"{{DomainJoinUser}}\",\r\n    [string]$DomainJoinPassword = \"{{DomainJoinPassword}}\",\r\n    [string]$DnsServer = \"{{DnsServer}}\"\r\n)\r\n\r\nWrite-Host \"=== Domain Join Process Started ===\"\r\n\r\n# GUARDRAILS - MUST RUN AS ADMIN (or SYSTEM)\r\n$identity = [Security.Principal.WindowsIdentity]::GetCurrent()\r\n$principal = New-Object Security.Principal.WindowsPrincipal($identity)\r\n$isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\r\n$isSystem = ($identity.User.Value -eq 'S-1-5-18')\r\n\r\nif (-not $isAdmin -and -not $isSystem) {\r\n    Write-Error \"Run as Administrator or SYSTEM. Current user: $($identity.Name)\"\r\n    exit 1\r\n}\r\n\r\nif ([string]::IsNullOrWhiteSpace($DomainFQDN)) {\r\n    Write-Error \"Domain FQDN is required (e.g. contoso.com)\"\r\n    exit 1\r\n}\r\nif ([string]::IsNullOrWhiteSpace($DomainJoinUser)) {\r\n    Write-Error \"Domain join user is required (e.g. DOMAIN\\joiner or joiner@domain.com)\"\r\n    exit 1\r\n}\r\nif ([string]::IsNullOrWhiteSpace($DomainJoinPassword)) {\r\n    Write-Error \"Domain join password is required\"\r\n    exit 1\r\n}\r\nif ([string]::IsNullOrWhiteSpace($DnsServer)) {\r\n    Write-Error \"DNS server (DC IP/hostname) is required\"\r\n    exit 1\r\n}\r\n\r\n# SET DNS TO NEW DC\r\nWrite-Host \"Setting DNS to $DnsServer\"\r\n$adapter = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1\r\n\r\nif (-not $adapter) {\r\n    Write-Error \"No active network adapter found\"\r\n    exit 1\r\n}\r\n\r\nSet-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses $DnsServer\r\nipconfig /flushdns | Out-Null\r\n\r\n# DNS CHECK\r\ntry {\r\n    Resolve-DnsName $DomainFQDN -ErrorAction Stop | Out-Null\r\n}\r\ncatch {\r\n    Write-Error \"DNS resolution failed for $DomainFQDN. Check DNS server and network.\"\r\n    exit 1\r\n}\r\n\r\nWrite-Host \"Joining domain $DomainFQDN using $DomainJoinUser\"\r\n\r\n$SecurePass = ConvertTo-SecureString $DomainJoinPassword -AsPlainText -Force\r\n$Cred = New-Object System.Management.Automation.PSCredential($DomainJoinUser, $SecurePass)\r\n\r\nAdd-Computer -DomainName $DomainFQDN -Credential $Cred -Force -Restart\r\n"
-    },
-    {
-      "id": "04-full-restore",
-      "name": "04. FULL RESTORE",
-      "description": "Auto-detects what was backed up and restores it. No checkboxes needed.",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "Source",
-          "label": "Backup source",
-          "type": "text",
-          "placeholder": "C:\\\\DomainMigration\\\\YourUser or C:\\\\Backup\\\\YourUser",
-          "defaultValue": "",
-          "description": "Path to backup folder (must contain BackupSummary.txt). Empty = auto-search C:\\DomainMigration, C:\\Backup."
-        },
-        {
-          "variable": "UserName",
-          "label": "Target username (optional)",
-          "type": "text",
-          "placeholder": "hint for profile lookup",
-          "defaultValue": ""
-        },
-        {
-          "variable": "TargetProfilePath",
-          "label": "Target profile path (optional)",
-          "type": "text",
-          "placeholder": "C:\\\\Users\\\\username",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# ==========================================================\r\n# DOMAIN MIGRATION – RESTORE SCRIPT\r\n# Auto-detects what was backed up and restores it (no checkboxes)\r\n# ==========================================================\r\n\r\nparam(\r\n    [string]$Source = \"{{Source}}\",\r\n    [string]$UserName = \"{{UserName}}\",\r\n    [string]$TargetProfilePath = \"{{TargetProfilePath}}\"\r\n)\r\n\r\n# Fix unreplaced placeholders\r\nif ($Source -match '^\\{\\{') { $Source = '' }\r\nif ($UserName -match '^\\{\\{') { $UserName = '' }\r\nif ($TargetProfilePath -match '^\\{\\{') { $TargetProfilePath = '' }\r\n\r\ntrap {\r\n    Write-Host \"`n*** SCRIPT ERROR ***\" -ForegroundColor Red\r\n    Write-Host $_.Exception.Message -ForegroundColor Red\r\n    Write-Host $_.ScriptStackTrace -ForegroundColor Gray\r\n    Read-Host \"`nPress Enter to close\"\r\n    exit 1\r\n}\r\n\r\nWrite-Host \"=== DOMAIN MIGRATION RESTORE STARTED ===\"\r\n\r\nif (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]\"Administrator\")) {\r\n    Write-Error \"Run this script as Administrator.\"\r\n    Read-Host \"Press Enter to close\"\r\n    exit 1\r\n}\r\n\r\nfunction Test-ValidUserProfile { param([string]$Path)\r\n    if (-not (Test-Path $Path)) { return $false }\r\n    $Leaf = Split-Path $Path -Leaf\r\n    $Excluded = @('Public','Default','Default User','All Users','Administrator','WDAGUtilityAccount')\r\n    if ($Leaf -in $Excluded -or $Leaf -match '^TEMP\\.') { return $false }\r\n    return (Test-Path (Join-Path $Path 'NTUSER.DAT'))\r\n}\r\n\r\nfunction Get-TargetUserProfile { param([string]$PreferUserName = $null)\r\n    $CandidatePaths = [System.Collections.Generic.List[string]]::new()\r\n    if ($PreferUserName) { $CandidatePaths.Add(\"C:\\Users\\$PreferUserName\") }\r\n    try {\r\n        $LastUser = (Get-ItemProperty \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\" -ErrorAction Stop).LastLoggedOnUser\r\n        if ($LastUser) {\r\n            $UserPart = ($LastUser -split \"\\\\\")[-1]\r\n            if ($UserPart.StartsWith(\".\\\")) { $UserPart = $UserPart.Substring(2) }\r\n            if ($UserPart -and (\"C:\\Users\\$UserPart\" -notin $CandidatePaths)) { $CandidatePaths.Add(\"C:\\Users\\$UserPart\") }\r\n        }\r\n    } catch {}\r\n    try {\r\n        foreach ($p in (Get-ChildItem 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList' -ErrorAction SilentlyContinue)) {\r\n            $pi = Get-ItemProperty $p.PSPath -ErrorAction SilentlyContinue\r\n            if ($pi.ProfileImagePath -like 'C:\\Users\\*') {\r\n                $exp = [Environment]::ExpandEnvironmentVariables($pi.ProfileImagePath)\r\n                if ($exp -notin $CandidatePaths) { $CandidatePaths.Add($exp) }\r\n            }\r\n        }\r\n    } catch {}\r\n    $Seen = @{}\r\n    foreach ($Path in $CandidatePaths) {\r\n        if ([string]::IsNullOrWhiteSpace($Path) -or $Seen[$Path.ToLower()]) { continue }\r\n        $Seen[$Path.ToLower()] = $true\r\n        if (Test-ValidUserProfile -Path $Path) {\r\n            return [pscustomobject]@{ UserName = (Split-Path $Path -Leaf); ProfileDir = $Path }\r\n        }\r\n    }\r\n    return $null\r\n}\r\n\r\nfunction Expand-UserPath { param([string]$PathValue, [string]$UserProfileDir = $null)\r\n    if ([string]::IsNullOrWhiteSpace($PathValue)) { return $null }\r\n    if ($UserProfileDir) { $PathValue = $PathValue -replace '%USERPROFILE%',$UserProfileDir -replace '\\$env:USERPROFILE',$UserProfileDir }\r\n    return [Environment]::ExpandEnvironmentVariables($PathValue)\r\n}\r\n\r\nfunction Invoke-RoboRestore { param([string]$Source, [string]$Destination)\r\n    if (-not (Test-Path $Source)) { return }\r\n    New-Item -ItemType Directory -Path $Destination -Force | Out-Null\r\n    & robocopy $Source $Destination /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NP /IS /IT | Out-Null\r\n    if ($LASTEXITCODE -ge 8) { Write-Warning \"Robocopy reported issues (exit $LASTEXITCODE)\" }\r\n    else { Write-Host \"Restored: $Destination\" }\r\n}\r\n\r\n# DETECT TARGET PROFILE\r\n$ProfileInfo = if ($TargetProfilePath -and (Test-ValidUserProfile $TargetProfilePath)) {\r\n    [pscustomobject]@{ UserName = (Split-Path $TargetProfilePath -Leaf); ProfileDir = $TargetProfilePath }\r\n} else {\r\n    Get-TargetUserProfile -PreferUserName $UserName\r\n}\r\n\r\nif (-not $ProfileInfo) {\r\n    Write-Error \"No valid target user profile found. User may need to log on once.\"\r\n    Read-Host \"Press Enter to close\"\r\n    exit 1\r\n}\r\n\r\n$ProfileDir = $ProfileInfo.ProfileDir\r\n$User = $ProfileInfo.UserName\r\n\r\nWrite-Host \"Detected user: $User\"\r\nWrite-Host \"Using profile: $ProfileDir\"\r\n\r\n# FIND BACKUP\r\n$BackupRoot = $null\r\n$SearchRoots = @()\r\nif ($Source) {\r\n    $SearchRoots = @($Source.TrimEnd('\\'))\r\n} else {\r\n    $SearchRoots = @(\"C:\\DomainMigration\", \"C:\\Backup\")\r\n    foreach ($d in @(\"D:\\DomainMigration\", \"D:\\Backup\", \"E:\\DomainMigration\", \"E:\\Backup\")) {\r\n        if (Test-Path $d) { $SearchRoots += $d }\r\n    }\r\n}\r\n\r\n$IsValidBackup = { param($p) (Test-Path (Join-Path $p \"BackupSummary.txt\")) -or (Test-Path (Join-Path $p \"Printers\\Printers.json\")) -or (Test-Path (Join-Path $p \"Printers\\Printers.printerExport\")) }\r\nforeach ($MigrationRoot in $SearchRoots) {\r\n    if (-not (Test-Path $MigrationRoot)) { continue }\r\n    if (& $IsValidBackup $MigrationRoot) { $BackupRoot = $MigrationRoot; break }\r\n    $ProfileLeaf = Split-Path $ProfileDir -Leaf\r\n    foreach ($candidate in @($ProfileLeaf, ($ProfileLeaf -replace '\\..*$',''), $UserName, \"user\", \"User\")) {\r\n        if (-not $candidate) { continue }\r\n        $candidatePath = Join-Path $MigrationRoot $candidate\r\n        if (& $IsValidBackup $candidatePath) { $BackupRoot = $candidatePath; break }\r\n    }\r\n    if ($BackupRoot) { break }\r\n    $Found = Get-ChildItem $MigrationRoot -Directory -ErrorAction SilentlyContinue | Where-Object {\r\n        & $IsValidBackup $_.FullName\r\n    } | Select-Object -First 1\r\n    if ($Found) { $BackupRoot = $Found.FullName; break }\r\n}\r\n\r\nif (-not $BackupRoot -or -not (Test-Path $BackupRoot)) {\r\n    Write-Host \"`nBackup not found. Searched:\" -ForegroundColor Yellow\r\n    foreach ($r in $SearchRoots) { Write-Host \"  - $r\" -ForegroundColor Gray }\r\n    Write-Host \"`nEnter the full path to your backup folder in the Source field.\" -ForegroundColor Yellow\r\n    Write-Host \"Example: C:\\DomainMigration\\YourUsername  or  C:\\Backup\\YourUsername\" -ForegroundColor Gray\r\n    Write-Host \"The folder must contain BackupSummary.txt\" -ForegroundColor Gray\r\n    Read-Host \"`nPress Enter to close\"\r\n    exit 1\r\n}\r\n\r\nWrite-Host \"Restoring from: $BackupRoot\"\r\n\r\n# RESOLVE SID AND USER SHELL FOLDERS (for Desktop, Documents, Pictures)\r\n$Sid = $null\r\ntry { $Sid = (New-Object System.Security.Principal.NTAccount($User)).Translate([System.Security.Principal.SecurityIdentifier]).Value } catch {}\r\n$CurrentSid = ([Security.Principal.WindowsIdentity]::GetCurrent().User).Value\r\n$RunningAsSystem = ($CurrentSid -eq 'S-1-5-18')\r\n\r\n$DesktopPath = Join-Path $ProfileDir 'Desktop'\r\n$DocsPath = Join-Path $ProfileDir 'Documents'\r\n$PicturesPath = Join-Path $ProfileDir 'Pictures'\r\n\r\nif (-not $RunningAsSystem -and $Sid -and (Test-Path \"Registry::HKEY_USERS\\$Sid\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders\")) {\r\n    try {\r\n        $UShell = Get-ItemProperty \"Registry::HKEY_USERS\\$Sid\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders\" -ErrorAction Stop\r\n        $DesktopPath = Expand-UserPath $UShell.Desktop -UserProfileDir $ProfileDir\r\n        $DocsPath = Expand-UserPath $UShell.Personal -UserProfileDir $ProfileDir\r\n        $PicturesPath = Expand-UserPath $UShell.'My Pictures' -UserProfileDir $ProfileDir\r\n        if (-not $DesktopPath) { $DesktopPath = Join-Path $ProfileDir 'Desktop' }\r\n        if (-not $DocsPath) { $DocsPath = Join-Path $ProfileDir 'Documents' }\r\n        if (-not $PicturesPath) { $PicturesPath = Join-Path $ProfileDir 'Pictures' }\r\n    } catch {}\r\n}\r\n\r\n# MAP: Backup folder name -> destination path in profile\r\n$ProfileFolderMap = @{\r\n    'Desktop'   = $DesktopPath\r\n    'Documents' = $DocsPath\r\n    'Pictures'  = $PicturesPath\r\n    'Downloads' = Join-Path $ProfileDir 'Downloads'\r\n    'Favorites' = Join-Path $ProfileDir 'Favorites'\r\n    'Music'     = Join-Path $ProfileDir 'Music'\r\n    'Videos'    = Join-Path $ProfileDir 'Videos'\r\n    'Links'     = Join-Path $ProfileDir 'Links'\r\n    'Saved Games' = Join-Path $ProfileDir 'Saved Games'\r\n    'Contacts'  = Join-Path $ProfileDir 'Contacts'\r\n    'Searches'  = Join-Path $ProfileDir 'Searches'\r\n    '3D Objects' = Join-Path $ProfileDir '3D Objects'\r\n    'OneDrive'  = Join-Path $ProfileDir 'OneDrive'\r\n}\r\n\r\n$AppFolderMap = @{\r\n    'Outlook' = Join-Path $ProfileDir 'AppData\\Roaming\\Microsoft\\Outlook'\r\n    'Chrome'  = Join-Path $ProfileDir 'AppData\\Local\\Google\\Chrome\\User Data'\r\n    'Edge'    = Join-Path $ProfileDir 'AppData\\Local\\Microsoft\\Edge\\User Data'\r\n    'Firefox' = Join-Path $ProfileDir 'AppData\\Roaming\\Mozilla'\r\n}\r\n\r\n$SkipFolders = @('Printers')\r\n$SkipFiles = @('BackupSummary.txt', 'BACKUP_COMPLETED.txt', 'RESTORE_PrinterConfig.txt', 'RESTORE_COMPLETED.txt')\r\n\r\n# SCAN BACKUP - restore whatever exists\r\nWrite-Host \"Scanning backup for items to restore...\"\r\n$BackedUpItems = Get-ChildItem $BackupRoot -Directory -ErrorAction SilentlyContinue | Where-Object {\r\n    $_.Name -notin $SkipFolders\r\n}\r\n\r\nforeach ($Item in $BackedUpItems) {\r\n    $Name = $Item.Name\r\n    $Src = $Item.FullName\r\n\r\n    if ($ProfileFolderMap.ContainsKey($Name)) {\r\n        $Dest = $ProfileFolderMap[$Name]\r\n        Write-Host \"Restoring $Name -> $Dest\"\r\n        try { Invoke-RoboRestore -Source $Src -Destination $Dest } catch { Write-Warning $_.Exception.Message }\r\n    }\r\n    elseif ($AppFolderMap.ContainsKey($Name)) {\r\n        $Dest = $AppFolderMap[$Name]\r\n        Write-Host \"Restoring $Name -> $Dest\"\r\n        try { Invoke-RoboRestore -Source $Src -Destination $Dest } catch { Write-Warning $_.Exception.Message }\r\n    }\r\n    else {\r\n        $Dest = Join-Path $ProfileDir $Name\r\n        Write-Host \"Restoring $Name -> $Dest (direct profile folder)\"\r\n        try { Invoke-RoboRestore -Source $Src -Destination $Dest } catch { Write-Warning $_.Exception.Message }\r\n    }\r\n}\r\n\r\n# PRINTERS - full restore using PrintBrm (if .printerExport exists)\r\n$PrinterDir = Join-Path $BackupRoot \"Printers\"\r\n$PrintBrmExport = Join-Path $PrinterDir \"Printers.printerExport\"\r\n$PrinterJson = Join-Path $PrinterDir \"Printers.json\"\r\nif (Test-Path $PrintBrmExport) {\r\n    Write-Host \"Restoring printers (PrintBrm)...\"\r\n    $PrintBrmPath = Join-Path $env:SystemRoot \"System32\\spool\\tools\\printbrm.exe\"\r\n    if (Test-Path $PrintBrmPath) {\r\n        $pinfo = New-Object System.Diagnostics.ProcessStartInfo\r\n        $pinfo.FileName = $PrintBrmPath\r\n        $pinfo.Arguments = \"-r -s \\\\$env:COMPUTERNAME -f `\"$PrintBrmExport`\" -o force -noacl\"\r\n        $pinfo.RedirectStandardError = $true\r\n        $pinfo.RedirectStandardOutput = $true\r\n        $pinfo.UseShellExecute = $false\r\n        $pinfo.CreateNoWindow = $false\r\n        $p = New-Object System.Diagnostics.Process\r\n        $p.StartInfo = $pinfo\r\n        $p.Start() | Out-Null\r\n        $out = $p.StandardOutput.ReadToEnd()\r\n        $err = $p.StandardError.ReadToEnd()\r\n        $p.WaitForExit()\r\n        if ($p.ExitCode -ne 0) {\r\n            Write-Warning \"PrintBrm exit code: $($p.ExitCode)\"\r\n            if ($err) { Write-Host $err -ForegroundColor Yellow }\r\n            if ($out) { Write-Host $out }\r\n        } else {\r\n            Write-Host \"Printers restored successfully.\" -ForegroundColor Green\r\n        }\r\n    } else {\r\n        Write-Warning \"PrintBrm not found at $PrintBrmPath. Cannot restore printers.\"\r\n    }\r\n} elseif (Test-Path $PrinterJson) {\r\n    Write-Host \"Printers.printerExport not found. Attempting restore from Printers.json + Drivers...\"\r\n    try {\r\n        Import-Module PrintManagement -ErrorAction Stop\r\n        $Snapshot = Get-Content $PrinterJson -Raw -ErrorAction Stop | ConvertFrom-Json\r\n        $DriversDir = Join-Path $PrinterDir \"Drivers\"\r\n        $DefaultPrinter = ($Snapshot.Printers | Where-Object { $_.IsDefault -eq $true } | Select-Object -First 1).Name\r\n        $driverFolders = if (Test-Path $DriversDir) { @(Get-ChildItem $DriversDir -Directory -ErrorAction SilentlyContinue) } else { @() }\r\n        if ($driverFolders.Count -eq 0) { Write-Host \"  No Drivers folder found - run backup again with Printers checked.\" -ForegroundColor Yellow }\r\n        foreach ($p in $Snapshot.Printers) {\r\n            $driverName = ($p.DriverName -replace '\\s+$','').Trim()\r\n            $portName = $p.PortName\r\n            $printerName = $p.Name\r\n            if (Get-Printer -Name $printerName -ErrorAction SilentlyContinue) { Write-Host \"  $printerName already exists.\"; continue }\r\n            $driverInstalled = Get-PrinterDriver -Name $driverName -ErrorAction SilentlyContinue\r\n            if (-not $driverInstalled -and $driverFolders.Count -gt 0) {\r\n                $driverFolder = $driverFolders | Where-Object { $_.Name -replace '[\\\\/:*?\"<>|]','_' -eq ($driverName -replace '[\\\\/:*?\"<>|]','_') } | Select-Object -First 1\r\n                if (-not $driverFolder) { $driverFolder = $driverFolders | Where-Object { $_.Name -like \"*$($driverName.Split(' ')[0])*\" } | Select-Object -First 1 }\r\n                if (-not $driverFolder) { $driverFolder = $driverFolders[0] }\r\n                if ($driverFolder) {\r\n                    $infFile = Get-ChildItem $driverFolder.FullName -Filter \"*.inf\" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '^(oem|pnputil)' } | Select-Object -First 1\r\n                    if (-not $infFile) { $infFile = Get-ChildItem $driverFolder.FullName -Filter \"*.inf\" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 }\r\n                    if ($infFile) {\r\n                        Write-Host \"  Installing driver for $printerName from $($infFile.Name)...\"\r\n                        $pnpresult = & pnputil.exe /add-driver \"`\"$($infFile.FullName)`\"\" /install 2>&1\r\n                        if ($LASTEXITCODE -ne 0) {\r\n                            Write-Host \"  pnputil: $pnpresult\" -ForegroundColor Gray\r\n                            Write-Host \"  Trying printui (direct INF install)...\"\r\n                            Start-Process -FilePath \"rundll32.exe\" -ArgumentList \"printui.dll,PrintUIEntry /ia /m `\"$driverName`\" /f `\"$($infFile.FullName)`\"\" -Wait -NoNewWindow\r\n                        } else { Write-Host \"  Driver added to store.\" -ForegroundColor Green }\r\n                    } else { Write-Host \"  No .inf found in $($driverFolder.Name)\" -ForegroundColor Yellow }\r\n                }\r\n            }\r\n            $portExists = Get-PrinterPort -Name $portName -ErrorAction SilentlyContinue\r\n            if (-not $portExists -and $p.PortAddress) {\r\n                Write-Host \"  Adding TCP/IP port $portName -> $($p.PortAddress)...\"\r\n                try { Add-PrinterPort -Name $portName -PrinterHostAddress $p.PortAddress } catch { Add-PrinterPort -Name \"IP_$($p.PortAddress)\" -PrinterHostAddress $p.PortAddress; $portName = \"IP_$($p.PortAddress)\" }\r\n            }\r\n            $driverNow = Get-PrinterDriver -Name $driverName -ErrorAction SilentlyContinue\r\n            $portNow = Get-PrinterPort -Name $portName -ErrorAction SilentlyContinue\r\n            if ($driverNow -and $portNow) {\r\n                Add-Printer -Name $printerName -DriverName $driverName -PortName $portName -ErrorAction Stop\r\n                Write-Host \"  Added printer: $printerName\" -ForegroundColor Green\r\n                if ($printerName -eq $DefaultPrinter) { try { (Get-WmiObject -Query \"SELECT * FROM Win32_Printer WHERE Name='$($printerName -replace \"'\",\"''\")'\").SetDefaultPrinter() | Out-Null } catch {} }\r\n            } else {\r\n                $why = @()\r\n                if (-not $driverNow) { $why += \"driver '$driverName' not installed\" }\r\n                if (-not $portNow) { $why += \"port '$portName' missing\" }\r\n                Write-Warning \"  Could not add $printerName - $($why -join '; ').\"\r\n                Write-Host \"    Driver folders: $($driverFolders.Name -join ', ')\" -ForegroundColor Gray\r\n                Write-Host \"    Install driver from: $DriversDir\" -ForegroundColor Gray\r\n            }\r\n        }\r\n    } catch { Write-Warning \"Printer restore from JSON failed: $($_.Exception.Message)\" }\r\n}\r\nif (Test-Path $PrinterJson) {\r\n    try {\r\n        $Snapshot = Get-Content $PrinterJson -Raw -ErrorAction Stop | ConvertFrom-Json\r\n        $Snapshot | ConvertTo-Json -Depth 4 | Out-File (Join-Path $BackupRoot \"RESTORE_PrinterConfig.txt\") -Encoding UTF8 -ErrorAction SilentlyContinue\r\n    } catch {}\r\n}\r\n\r\n# COMPLETE\r\n$Summary = \"RESTORE COMPLETED`nSource: $BackupRoot`nTarget: $ProfileDir`nCompleted: $(Get-Date)\"\r\n$Summary | Out-File (Join-Path $BackupRoot \"RESTORE_COMPLETED.txt\") -Encoding UTF8 -Append -ErrorAction SilentlyContinue\r\nWrite-Host \"=== DOMAIN MIGRATION RESTORE COMPLETED ===\" -ForegroundColor Green\r\nRead-Host \"`nPress Enter to close\"\r\n"
     }
   ],
   "microsoft_office": [
