@@ -9,20 +9,25 @@ param(
     [string]$BackupPictures = "{{BackupPictures}}",
     [string]$BackupDownloads = "{{BackupDownloads}}",
     [string]$BackupFavorites = "{{BackupFavorites}}",
-    [string]$BackupMusic = "{{BackupMusic}}",
-    [string]$BackupVideos = "{{BackupVideos}}",
     [string]$BackupLinks = "{{BackupLinks}}",
-    [string]$BackupSavedGames = "{{BackupSavedGames}}",
     [string]$BackupContacts = "{{BackupContacts}}",
     [string]$BackupSearches = "{{BackupSearches}}",
-    [string]$Backup3DObjects = "{{Backup3DObjects}}",
-    [string]$BackupOneDrive = "{{BackupOneDrive}}",
     [string]$BackupOutlook = "{{BackupOutlook}}",
     [string]$BackupChrome = "{{BackupChrome}}",
     [string]$BackupEdge = "{{BackupEdge}}",
     [string]$BackupFirefox = "{{BackupFirefox}}",
     [string]$BackupPrinters = "{{BackupPrinters}}"
 )
+
+# Fix unreplaced placeholders (when form fields left empty)
+if ([string]::IsNullOrWhiteSpace($Destination) -or $Destination -match '^\{\{') { $Destination = '' }
+
+trap {
+    Write-Host "`n*** SCRIPT ERROR ***" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    Read-Host "`nPress Enter to close"
+    exit 1
+}
 
 Write-Host "=== DOMAIN MIGRATION SMART BACKUP STARTED ==="
 
@@ -100,108 +105,195 @@ $ProfileInfo = Get-TargetUserProfile
 if (-not $ProfileInfo) { Write-Error "No valid user profile found."; exit 1 }
 $User = $ProfileInfo.UserName
 $ProfileDir = $ProfileInfo.ProfileDir
-$BackupRoot = if ($Destination) { Join-Path $Destination.TrimEnd('\') $User } else { "C:\DomainMigration\$User" }
+$BackupRoot = if ($Destination -and $Destination -notmatch '^\{\{') { (Join-Path $Destination.TrimEnd('\') $User) } else { "C:\DomainMigration\$User" }
 New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null
 
-# RESOLVE SID
-try { $Sid = (New-Object System.Security.Principal.NTAccount($User)).Translate([System.Security.Principal.SecurityIdentifier]).Value }
-catch { Write-Error "Could not resolve SID for $User"; exit 1 }
+# Create BackupSummary early so restore can find this folder (even if script fails later)
+"User: $User`nProfileDir: $ProfileDir`nBackupRoot: $BackupRoot`nComputerName: $env:COMPUTERNAME`nStarted: $(Get-Date)" | Out-File (Join-Path $BackupRoot "BackupSummary.txt") -Encoding UTF8 -Force
 
-$CurrentSid = ([Security.Principal.WindowsIdentity]::GetCurrent().User).Value
-$RunningAsSystem = ($CurrentSid -eq 'S-1-5-18')
-$UserShellKey = "Registry::HKEY_USERS\$Sid\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
-
-if ($RunningAsSystem -or -not (Test-Path $UserShellKey)) {
-    $DesktopPath = Join-Path $ProfileDir 'Desktop'
-    $DocsPath = Join-Path $ProfileDir 'Documents'
-    $PicturesPath = Join-Path $ProfileDir 'Pictures'
-} else {
-    try {
-        $UShell = Get-ItemProperty $UserShellKey -ErrorAction Stop
-        $DesktopPath = Expand-UserPath $UShell.Desktop -UserProfileDir $ProfileDir
-        $DocsPath = Expand-UserPath $UShell.Personal -UserProfileDir $ProfileDir
-        $PicturesPath = Expand-UserPath $UShell.'My Pictures' -UserProfileDir $ProfileDir
-        if (-not $DesktopPath) { $DesktopPath = Join-Path $ProfileDir 'Desktop' }
-        if (-not $DocsPath) { $DocsPath = Join-Path $ProfileDir 'Documents' }
-        if (-not $PicturesPath) { $PicturesPath = Join-Path $ProfileDir 'Pictures' }
-    } catch {
-        $DesktopPath = Join-Path $ProfileDir 'Desktop'
-        $DocsPath = Join-Path $ProfileDir 'Documents'
-        $PicturesPath = Join-Path $ProfileDir 'Pictures'
+# RESOLVE SID (only needed for Desktop/Documents/Pictures - skip if printers-only)
+$Sid = $null
+$DesktopPath = Join-Path $ProfileDir 'Desktop'
+$DocsPath = Join-Path $ProfileDir 'Documents'
+$PicturesPath = Join-Path $ProfileDir 'Pictures'
+$NeedUserPaths = ($BackupDesktop -eq 'true' -or $BackupDocuments -eq 'true' -or $BackupPictures -eq 'true')
+if ($NeedUserPaths) {
+    try { $Sid = (New-Object System.Security.Principal.NTAccount($User)).Translate([System.Security.Principal.SecurityIdentifier]).Value }
+    catch { Write-Error "Could not resolve SID for $User"; exit 1 }
+    $CurrentSid = ([Security.Principal.WindowsIdentity]::GetCurrent().User).Value
+    $RunningAsSystem = ($CurrentSid -eq 'S-1-5-18')
+    $UserShellKey = "Registry::HKEY_USERS\$Sid\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
+    if (-not $RunningAsSystem -and (Test-Path $UserShellKey)) {
+        try {
+            $UShell = Get-ItemProperty $UserShellKey -ErrorAction Stop
+            $DesktopPath = Expand-UserPath $UShell.Desktop -UserProfileDir $ProfileDir
+            $DocsPath = Expand-UserPath $UShell.Personal -UserProfileDir $ProfileDir
+            $PicturesPath = Expand-UserPath $UShell.'My Pictures' -UserProfileDir $ProfileDir
+            if (-not $DesktopPath) { $DesktopPath = Join-Path $ProfileDir 'Desktop' }
+            if (-not $DocsPath) { $DocsPath = Join-Path $ProfileDir 'Documents' }
+            if (-not $PicturesPath) { $PicturesPath = Join-Path $ProfileDir 'Pictures' }
+        } catch {
+            $DesktopPath = Join-Path $ProfileDir 'Desktop'
+            $DocsPath = Join-Path $ProfileDir 'Documents'
+            $PicturesPath = Join-Path $ProfileDir 'Pictures'
+        }
     }
 }
 
-$DesktopInOD = $DesktopPath -like '*OneDrive*'
-$DocsInOD = $DocsPath -like '*OneDrive*'
-$PicturesInOD = $PicturesPath -like '*OneDrive*'
+# Check if folder is in OneDrive (already synced to cloud - skip backup)
+function Test-OneDriveFolder { param([string]$Path) return $Path -and $Path -like '*OneDrive*' }
 
-# CORE FOLDERS (Desktop, Documents, Pictures)
-if ($BackupDesktop -eq 'true' -and (Test-Path $DesktopPath)) { Write-Host "Backing up Desktop..."; try { Invoke-RoboBackup -Source $DesktopPath -Destination (Join-Path $BackupRoot "Desktop") } catch { Write-Warning $_.Exception.Message } }
-if ($BackupDocuments -eq 'true' -and (Test-Path $DocsPath)) { Write-Host "Backing up Documents..."; try { Invoke-RoboBackup -Source $DocsPath -Destination (Join-Path $BackupRoot "Documents") } catch { Write-Warning $_.Exception.Message } }
-if ($BackupPictures -eq 'true' -and (Test-Path $PicturesPath)) { Write-Host "Backing up Pictures..."; try { Invoke-RoboBackup -Source $PicturesPath -Destination (Join-Path $BackupRoot "Pictures") } catch { Write-Warning $_.Exception.Message } }
+$BackupLog = [System.Collections.ArrayList]::new()
 
-# EXTRA FOLDERS
+$DesktopInOD = Test-OneDriveFolder $DesktopPath
+$DocsInOD = Test-OneDriveFolder $DocsPath
+$PicturesInOD = Test-OneDriveFolder $PicturesPath
+
+# CORE FOLDERS (Desktop, Documents, Pictures) - skip if in OneDrive
+if ($BackupDesktop -eq 'true' -and (Test-Path $DesktopPath)) {
+    if ($DesktopInOD) { Write-Host "Desktop in OneDrive - skipping (already in cloud)" -ForegroundColor Cyan; $BackupLog.Add("Desktop: SKIPPED (in OneDrive)") | Out-Null }
+    else { Write-Host "Backing up Desktop..."; try { Invoke-RoboBackup -Source $DesktopPath -Destination (Join-Path $BackupRoot "Desktop"); $BackupLog.Add("Desktop: BACKED UP") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add("Desktop: FAILED - $($_.Exception.Message)") | Out-Null } }
+}
+if ($BackupDocuments -eq 'true' -and (Test-Path $DocsPath)) {
+    if ($DocsInOD) { Write-Host "Documents in OneDrive - skipping (already in cloud)" -ForegroundColor Cyan; $BackupLog.Add("Documents: SKIPPED (in OneDrive)") | Out-Null }
+    else { Write-Host "Backing up Documents..."; try { Invoke-RoboBackup -Source $DocsPath -Destination (Join-Path $BackupRoot "Documents"); $BackupLog.Add("Documents: BACKED UP") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add("Documents: FAILED - $($_.Exception.Message)") | Out-Null } }
+}
+if ($BackupPictures -eq 'true' -and (Test-Path $PicturesPath)) {
+    if ($PicturesInOD) { Write-Host "Pictures in OneDrive - skipping (already in cloud)" -ForegroundColor Cyan; $BackupLog.Add("Pictures: SKIPPED (in OneDrive)") | Out-Null }
+    else { Write-Host "Backing up Pictures..."; try { Invoke-RoboBackup -Source $PicturesPath -Destination (Join-Path $BackupRoot "Pictures"); $BackupLog.Add("Pictures: BACKED UP") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add("Pictures: FAILED - $($_.Exception.Message)") | Out-Null } }
+}
+
+# EXTRA FOLDERS - skip Downloads if in OneDrive
 $ExtraMap = @{
-    Downloads = $BackupDownloads
-    Favorites = $BackupFavorites
-    Music = $BackupMusic
-    Videos = $BackupVideos
-    Links = $BackupLinks
-    "Saved Games" = $BackupSavedGames
-    Contacts = $BackupContacts
-    Searches = $BackupSearches
-    "3D Objects" = $Backup3DObjects
-    OneDrive = $BackupOneDrive
+    Downloads = @{ Backup = $BackupDownloads; Path = (Join-Path $ProfileDir 'Downloads') }
+    Favorites = @{ Backup = $BackupFavorites; Path = (Join-Path $ProfileDir 'Favorites') }
+    Links = @{ Backup = $BackupLinks; Path = (Join-Path $ProfileDir 'Links') }
+    Contacts = @{ Backup = $BackupContacts; Path = (Join-Path $ProfileDir 'Contacts') }
+    Searches = @{ Backup = $BackupSearches; Path = (Join-Path $ProfileDir 'Searches') }
 }
 foreach ($Folder in $ExtraMap.Keys) {
-    if (($ExtraMap[$Folder]) -eq 'true') {
-        $Src = Join-Path $ProfileDir $Folder
-        if (Test-Path $Src) {
-            Write-Host "Backing up $Folder..."
-            try { Invoke-RoboBackup -Source $Src -Destination (Join-Path $BackupRoot $Folder) } catch { Write-Warning $_.Exception.Message }
-        }
+    $cfg = $ExtraMap[$Folder]
+    if ($cfg.Backup -eq 'true' -and (Test-Path $cfg.Path)) {
+        if ((Test-OneDriveFolder $cfg.Path)) { Write-Host "$Folder in OneDrive - skipping (already in cloud)" -ForegroundColor Cyan; $BackupLog.Add("$Folder`: SKIPPED (in OneDrive)") | Out-Null }
+        else { Write-Host "Backing up $Folder..."; try { Invoke-RoboBackup -Source $cfg.Path -Destination (Join-Path $BackupRoot $Folder); $BackupLog.Add("$Folder`: BACKED UP") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add("$Folder`: FAILED - $($_.Exception.Message)") | Out-Null } }
     }
 }
 
 # OUTLOOK
 if ($BackupOutlook -eq 'true') {
     $Outlook = Join-Path $ProfileDir "AppData\Roaming\Microsoft\Outlook"
-    if (Test-Path $Outlook) { Write-Host "Backing up Outlook..."; try { Invoke-RoboBackup -Source $Outlook -Destination (Join-Path $BackupRoot "Outlook") } catch { Write-Warning $_.Exception.Message } }
+    if (Test-Path $Outlook) { Write-Host "Backing up Outlook..."; try { Invoke-RoboBackup -Source $Outlook -Destination (Join-Path $BackupRoot "Outlook"); $BackupLog.Add("Outlook: BACKED UP") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add("Outlook: FAILED - $($_.Exception.Message)") | Out-Null } }
 }
-
 # BROWSERS
 if ($BackupChrome -eq 'true') {
     $Chrome = Join-Path $ProfileDir "AppData\Local\Google\Chrome\User Data"
-    if (Test-Path $Chrome) { Write-Host "Backing up Chrome..."; try { Invoke-RoboBackup -Source $Chrome -Destination (Join-Path $BackupRoot "Chrome") } catch { Write-Warning $_.Exception.Message } }
+    if (Test-Path $Chrome) { Write-Host "Backing up Chrome..."; try { Invoke-RoboBackup -Source $Chrome -Destination (Join-Path $BackupRoot "Chrome"); $BackupLog.Add("Chrome: BACKED UP") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add("Chrome: FAILED - $($_.Exception.Message)") | Out-Null } }
 }
 if ($BackupEdge -eq 'true') {
     $Edge = Join-Path $ProfileDir "AppData\Local\Microsoft\Edge\User Data"
-    if (Test-Path $Edge) { Write-Host "Backing up Edge..."; try { Invoke-RoboBackup -Source $Edge -Destination (Join-Path $BackupRoot "Edge") } catch { Write-Warning $_.Exception.Message } }
+    if (Test-Path $Edge) { Write-Host "Backing up Edge..."; try { Invoke-RoboBackup -Source $Edge -Destination (Join-Path $BackupRoot "Edge"); $BackupLog.Add("Edge: BACKED UP") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add("Edge: FAILED - $($_.Exception.Message)") | Out-Null } }
 }
 if ($BackupFirefox -eq 'true') {
     $Firefox = Join-Path $ProfileDir "AppData\Roaming\Mozilla"
-    if (Test-Path $Firefox) { Write-Host "Backing up Firefox..."; try { Invoke-RoboBackup -Source $Firefox -Destination (Join-Path $BackupRoot "Firefox") } catch { Write-Warning $_.Exception.Message } }
+    if (Test-Path $Firefox) { Write-Host "Backing up Firefox..."; try { Invoke-RoboBackup -Source $Firefox -Destination (Join-Path $BackupRoot "Firefox"); $BackupLog.Add("Firefox: BACKED UP") | Out-Null } catch { Write-Warning $_.Exception.Message; $BackupLog.Add("Firefox: FAILED - $($_.Exception.Message)") | Out-Null } }
 }
 
-# PRINTERS
+# PRINTERS - full backup with PrintBrm (drivers, ports, printers) for restore
 if ($BackupPrinters -eq 'true') {
     $PrinterDir = Join-Path $BackupRoot "Printers"
     New-Item -ItemType Directory -Path $PrinterDir -Force | Out-Null
     try {
         Import-Module PrintManagement -ErrorAction Stop
         $Printers = Get-Printer -ErrorAction SilentlyContinue | Sort-Object Name
-        $Ports = Get-PrinterPort -ErrorAction SilentlyContinue
-        $Drivers = Get-PrinterDriver -ErrorAction SilentlyContinue
-        $Default = ($Printers | Where-Object Default | Select-Object -First 1).Name
-        $PrinterObjects = foreach ($p in $Printers) { [pscustomobject]@{ Name=$p.Name; DriverName=$p.DriverName; PortName=$p.PortName; IsDefault=($p.Name -eq $Default) } }
-        @{ ComputerName=$env:COMPUTERNAME; CollectedAt=(Get-Date).ToString("s"); Printers=$PrinterObjects; Ports=$Ports; Drivers=$Drivers } | ConvertTo-Json -Depth 6 | Out-File (Join-Path $PrinterDir "Printers.json") -Encoding UTF8
-        pnputil.exe /export-driver * (Join-Path $PrinterDir "Drivers") 2>$null
-    } catch { Write-Warning "Printer backup failed: $($_.Exception.Message)" }
+        if ($Printers.Count -eq 0) {
+            Write-Host "No printers found on this system." -ForegroundColor Yellow
+            $BackupLog.Add("Printers: SKIPPED (none found)") | Out-Null
+        } else {
+            Write-Host "Found $($Printers.Count) printer(s): $($Printers.Name -join ', ')"
+            $Default = ($Printers | Where-Object Default | Select-Object -First 1).Name
+            $PrintersList = @()
+            foreach ($p in $Printers) {
+                $PortInfo = $null
+                try { $PortInfo = Get-PrinterPort -Name $p.PortName -ErrorAction SilentlyContinue } catch {}
+                $pi = @{ Name=$p.Name; DriverName=$p.DriverName; PortName=$p.PortName; IsDefault=($p.Name -eq $Default) }
+                if ($PortInfo -and $PortInfo.PrinterHostAddress) { $pi.PortAddress = $PortInfo.PrinterHostAddress }
+                $PrintersList += [pscustomobject]$pi
+            }
+            $Ports = Get-PrinterPort -ErrorAction SilentlyContinue
+            $Drivers = Get-PrinterDriver -ErrorAction SilentlyContinue
+            @{ ComputerName=$env:COMPUTERNAME; CollectedAt=(Get-Date).ToString("s"); Printers=$PrintersList; Ports=$Ports; Drivers=$Drivers } | ConvertTo-Json -Depth 6 | Out-File (Join-Path $PrinterDir "Printers.json") -Encoding UTF8
+
+            $PrintBrmPath = Join-Path $env:SystemRoot "System32\spool\tools\printbrm.exe"
+            $ExportPath = Join-Path $PrinterDir "Printers.printerExport"
+            if (Test-Path $PrintBrmPath) {
+                Write-Host "Backing up printers (PrintBrm) - drivers, ports, queues..."
+                try {
+                    $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+                    $pinfo.FileName = $PrintBrmPath
+                    $pinfo.Arguments = "-b -s \\$env:COMPUTERNAME -f `"$ExportPath`""
+                    $pinfo.RedirectStandardError = $true
+                    $pinfo.RedirectStandardOutput = $true
+                    $pinfo.UseShellExecute = $false
+                    $p = New-Object System.Diagnostics.Process
+                    $p.StartInfo = $pinfo
+                    $p.Start() | Out-Null
+                    $out = $p.StandardOutput.ReadToEnd()
+                    $err = $p.StandardError.ReadToEnd()
+                    $p.WaitForExit()
+                    if ($p.ExitCode -ne 0 -or -not (Test-Path $ExportPath)) {
+                        Write-Warning "PrintBrm exit code: $($p.ExitCode). Printers.json saved - use for manual restore."
+                        if ($err) { Write-Host $err -ForegroundColor Yellow }
+                    } else {
+                        Write-Host "Printer backup complete: $ExportPath" -ForegroundColor Green
+                    }
+                } catch {
+                    Write-Warning "PrintBrm failed: $($_.Exception.Message). Printers.json saved for reference."
+                }
+                if (-not (Test-Path $ExportPath)) {
+                    Write-Host "Exporting printer drivers only (PrintBrm fallback)..."
+                    $DriversDir = Join-Path $PrinterDir "Drivers"
+                    New-Item -ItemType Directory -Path $DriversDir -Force | Out-Null
+                    $UsedDrivers = $PrintersList | Select-Object -ExpandProperty DriverName -Unique
+                    foreach ($dName in $UsedDrivers) {
+                        $drv = Get-PrinterDriver -Name $dName -ErrorAction SilentlyContinue
+                        if ($drv -and $drv.InfPath -and $drv.Manufacturer -notmatch 'Microsoft') {
+                            $src = Split-Path $drv.InfPath -Parent
+                            if (Test-Path $src) {
+                                $dest = Join-Path $DriversDir ($dName -replace '[\\/:*?"<>|]','_')
+                                New-Item $dest -ItemType Directory -Force | Out-Null
+                                Copy-Item "$src\*" $dest -Recurse -Force -ErrorAction SilentlyContinue
+                            }
+                        }
+                    }
+                }
+            } else {
+                Write-Warning "PrintBrm not found. Exporting printer drivers only."
+                $DriversDir = Join-Path $PrinterDir "Drivers"
+                New-Item -ItemType Directory -Path $DriversDir -Force | Out-Null
+                $UsedDrivers = $PrintersList | Select-Object -ExpandProperty DriverName -Unique
+                foreach ($dName in $UsedDrivers) {
+                    $drv = Get-PrinterDriver -Name $dName -ErrorAction SilentlyContinue
+                    if ($drv -and $drv.InfPath -and $drv.Manufacturer -notmatch 'Microsoft') {
+                        $src = Split-Path $drv.InfPath -Parent
+                        if (Test-Path $src) {
+                            $dest = Join-Path $DriversDir ($dName -replace '[\\/:*?"<>|]','_')
+                            New-Item $dest -ItemType Directory -Force | Out-Null
+                            Copy-Item "$src\*" $dest -Recurse -Force -ErrorAction SilentlyContinue
+                        }
+                    }
+                }
+            }
+            $BackupLog.Add("Printers: BACKED UP ($($Printers.Count) printer(s) - $($Printers.Name -join ', '))") | Out-Null
+        }
+    } catch { Write-Warning "Printer backup failed: $($_.Exception.Message)"; $BackupLog.Add("Printers: FAILED - $($_.Exception.Message)") | Out-Null }
 }
 
 # SUMMARY
 $TotalItems = (Get-ChildItem $BackupRoot -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object).Count
-$Summary = "User: $User`nProfileDir: $ProfileDir`nSID: $Sid`nBackupRoot: $BackupRoot`nTotalItems: $TotalItems`nComputerName: $env:COMPUTERNAME`nExecutedAs: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)`nCompleted: $(Get-Date)"
+$LogSection = if ($BackupLog.Count -gt 0) { "`n--- BACKUP LOG ---`n" + ($BackupLog -join "`n") } else { "" }
+$Summary = "User: $User`nProfileDir: $ProfileDir`nSID: $Sid`nBackupRoot: $BackupRoot`nTotalItems: $TotalItems`nComputerName: $env:COMPUTERNAME`nExecutedAs: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)`nCompleted: $(Get-Date)$LogSection"
 $Summary | Out-File (Join-Path $BackupRoot "BackupSummary.txt") -Encoding UTF8
 New-Item (Join-Path $BackupRoot "BACKUP_COMPLETED.txt") -ItemType File -Force | Out-Null
-Write-Host "=== DOMAIN MIGRATION BACKUP COMPLETED ==="
+Write-Host "=== DOMAIN MIGRATION BACKUP COMPLETED ===" -ForegroundColor Green
+Write-Host "Backup location: $BackupRoot"
+Read-Host "`nPress Enter to close"

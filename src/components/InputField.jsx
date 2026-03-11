@@ -12,17 +12,22 @@ const InputField = ({ input, value, onChange }) => {
   if (isCheckbox) {
     const checked = value === 'true' || value === true;
     return (
-      <label className="flex items-center gap-3 cursor-pointer group">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
-          className="w-4 h-4 rounded border-gray-600 bg-dark-surface text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
-        />
-        <span className="text-sm font-medium text-gray-300 group-hover:text-white">
-          {input.label}
-        </span>
-      </label>
+      <div className="space-y-0.5">
+        <label className="flex items-center gap-3 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
+            className="w-4 h-4 rounded border-gray-600 bg-dark-surface text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+          />
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white">
+            {input.label}
+          </span>
+        </label>
+        {input.description && (
+          <p className="text-xs text-gray-500 pl-7">{input.description}</p>
+        )}
+      </div>
     );
   }
 

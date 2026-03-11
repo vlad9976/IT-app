@@ -9,10 +9,24 @@ param(
     [string]$TargetProfilePath = "{{TargetProfilePath}}"
 )
 
+# Fix unreplaced placeholders
+if ($Source -match '^\{\{') { $Source = '' }
+if ($UserName -match '^\{\{') { $UserName = '' }
+if ($TargetProfilePath -match '^\{\{') { $TargetProfilePath = '' }
+
+trap {
+    Write-Host "`n*** SCRIPT ERROR ***" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    Write-Host $_.ScriptStackTrace -ForegroundColor Gray
+    Read-Host "`nPress Enter to close"
+    exit 1
+}
+
 Write-Host "=== DOMAIN MIGRATION RESTORE STARTED ==="
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")) {
     Write-Error "Run this script as Administrator."
+    Read-Host "Press Enter to close"
     exit 1
 }
 
@@ -78,6 +92,7 @@ $ProfileInfo = if ($TargetProfilePath -and (Test-ValidUserProfile $TargetProfile
 
 if (-not $ProfileInfo) {
     Write-Error "No valid target user profile found. User may need to log on once."
+    Read-Host "Press Enter to close"
     exit 1
 }
 
@@ -88,34 +103,41 @@ Write-Host "Detected user: $User"
 Write-Host "Using profile: $ProfileDir"
 
 # FIND BACKUP
-$MigrationRoot = if ($Source) { $Source.TrimEnd('\') } else { "C:\DomainMigration" }
 $BackupRoot = $null
-
-if ($Source -and (Test-Path (Join-Path $MigrationRoot "BackupSummary.txt"))) {
-    $BackupRoot = $MigrationRoot
-    Write-Host "Using source path: $BackupRoot"
+$SearchRoots = @()
+if ($Source) {
+    $SearchRoots = @($Source.TrimEnd('\'))
 } else {
-    $BackupUser = $UserName
-    if (-not $BackupUser) {
-        $ProfileLeaf = Split-Path $ProfileDir -Leaf
-        foreach ($candidate in @($ProfileLeaf, ($ProfileLeaf -replace '\..*$',''), "user", "User")) {
-            if ($candidate -and (Test-Path (Join-Path $MigrationRoot $candidate))) {
-                $BackupUser = $candidate
-                break
-            }
-        }
-    }
-    $BackupRoot = Join-Path $MigrationRoot $BackupUser
-    if (-not $BackupRoot -or -not (Test-Path $BackupRoot)) {
-        $Found = Get-ChildItem $MigrationRoot -Directory -ErrorAction SilentlyContinue | Where-Object {
-            Test-Path (Join-Path $_.FullName "BackupSummary.txt")
-        } | Select-Object -First 1
-        if ($Found) { $BackupRoot = $Found.FullName }
+    $SearchRoots = @("C:\DomainMigration", "C:\Backup")
+    foreach ($d in @("D:\DomainMigration", "D:\Backup", "E:\DomainMigration", "E:\Backup")) {
+        if (Test-Path $d) { $SearchRoots += $d }
     }
 }
 
+$IsValidBackup = { param($p) (Test-Path (Join-Path $p "BackupSummary.txt")) -or (Test-Path (Join-Path $p "Printers\Printers.json")) -or (Test-Path (Join-Path $p "Printers\Printers.printerExport")) }
+foreach ($MigrationRoot in $SearchRoots) {
+    if (-not (Test-Path $MigrationRoot)) { continue }
+    if (& $IsValidBackup $MigrationRoot) { $BackupRoot = $MigrationRoot; break }
+    $ProfileLeaf = Split-Path $ProfileDir -Leaf
+    foreach ($candidate in @($ProfileLeaf, ($ProfileLeaf -replace '\..*$',''), $UserName, "user", "User")) {
+        if (-not $candidate) { continue }
+        $candidatePath = Join-Path $MigrationRoot $candidate
+        if (& $IsValidBackup $candidatePath) { $BackupRoot = $candidatePath; break }
+    }
+    if ($BackupRoot) { break }
+    $Found = Get-ChildItem $MigrationRoot -Directory -ErrorAction SilentlyContinue | Where-Object {
+        & $IsValidBackup $_.FullName
+    } | Select-Object -First 1
+    if ($Found) { $BackupRoot = $Found.FullName; break }
+}
+
 if (-not $BackupRoot -or -not (Test-Path $BackupRoot)) {
-    Write-Error "Backup not found. Check path or run backup first."
+    Write-Host "`nBackup not found. Searched:" -ForegroundColor Yellow
+    foreach ($r in $SearchRoots) { Write-Host "  - $r" -ForegroundColor Gray }
+    Write-Host "`nEnter the full path to your backup folder in the Source field." -ForegroundColor Yellow
+    Write-Host "Example: C:\DomainMigration\YourUsername  or  C:\Backup\YourUsername" -ForegroundColor Gray
+    Write-Host "The folder must contain BackupSummary.txt" -ForegroundColor Gray
+    Read-Host "`nPress Enter to close"
     exit 1
 }
 
@@ -197,19 +219,101 @@ foreach ($Item in $BackedUpItems) {
     }
 }
 
-# PRINTERS - export config for reference (backup script stores Printers folder)
+# PRINTERS - full restore using PrintBrm (if .printerExport exists)
 $PrinterDir = Join-Path $BackupRoot "Printers"
+$PrintBrmExport = Join-Path $PrinterDir "Printers.printerExport"
 $PrinterJson = Join-Path $PrinterDir "Printers.json"
-if (Test-Path $PrinterJson) {
-    Write-Host "Printer backup found. Saving config for reference..."
+if (Test-Path $PrintBrmExport) {
+    Write-Host "Restoring printers (PrintBrm)..."
+    $PrintBrmPath = Join-Path $env:SystemRoot "System32\spool\tools\printbrm.exe"
+    if (Test-Path $PrintBrmPath) {
+        $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+        $pinfo.FileName = $PrintBrmPath
+        $pinfo.Arguments = "-r -s \\$env:COMPUTERNAME -f `"$PrintBrmExport`" -o force -noacl"
+        $pinfo.RedirectStandardError = $true
+        $pinfo.RedirectStandardOutput = $true
+        $pinfo.UseShellExecute = $false
+        $pinfo.CreateNoWindow = $false
+        $p = New-Object System.Diagnostics.Process
+        $p.StartInfo = $pinfo
+        $p.Start() | Out-Null
+        $out = $p.StandardOutput.ReadToEnd()
+        $err = $p.StandardError.ReadToEnd()
+        $p.WaitForExit()
+        if ($p.ExitCode -ne 0) {
+            Write-Warning "PrintBrm exit code: $($p.ExitCode)"
+            if ($err) { Write-Host $err -ForegroundColor Yellow }
+            if ($out) { Write-Host $out }
+        } else {
+            Write-Host "Printers restored successfully." -ForegroundColor Green
+        }
+    } else {
+        Write-Warning "PrintBrm not found at $PrintBrmPath. Cannot restore printers."
+    }
+} elseif (Test-Path $PrinterJson) {
+    Write-Host "Printers.printerExport not found. Attempting restore from Printers.json + Drivers..."
     try {
-        $Snapshot = Get-Content $PrinterJson -Raw | ConvertFrom-Json
-        $Snapshot | ConvertTo-Json -Depth 4 | Out-File (Join-Path $BackupRoot "RESTORE_PrinterConfig.txt") -Encoding UTF8
-        Write-Host "Printer config saved to RESTORE_PrinterConfig.txt"
-    } catch { Write-Warning $_.Exception.Message }
+        Import-Module PrintManagement -ErrorAction Stop
+        $Snapshot = Get-Content $PrinterJson -Raw -ErrorAction Stop | ConvertFrom-Json
+        $DriversDir = Join-Path $PrinterDir "Drivers"
+        $DefaultPrinter = ($Snapshot.Printers | Where-Object { $_.IsDefault -eq $true } | Select-Object -First 1).Name
+        $driverFolders = if (Test-Path $DriversDir) { @(Get-ChildItem $DriversDir -Directory -ErrorAction SilentlyContinue) } else { @() }
+        if ($driverFolders.Count -eq 0) { Write-Host "  No Drivers folder found - run backup again with Printers checked." -ForegroundColor Yellow }
+        foreach ($p in $Snapshot.Printers) {
+            $driverName = ($p.DriverName -replace '\s+$','').Trim()
+            $portName = $p.PortName
+            $printerName = $p.Name
+            if (Get-Printer -Name $printerName -ErrorAction SilentlyContinue) { Write-Host "  $printerName already exists."; continue }
+            $driverInstalled = Get-PrinterDriver -Name $driverName -ErrorAction SilentlyContinue
+            if (-not $driverInstalled -and $driverFolders.Count -gt 0) {
+                $driverFolder = $driverFolders | Where-Object { $_.Name -replace '[\\/:*?"<>|]','_' -eq ($driverName -replace '[\\/:*?"<>|]','_') } | Select-Object -First 1
+                if (-not $driverFolder) { $driverFolder = $driverFolders | Where-Object { $_.Name -like "*$($driverName.Split(' ')[0])*" } | Select-Object -First 1 }
+                if (-not $driverFolder) { $driverFolder = $driverFolders[0] }
+                if ($driverFolder) {
+                    $infFile = Get-ChildItem $driverFolder.FullName -Filter "*.inf" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '^(oem|pnputil)' } | Select-Object -First 1
+                    if (-not $infFile) { $infFile = Get-ChildItem $driverFolder.FullName -Filter "*.inf" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 }
+                    if ($infFile) {
+                        Write-Host "  Installing driver for $printerName from $($infFile.Name)..."
+                        $pnpresult = & pnputil.exe /add-driver "`"$($infFile.FullName)`"" /install 2>&1
+                        if ($LASTEXITCODE -ne 0) {
+                            Write-Host "  pnputil: $pnpresult" -ForegroundColor Gray
+                            Write-Host "  Trying printui (direct INF install)..."
+                            Start-Process -FilePath "rundll32.exe" -ArgumentList "printui.dll,PrintUIEntry /ia /m `"$driverName`" /f `"$($infFile.FullName)`"" -Wait -NoNewWindow
+                        } else { Write-Host "  Driver added to store." -ForegroundColor Green }
+                    } else { Write-Host "  No .inf found in $($driverFolder.Name)" -ForegroundColor Yellow }
+                }
+            }
+            $portExists = Get-PrinterPort -Name $portName -ErrorAction SilentlyContinue
+            if (-not $portExists -and $p.PortAddress) {
+                Write-Host "  Adding TCP/IP port $portName -> $($p.PortAddress)..."
+                try { Add-PrinterPort -Name $portName -PrinterHostAddress $p.PortAddress } catch { Add-PrinterPort -Name "IP_$($p.PortAddress)" -PrinterHostAddress $p.PortAddress; $portName = "IP_$($p.PortAddress)" }
+            }
+            $driverNow = Get-PrinterDriver -Name $driverName -ErrorAction SilentlyContinue
+            $portNow = Get-PrinterPort -Name $portName -ErrorAction SilentlyContinue
+            if ($driverNow -and $portNow) {
+                Add-Printer -Name $printerName -DriverName $driverName -PortName $portName -ErrorAction Stop
+                Write-Host "  Added printer: $printerName" -ForegroundColor Green
+                if ($printerName -eq $DefaultPrinter) { try { (Get-WmiObject -Query "SELECT * FROM Win32_Printer WHERE Name='$($printerName -replace "'","''")'").SetDefaultPrinter() | Out-Null } catch {} }
+            } else {
+                $why = @()
+                if (-not $driverNow) { $why += "driver '$driverName' not installed" }
+                if (-not $portNow) { $why += "port '$portName' missing" }
+                Write-Warning "  Could not add $printerName - $($why -join '; ')."
+                Write-Host "    Driver folders: $($driverFolders.Name -join ', ')" -ForegroundColor Gray
+                Write-Host "    Install driver from: $DriversDir" -ForegroundColor Gray
+            }
+        }
+    } catch { Write-Warning "Printer restore from JSON failed: $($_.Exception.Message)" }
+}
+if (Test-Path $PrinterJson) {
+    try {
+        $Snapshot = Get-Content $PrinterJson -Raw -ErrorAction Stop | ConvertFrom-Json
+        $Snapshot | ConvertTo-Json -Depth 4 | Out-File (Join-Path $BackupRoot "RESTORE_PrinterConfig.txt") -Encoding UTF8 -ErrorAction SilentlyContinue
+    } catch {}
 }
 
 # COMPLETE
 $Summary = "RESTORE COMPLETED`nSource: $BackupRoot`nTarget: $ProfileDir`nCompleted: $(Get-Date)"
-$Summary | Out-File (Join-Path $BackupRoot "RESTORE_COMPLETED.txt") -Encoding UTF8 -Append
-Write-Host "=== DOMAIN MIGRATION RESTORE COMPLETED ==="
+$Summary | Out-File (Join-Path $BackupRoot "RESTORE_COMPLETED.txt") -Encoding UTF8 -Append -ErrorAction SilentlyContinue
+Write-Host "=== DOMAIN MIGRATION RESTORE COMPLETED ===" -ForegroundColor Green
+Read-Host "`nPress Enter to close"

@@ -5,6 +5,7 @@ import EventDocsModal from './EventDocsModal';
 import ServiceDocsModal from './ServiceDocsModal';
 import PortDocsModal from './PortDocsModal';
 import M365LicenseDocsModal from './M365LicenseDocsModal';
+import BackupDocsModal from './BackupDocsModal';
 import { FileCode, Copy, Check, Download, BookOpen, FileSpreadsheet } from 'lucide-react';
 
 const BULK_CREATE_CSV_TEMPLATE = 'GivenName,Surname,SamAccountName,UserPrincipalName,OU,Description\nJohn,Doe,john.doe,john.doe@domain.com,OU=Users,User account\nJane,Smith,jane.smith,jane.smith@domain.com,OU=Users,User account';
@@ -17,6 +18,7 @@ const ScriptPanel = ({ script }) => {
   const [showServiceDocs, setShowServiceDocs] = useState(false);
   const [showPortDocs, setShowPortDocs] = useState(false);
   const [showM365LicenseDocs, setShowM365LicenseDocs] = useState(false);
+  const [showBackupDocs, setShowBackupDocs] = useState(false);
 
   useEffect(() => {
     if (script) {
@@ -41,7 +43,8 @@ const ScriptPanel = ({ script }) => {
     
     Object.keys(inputs).forEach(variable => {
       const regex = new RegExp(`{{${variable}}}`, 'g');
-      scriptContent = scriptContent.replace(regex, inputs[variable] || `{{${variable}}}`);
+      const val = inputs[variable];
+      scriptContent = scriptContent.replace(regex, val !== undefined && val !== null ? String(val) : `{{${variable}}}`);
     });
 
     setGeneratedScript(scriptContent);
@@ -170,6 +173,7 @@ const ScriptPanel = ({ script }) => {
       <ServiceDocsModal isOpen={showServiceDocs} onClose={() => setShowServiceDocs(false)} />
       <PortDocsModal isOpen={showPortDocs} onClose={() => setShowPortDocs(false)} />
       <M365LicenseDocsModal isOpen={showM365LicenseDocs} onClose={() => setShowM365LicenseDocs(false)} />
+      <BackupDocsModal isOpen={showBackupDocs} onClose={() => setShowBackupDocs(false)} />
       
       {/* Header */}
       <div className="bg-dark-surface border-b border-dark-border px-8 py-6">
@@ -245,17 +249,28 @@ const ScriptPanel = ({ script }) => {
                   Download CSV Template
                 </button>
               )}
-              {script.id === 'domain-migration-smart-backup' && script.inputs.some(i => i.type === 'checkbox') && (
-                <button
-                  onClick={() => {
-                    const updates = {};
-                    script.inputs.filter(i => i.type === 'checkbox').forEach(i => { updates[i.variable] = 'false'; });
-                    setInputs(prev => ({ ...prev, ...updates }));
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition-colors border border-gray-600"
-                >
-                  Uncheck All
-                </button>
+              {script.id === 'domain-migration-smart-backup' && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowBackupDocs(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-emerald-900/50 hover:bg-emerald-800/50 text-emerald-300 rounded-lg text-sm font-medium transition-colors border border-emerald-700"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    Backup Guide
+                  </button>
+                  {script.inputs.some(i => i.type === 'checkbox') && (
+                    <button
+                      onClick={() => {
+                        const updates = {};
+                        script.inputs.filter(i => i.type === 'checkbox').forEach(i => { updates[i.variable] = 'false'; });
+                        setInputs(prev => ({ ...prev, ...updates }));
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition-colors border border-gray-600"
+                    >
+                      Uncheck All
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             <div className={`grid gap-4 ${
