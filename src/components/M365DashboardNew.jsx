@@ -42,6 +42,14 @@ const M365DashboardNew = () => {
         setDeviceCode(deviceCodeInfo);
       });
     }
+    if (window.electron?.m365?.onSessionExpired) {
+      window.electron.m365.onSessionExpired(async () => {
+        const status = await window.electron.m365.getAuthStatus();
+        if (status.authenticated) return;
+        setAuthStatus({ authenticated: false });
+        showError('Session expired. Please connect again to sign in with the updated permissions.');
+      });
+    }
   }, []);
 
   const checkAuthStatus = async () => {

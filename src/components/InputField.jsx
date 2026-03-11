@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Check } from 'lucide-react';
 
 const InputField = ({ input, value, onChange }) => {
   const [showPassword, setShowPassword] = React.useState(false);
@@ -7,25 +7,35 @@ const InputField = ({ input, value, onChange }) => {
   const isPassword = input.type === 'password';
   const isSelect = input.type === 'select';
   const isCheckbox = input.type === 'checkbox';
+  const isTextarea = input.type === 'textarea';
   const inputType = isPassword && !showPassword ? 'password' : 'text';
 
   if (isCheckbox) {
     const checked = value === 'true' || value === true;
     return (
       <div className="space-y-0.5">
-        <label className="flex items-center gap-3 cursor-pointer group">
+        <label className={`flex items-center gap-3 cursor-pointer group rounded-lg px-3 py-2.5 transition-all duration-150 border ${
+          checked
+            ? 'bg-emerald-500/10 border-emerald-500/40 shadow-sm shadow-emerald-500/5'
+            : 'bg-dark-surface/50 border-dark-border hover:border-gray-500 hover:bg-dark-surface/70'
+        }`}>
+          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-all ${
+            checked ? 'bg-emerald-500 border-2 border-emerald-500' : 'border-2 border-gray-500'
+          }`}>
+            {checked && <Check className="w-3 h-3 text-white" strokeWidth={2.5} />}
+          </span>
           <input
             type="checkbox"
             checked={checked}
             onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
-            className="w-4 h-4 rounded border-gray-600 bg-dark-surface text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+            className="sr-only"
           />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white">
+          <span className={`text-sm font-medium ${checked ? 'text-emerald-200' : 'text-gray-400 group-hover:text-gray-300'}`}>
             {input.label}
           </span>
         </label>
         {input.description && (
-          <p className="text-xs text-gray-500 pl-7">{input.description}</p>
+          <p className="text-xs text-gray-500 pl-8 mt-0.5">{input.description}</p>
         )}
       </div>
     );
@@ -52,6 +62,15 @@ const InputField = ({ input, value, onChange }) => {
               </option>
             ))}
           </select>
+        ) : isTextarea ? (
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={input.placeholder || `Enter ${input.label.toLowerCase()}`}
+            className="w-full min-h-[100px] resize-y"
+            required={input.required}
+            rows={4}
+          />
         ) : (
           <input
             type={inputType}

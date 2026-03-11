@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld('electron', {
     onDeviceCode: (callback) => {
       ipcRenderer.on('m365:device-code', (event, deviceCodeInfo) => callback(deviceCodeInfo));
     },
+    onSessionExpired: (callback) => {
+      ipcRenderer.on('m365:sessionExpired', () => callback());
+    },
     
     // User Management
     createUser: (userData, password) => ipcRenderer.invoke('m365:createUser', userData, password),

@@ -1,24 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import ScriptPreview from './ScriptPreview';
 import InputField from './InputField';
-import EventDocsModal from './EventDocsModal';
-import ServiceDocsModal from './ServiceDocsModal';
-import PortDocsModal from './PortDocsModal';
-import M365LicenseDocsModal from './M365LicenseDocsModal';
-import BackupDocsModal from './BackupDocsModal';
 import { FileCode, Copy, Check, Download, BookOpen, FileSpreadsheet } from 'lucide-react';
 
 const BULK_CREATE_CSV_TEMPLATE = 'GivenName,Surname,SamAccountName,UserPrincipalName,OU,Description\nJohn,Doe,john.doe,john.doe@domain.com,OU=Users,User account\nJane,Smith,jane.smith,jane.smith@domain.com,OU=Users,User account';
 
-const ScriptPanel = ({ script }) => {
+const ScriptPanel = ({ script, onOpenDoc }) => {
   const [inputs, setInputs] = useState({});
   const [generatedScript, setGeneratedScript] = useState('');
   const [copied, setCopied] = useState(false);
-  const [showEventDocs, setShowEventDocs] = useState(false);
-  const [showServiceDocs, setShowServiceDocs] = useState(false);
-  const [showPortDocs, setShowPortDocs] = useState(false);
-  const [showM365LicenseDocs, setShowM365LicenseDocs] = useState(false);
-  const [showBackupDocs, setShowBackupDocs] = useState(false);
 
   useEffect(() => {
     if (script) {
@@ -168,13 +158,6 @@ const ScriptPanel = ({ script }) => {
 
   return (
     <div className="flex-1 flex flex-col bg-dark-bg">
-      {/* Documentation Modals */}
-      <EventDocsModal isOpen={showEventDocs} onClose={() => setShowEventDocs(false)} />
-      <ServiceDocsModal isOpen={showServiceDocs} onClose={() => setShowServiceDocs(false)} />
-      <PortDocsModal isOpen={showPortDocs} onClose={() => setShowPortDocs(false)} />
-      <M365LicenseDocsModal isOpen={showM365LicenseDocs} onClose={() => setShowM365LicenseDocs(false)} />
-      <BackupDocsModal isOpen={showBackupDocs} onClose={() => setShowBackupDocs(false)} />
-      
       {/* Header */}
       <div className="bg-dark-surface border-b border-dark-border px-8 py-6">
         <div className="flex items-start justify-between">
@@ -204,36 +187,36 @@ const ScriptPanel = ({ script }) => {
                 <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                 Configuration
               </h3>
-              {script.id === 'event-log-hunter' && (
+              {script.id === 'event-log-hunter' && onOpenDoc && (
                 <button
-                  onClick={() => setShowEventDocs(true)}
+                  onClick={() => onOpenDoc('event')}
                   className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/50 hover:bg-blue-800/50 text-blue-300 rounded-lg text-sm font-medium transition-colors border border-blue-700"
                 >
                   <BookOpen className="w-4 h-4" />
                   Event ID Documentation
                 </button>
               )}
-              {script.id === 'check-services' && (
+              {script.id === 'check-services' && onOpenDoc && (
                 <button
-                  onClick={() => setShowServiceDocs(true)}
+                  onClick={() => onOpenDoc('service')}
                   className="flex items-center gap-2 px-3 py-1.5 bg-green-900/50 hover:bg-green-800/50 text-green-300 rounded-lg text-sm font-medium transition-colors border border-green-700"
                 >
                   <BookOpen className="w-4 h-4" />
                   Service Documentation
                 </button>
               )}
-              {script.id === 'port-scan' && (
+              {script.id === 'port-scan' && onOpenDoc && (
                 <button
-                  onClick={() => setShowPortDocs(true)}
+                  onClick={() => onOpenDoc('port')}
                   className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/50 hover:bg-purple-800/50 text-purple-300 rounded-lg text-sm font-medium transition-colors border border-purple-700"
                 >
                   <BookOpen className="w-4 h-4" />
                   Port Documentation
                 </button>
               )}
-              {script.id === 'm365-connect' && (
+              {script.id === 'm365-connect' && onOpenDoc && (
                 <button
-                  onClick={() => setShowM365LicenseDocs(true)}
+                  onClick={() => onOpenDoc('m365')}
                   className="flex items-center gap-2 px-3 py-1.5 bg-orange-900/50 hover:bg-orange-800/50 text-orange-300 rounded-lg text-sm font-medium transition-colors border border-orange-700"
                 >
                   <BookOpen className="w-4 h-4" />
@@ -252,7 +235,7 @@ const ScriptPanel = ({ script }) => {
               {script.id === 'domain-migration-smart-backup' && (
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setShowBackupDocs(true)}
+                    onClick={() => onOpenDoc?.('backup')}
                     className="flex items-center gap-2 px-3 py-1.5 bg-emerald-900/50 hover:bg-emerald-800/50 text-emerald-300 rounded-lg text-sm font-medium transition-colors border border-emerald-700"
                   >
                     <BookOpen className="w-4 h-4" />
@@ -272,14 +255,36 @@ const ScriptPanel = ({ script }) => {
                   )}
                 </div>
               )}
+              {script.id === 'disk-cleanup' && script.inputs.some(i => i.type === 'checkbox') && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-gray-500 mr-1">Safe presets:</span>
+                  {[
+                    { label: 'Recommended', values: { UserTemp: 'true', WindowsTemp: 'true', RecycleBin: 'true', ThumbnailCache: 'true', DeliveryOptimization: 'true', WindowsUpdateCache: 'false', Prefetch: 'false', BrowserCache: 'true', OldLogs: 'true', RunCleanmgr: 'true' } },
+                    { label: 'Quick', values: { UserTemp: 'true', WindowsTemp: 'true', RecycleBin: 'true', ThumbnailCache: 'true', DeliveryOptimization: 'false', WindowsUpdateCache: 'false', Prefetch: 'false', BrowserCache: 'false', OldLogs: 'false', RunCleanmgr: 'false' } },
+                    { label: 'Full', values: { UserTemp: 'true', WindowsTemp: 'true', RecycleBin: 'true', ThumbnailCache: 'true', DeliveryOptimization: 'true', WindowsUpdateCache: 'true', Prefetch: 'true', BrowserCache: 'true', OldLogs: 'true', RunCleanmgr: 'true' } },
+                    { label: 'Minimal', values: { UserTemp: 'true', WindowsTemp: 'false', RecycleBin: 'true', ThumbnailCache: 'false', DeliveryOptimization: 'false', WindowsUpdateCache: 'false', Prefetch: 'false', BrowserCache: 'false', OldLogs: 'false', RunCleanmgr: 'false' } },
+                    { label: 'Clear all', values: { UserTemp: 'false', WindowsTemp: 'false', RecycleBin: 'false', ThumbnailCache: 'false', DeliveryOptimization: 'false', WindowsUpdateCache: 'false', Prefetch: 'false', BrowserCache: 'false', OldLogs: 'false', RunCleanmgr: 'false' } }
+                  ].map(({ label, values }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setInputs(prev => ({ ...prev, ...values }))}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-dark-bg hover:bg-emerald-900/40 border border-dark-border hover:border-emerald-600/50 text-gray-300 hover:text-emerald-300 transition-colors"
+                      title={label === 'Recommended' ? 'Best balance for most users' : label === 'Quick' ? 'Temp + Recycle Bin + thumbnails' : label === 'Full' ? 'All cleanup options' : label === 'Minimal' ? 'User temp + Recycle Bin only' : 'Uncheck all'}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className={`grid gap-4 ${
-              script.id === 'domain-migration-smart-backup'
+              script.id === 'domain-migration-smart-backup' || script.id === 'disk-cleanup' || script.id === 'clear-ie-cache'
                 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
                 : 'grid-cols-1 md:grid-cols-2'
             }`}>
               {script.inputs.map(input => (
-                <div key={input.variable} className={input.type === 'checkbox' && script.id === 'domain-migration-smart-backup' ? '' : 'col-span-full'}>
+                <div key={input.variable} className={(input.type === 'checkbox' && (script.id === 'domain-migration-smart-backup' || script.id === 'disk-cleanup' || script.id === 'clear-ie-cache')) ? '' : 'col-span-full'}>
                   <InputField
                     input={input}
                     value={inputs[input.variable] ?? input.defaultValue ?? (input.type === 'checkbox' ? 'false' : '')}
@@ -288,6 +293,67 @@ const ScriptPanel = ({ script }) => {
                 </div>
               ))}
             </div>
+            {script.id === 'check-services' && (
+              <div className="mt-4 pt-4 border-t border-dark-border space-y-3">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Action</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleInputChange('mode', 'check')}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${(inputs.mode ?? 'check') === 'restart' ? 'bg-dark-bg border-dark-border text-gray-400 hover:text-green-300 hover:border-green-600/50' : 'bg-green-900/40 border-green-600/50 text-green-300'}`}
+                      >
+                        Check
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleInputChange('mode', 'restart')}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${(inputs.mode ?? 'check') === 'restart' ? 'bg-green-900/40 border-green-600/50 text-green-300' : 'bg-dark-bg border-dark-border text-gray-400 hover:text-green-300 hover:border-green-600/50'}`}
+                      >
+                        Restart
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-400">Service presets</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {[
+                        { label: 'Common', services: 'Spooler,Bits,WinRM,Wuauserv' },
+                        { label: 'Printing', services: 'Spooler' },
+                        { label: 'Windows Update', services: 'wuauserv,BITS' },
+                        { label: 'Network', services: 'LanmanServer,LanmanWorkstation,Dnscache,Dhcp' },
+                        { label: 'Domain', services: 'Netlogon,LanmanWorkstation,Dnscache' },
+                        { label: 'RDP', services: 'TermService,UmRdpService' },
+                        { label: 'Event Log', services: 'EventLog' },
+                        { label: 'Full', services: 'Spooler,Bits,WinRM,Wuauserv,LanmanServer,LanmanWorkstation,Dnscache,EventLog,TermService' },
+                        { label: 'BITS', services: 'BITS' },
+                        { label: 'WinRM', services: 'WinRM' },
+                        { label: 'WIA / Scanner', services: 'stisvc' },
+                        { label: 'DNS Client', services: 'Dnscache' },
+                        { label: 'Windows Search', services: 'WSearch' }
+                      ].map(({ label, services }) => (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => handleInputChange('services', services)}
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-dark-bg hover:bg-green-900/40 border border-dark-border hover:border-green-600/50 text-gray-300 hover:text-green-300 transition-colors"
+                          title={services}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">Restart requires Administrator privileges.</p>
+              </div>
+            )}
+            {script.id === 'disk-cleanup' && (
+              <div className="mt-4 pt-4 border-t border-dark-border">
+                <p className="text-sm text-gray-400">Tip: Run as Administrator to use Windows Temp, Delivery Optimization, WU cache, and old logs.</p>
+              </div>
+            )}
             {script.id === 'event-log-hunter' && (
               <div className="mt-4 pt-4 border-t border-dark-border space-y-3">
                 <p className="text-sm text-amber-400/90">Security log requires running PowerShell as Administrator.</p>

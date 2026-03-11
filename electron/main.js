@@ -1,3 +1,6 @@
+// Mitigate MaxListenersExceededWarning from MSAL/Graph TLS sockets
+require('events').EventEmitter.defaultMaxListeners = 20;
+
 const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
@@ -221,6 +224,10 @@ let m365Client = null;
 if (M365Client) {
   try {
     m365Client = new M365Client();
+    m365Client.onSessionExpired = () => {
+      const wins = BrowserWindow.getAllWindows();
+      wins.forEach(w => w.webContents?.send?.('m365:sessionExpired'));
+    };
     log.info('M365Client instance created successfully');
   } catch (error) {
     log.error('Failed to create M365Client instance:', error);
@@ -280,6 +287,11 @@ ipcMain.handle('m365:authenticate', async (event) => {
 ipcMain.handle('m365:getAuthStatus', async () => {
   return m365Client.getAuthStatus();
 });
+
+// Notify all windows that M365 session expired (so UI shows Connect)
+function notifyM365SessionExpired() {
+  BrowserWindow.getAllWindows().forEach(w => w.webContents?.send?.('m365:sessionExpired'));
+}
 
 // IPC: Disconnect
 ipcMain.handle('m365:disconnect', async () => {
@@ -352,7 +364,12 @@ ipcMain.handle('m365:revokeUserSessions', async (event, userPrincipalName) => {
 });
 
 ipcMain.handle('m365:searchUsers', async (event, searchTerm, limit) => {
-  return await m365Client.searchUsers(searchTerm, limit);
+  try {
+    return await m365Client.searchUsers(searchTerm, limit);
+  } catch (err) {
+    if (err?.message?.includes('Not authenticated')) notifyM365SessionExpired();
+    throw err;
+  }
 });
 
 ipcMain.handle('m365:getUserDetails', async (event, userPrincipalName) => {

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { FolderOpen, Plus, FileCode, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
-import { isSectionedCategory } from '../utils/scriptStructure';
+import React, { useState, useMemo } from 'react';
+import { FolderOpen, Plus, FileCode, Trash2, ChevronDown, ChevronRight, Star } from 'lucide-react';
+import { isSectionedCategory, findScriptLocation } from '../utils/scriptStructure';
+import { useFavorites } from '../contexts/FavoritesContext';
 
 function toCategoryKey(displayName) {
   return displayName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
@@ -19,6 +20,7 @@ function getScriptList(data, cat) {
 
 
 const ScriptManager = ({ scriptsData, onSave, onClose }) => {
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const [categories, setCategories] = useState(() => Object.keys(scriptsData || {}));
   const [data, setData] = useState(() => ({ ...scriptsData }) || {});
   const [expandedCategory, setExpandedCategory] = useState(null);
@@ -198,6 +200,12 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
     }
   };
 
+  const favoritedScripts = useMemo(() => {
+    return favorites
+      .map(id => findScriptLocation(data, id))
+      .filter(Boolean);
+  }, [favorites, data]);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -251,6 +259,35 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Categories & Scripts tree */}
         <div className="w-80 border-r border-dark-border flex flex-col bg-dark-surface">
+          {favoritedScripts.length > 0 && (
+            <div className="p-3 border-b border-dark-border">
+              <div className="flex items-center gap-2 mb-2">
+                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                <span className="text-sm font-medium text-gray-400">Favorites</span>
+              </div>
+              <div className="space-y-0.5 max-h-32 overflow-y-auto">
+                {favoritedScripts.map(({ category, section, script }) => (
+                  <div
+                    key={script.id}
+                    onClick={() => handleEditScript(category, script, section)}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-dark-hover cursor-pointer group ${
+                      editingScript?.script?.id === script.id ? 'bg-blue-900/30' : ''
+                    }`}
+                  >
+                    <Star className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />
+                    <span className="text-xs text-gray-300 flex-1 truncate">{script.name}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleFavorite(script.id); }}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-amber-900/30 text-amber-400 fill-amber-400"
+                      title="Remove from favorites"
+                    >
+                      <Star className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="p-3 border-b border-dark-border flex items-center justify-between">
             <span className="text-sm font-medium text-gray-400">Folders & Scripts</span>
             <div className="flex gap-1">
@@ -315,6 +352,13 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
                           <span className="text-xs text-gray-500 w-20 truncate">{secName}</span>
                           <span className="text-sm text-gray-300 flex-1 truncate">{script.name}</span>
                           <button
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(script.id); }}
+                            className={`p-1 rounded hover:bg-amber-900/30 ${isFavorite(script.id) ? 'text-amber-400' : 'text-gray-500 opacity-0 group-hover:opacity-100'}`}
+                            title={isFavorite(script.id) ? 'Remove from favorites' : 'Add to favorites'}
+                          >
+                            <Star className={`w-3 h-3 ${isFavorite(script.id) ? 'fill-amber-400' : ''}`} />
+                          </button>
+                          <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteScript(cat, script.id, secName); }}
                             className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-900/50 text-red-400"
                           >
@@ -332,6 +376,13 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
                       >
                         <FileCode className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
                         <span className="text-sm text-gray-300 flex-1 truncate">{script.name}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleFavorite(script.id); }}
+                          className={`p-1 rounded hover:bg-amber-900/30 ${isFavorite(script.id) ? 'text-amber-400' : 'text-gray-500 opacity-0 group-hover:opacity-100'}`}
+                          title={isFavorite(script.id) ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          <Star className={`w-3 h-3 ${isFavorite(script.id) ? 'fill-amber-400' : ''}`} />
+                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteScript(cat, script.id); }}
                           className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-900/50 text-red-400"
@@ -501,6 +552,7 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
                             >
                               <option value="text">Text</option>
                               <option value="password">Password</option>
+                              <option value="textarea">Textarea (multi-line)</option>
                               <option value="checkbox">Checkbox</option>
                             </select>
                           </div>

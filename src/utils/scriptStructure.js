@@ -37,3 +37,24 @@ export function findScriptInCategory(scriptsData, category, scriptId) {
   const scripts = getScriptsFromCategory(scriptsData, category);
   return scripts.find(s => s.id === scriptId) || null;
 }
+
+/**
+ * Find where a script lives: { category, section?, script }
+ */
+export function findScriptLocation(scriptsData, scriptId) {
+  if (!scriptsData || !scriptId) return null;
+  for (const category of Object.keys(scriptsData)) {
+    const data = scriptsData[category];
+    if (Array.isArray(data)) {
+      const script = data.find(s => s.id === scriptId);
+      if (script) return { category, section: null, script };
+    }
+    if (isSectionedCategory(data)) {
+      for (const [section, scripts] of Object.entries(data)) {
+        const script = (scripts || []).find(s => s.id === scriptId);
+        if (script) return { category, section, script };
+      }
+    }
+  }
+  return null;
+}

@@ -728,6 +728,36 @@
         "type": "powershell",
         "inputs": [],
         "template": "# Disk Space\nGet-PSDrive -PSProvider FileSystem | Select-Object Name, @{N='Used(GB)';E={[math]::Round($_.Used/1GB,2)}}, @{N='Free(GB)';E={[math]::Round($_.Free/1GB,2)}} | Format-Table -AutoSize"
+      },
+      {
+        "id": "map-network-drives",
+        "name": "Map Network Drives",
+        "description": "Test connectivity to shared folders, then map them. Enter one UNC path per line (e.g. \\\\server\\share). Optionally prefix with drive letter (e.g. Z:\\\\server\\share).",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "drives",
+            "label": "Shared paths (one per line)",
+            "type": "textarea",
+            "placeholder": "\\\\fileserver\\share\nZ:\\\\backupserver\\data",
+            "defaultValue": ""
+          },
+          {
+            "variable": "username",
+            "label": "Username",
+            "type": "text",
+            "placeholder": "DOMAIN\\user or user@domain.com",
+            "defaultValue": ""
+          },
+          {
+            "variable": "password",
+            "label": "Password",
+            "type": "password",
+            "placeholder": "Enter password",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Map Network Drives - Smart connectivity check then map\n# Generated: $(Get-Date)\n\n$DrivesRaw = @('{{drives}}' -split \"[`n`r,]\" ) | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^\\\\' -or $_ -match '^[A-Za-z]:' }\n$Username = '{{username}}'.Trim()\n$Password = '{{password}}'\n\nif (-not $DrivesRaw -or $DrivesRaw.Count -eq 0) {\n  Write-Host \"\"\n  Write-Host \"  No shared paths entered. Add UNC paths like \\\\server\\share (one per line).\" -ForegroundColor Yellow\n  Write-Host \"\"\n  exit 1\n}\n\nif (-not $Username -or -not $Password) {\n  Write-Host \"\"\n  Write-Host \"  Username and password are required for mapping.\" -ForegroundColor Yellow\n  Write-Host \"\"\n  exit 1\n}\n\n$SecurePassword = ConvertTo-SecureString $Password -AsPlainText -Force\n$Cred = New-Object System.Management.Automation.PSCredential($Username, $SecurePassword)\n\nfunction Get-FromUNC { param([string]$Path)\n  if ($Path -match '^([A-Za-z]):\\(.+)$') { return @{ Letter = $matches[1] + ':'; UNC = '\\\\' + $matches[2].TrimStart('\\\\') } }\n  return @{ Letter = $null; UNC = $Path.TrimEnd('\\\\') }\n}\n\n$Suggestions = @(\n  @{ Issue = 'Unreachable|timeout|could not'; Script = 'Release and Renew IP'; Cmd = 'ipconfig /release; ipconfig /renew'; Hint = 'Network/DHCP issue' },\n  @{ Issue = 'resolve|DNS|not found|does not exist'; Script = 'Register DNS'; Cmd = 'ipconfig /registerdns'; Hint = 'DNS resolution' },\n  @{ Issue = 'access denied|1326|53|67|1231'; Script = 'Check credentials & firewall'; Cmd = 'Check Firewall Status'; Hint = 'Auth or SMB blocked' },\n  @{ Issue = 'network path|network name'; Script = 'Flush DNS'; Cmd = 'ipconfig /flushdns'; Hint = 'Name resolution' },\n  @{ Issue = '.'; Script = 'Repair Winsock'; Cmd = 'netsh winsock reset'; Hint = 'Network stack (reboot after)' }\n)\n\nWrite-Host \"\"\nWrite-Host \"=== MAP NETWORK DRIVES ===\" -ForegroundColor Cyan\nWrite-Host \"  Paths: $($DrivesRaw.Count)\" -ForegroundColor Gray\nWrite-Host \"\"\n\n$Mapped = 0\n$Failed = @()\n\nforeach ($Line in $DrivesRaw) {\n  $info = Get-FromUNC $Line\n  $unc = $info.UNC\n  $letter = $info.Letter\n  $server = ($unc -replace '^\\\\', '') -split '\\\\' | Select-Object -First 1\n\n  Write-Host \"Checking: $unc\" -ForegroundColor Cyan\n\n  $ok = $false\n  try {\n    $tnc = Test-NetConnection -ComputerName $server -Port 445 -WarningAction SilentlyContinue -ErrorAction Stop\n    if ($tnc.TcpTestSucceeded) { $ok = $true }\n  } catch {}\n\n  if (-not $ok) {\n    try {\n      if (Test-Path $unc -ErrorAction Stop) { $ok = $true }\n    } catch {}\n  }\n\n  if (-not $ok) {\n    Write-Host \"  Status: \" -NoNewline; Write-Host \"Cannot reach server or share\" -ForegroundColor Red\n    Write-Host \"  Suggestions (run these scripts if relevant):\" -ForegroundColor Yellow\n    Write-Host \"    - Release and Renew IP\" -ForegroundColor Gray\n    Write-Host \"    - Register DNS\" -ForegroundColor Gray\n    Write-Host \"    - Flush DNS Cache\" -ForegroundColor Gray\n    Write-Host \"    - Check Firewall Status (ensure SMB/445 allowed)\" -ForegroundColor Gray\n    Write-Host \"    - Group Policy Update (gpupdate /force)\" -ForegroundColor Gray\n    Write-Host \"    - Repair Winsock (reboot after)\" -ForegroundColor Gray\n    $Failed += $unc\n    Write-Host \"\"\n    continue\n  }\n\n  $driveLetter = if ($letter) { $letter.TrimEnd(':') } else {\n    $used = Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Name.Length -eq 1 } | Select-Object -ExpandProperty Name\n    $next = 90..68 | ForEach-Object { [char]$_ } | Where-Object { $_ -notin $used } | Select-Object -First 1\n    if ($next) { $next } else { 'Z' }\n  }\n\n  try {\n    if ($letter) {\n      net use \"${driveLetter}:\" $unc /user:$Username $Password /persistent:yes 2>&1 | Out-Null\n    } else {\n      net use \"${driveLetter}:\" $unc /user:$Username $Password /persistent:yes 2>&1 | Out-Null\n    }\n    Write-Host \"  Status: \" -NoNewline; Write-Host \"Mapped ${driveLetter}: -> $unc\" -ForegroundColor Green\n    $Mapped++\n  } catch {\n    Write-Host \"  Status: \" -NoNewline; Write-Host \"Map failed: $($_.Exception.Message)\" -ForegroundColor Red\n    Write-Host \"  Hint: Check username/password. Use DOMAIN\\user format.\" -ForegroundColor Yellow\n    $Failed += $unc\n  }\n  Write-Host \"\"\n}\n\nWrite-Host \"=== DONE ===\" -ForegroundColor $(if ($Failed.Count -eq 0) { 'Green' } else { 'Yellow' })\nWrite-Host \"  Mapped: $Mapped | Failed: $($Failed.Count)\" -ForegroundColor Gray\nWrite-Host \"\"\n"
       }
     ]
   },
@@ -926,55 +956,121 @@
       "type": "powershell",
       "inputs": [],
       "template": "# Firewall Status\nGet-NetFirewallProfile | Select-Object Name, Enabled | Format-Table -AutoSize"
-    },
-    {
-      "id": "bitlocker-status",
-      "name": "BitLocker Status",
-      "description": "Check BitLocker encryption status on drives",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# BitLocker Status\nGet-BitLockerVolume | Format-Table MountPoint, EncryptionMethod, ProtectionStatus, EncryptionPercentage -AutoSize"
-    },
-    {
-      "id": "last-logon",
-      "name": "Last Logon Report",
-      "description": "Get last logon for domain users",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "search_base",
-          "label": "Search Base OU (optional)",
-          "type": "text",
-          "placeholder": "OU=Users,DC=domain,DC=com",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Last Logon Report\n#Requires -Modules ActiveDirectory\n$ou = '{{search_base}}'\nif ($ou) { Get-ADUser -Filter * -SearchBase $ou -Properties LastLogonDate | Select-Object Name, SamAccountName, LastLogonDate | Sort-Object LastLogonDate -Descending | Format-Table -AutoSize }\nelse { Get-ADUser -Filter * -Properties LastLogonDate | Select-Object Name, SamAccountName, LastLogonDate | Sort-Object LastLogonDate -Descending | Format-Table -AutoSize }"
     }
   ],
   "system_maintenance": [
     {
       "id": "disk-cleanup",
       "name": "Disk Cleanup",
-      "description": "Run Windows disk cleanup",
+      "description": "Smart disk cleanup - clear temp files, caches, Recycle Bin, Windows Update cache, and more. All options are safe (data regenerates or is disposable).",
       "type": "powershell",
-      "inputs": [],
-      "template": "cleanmgr /sagerun:1"
-    },
-    {
-      "id": "clear-temp",
-      "name": "Clear Temp Files",
-      "description": "Clear user and Windows temp folders",
-      "type": "powershell",
-      "inputs": [],
-      "template": "# Clear Temp Files (run as admin for full clean)\nRemove-Item $env:TEMP\\* -Recurse -Force -ErrorAction SilentlyContinue\nRemove-Item C:\\Windows\\Temp\\* -Recurse -Force -ErrorAction SilentlyContinue\nWrite-Host 'Temp folders cleared' -ForegroundColor Green"
+      "inputs": [
+        {
+          "variable": "UserTemp",
+          "label": "User Temp folder",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "%TEMP% - application temp files"
+        },
+        {
+          "variable": "WindowsTemp",
+          "label": "Windows Temp folder",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "C:\\Windows\\Temp (admin)"
+        },
+        {
+          "variable": "RecycleBin",
+          "label": "Recycle Bin",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Empty all Recycle Bins"
+        },
+        {
+          "variable": "ThumbnailCache",
+          "label": "Thumbnail cache",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Rebuilt automatically when needed"
+        },
+        {
+          "variable": "DeliveryOptimization",
+          "label": "Delivery Optimization cache",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Windows Update peer cache (admin)"
+        },
+        {
+          "variable": "WindowsUpdateCache",
+          "label": "Windows Update cache",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "false",
+          "description": "Forces WU to re-download; use if updates stuck (admin)"
+        },
+        {
+          "variable": "Prefetch",
+          "label": "Prefetch",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "false",
+          "description": "Application prefetch data (Windows rebuilds)"
+        },
+        {
+          "variable": "BrowserCache",
+          "label": "Browser temp (Edge, Chrome)",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Cache temp - close browsers first"
+        },
+        {
+          "variable": "OldLogs",
+          "label": "Old Windows logs (7+ days)",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "CBS, DISM logs (admin)"
+        },
+        {
+          "variable": "RunCleanmgr",
+          "label": "Run Disk Cleanup (cleanmgr)",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Built-in Windows cleanup"
+        }
+      ],
+      "template": "# Smart Disk Cleanup\n# Generated: $(Get-Date)\n# All options are safe - data regenerates or is disposable\n\n$UserTemp = ('{{UserTemp}}' -eq 'true')\n$WindowsTemp = ('{{WindowsTemp}}' -eq 'true')\n$RecycleBin = ('{{RecycleBin}}' -eq 'true')\n$ThumbnailCache = ('{{ThumbnailCache}}' -eq 'true')\n$DeliveryOptimization = ('{{DeliveryOptimization}}' -eq 'true')\n$WindowsUpdateCache = ('{{WindowsUpdateCache}}' -eq 'true')\n$Prefetch = ('{{Prefetch}}' -eq 'true')\n$BrowserCache = ('{{BrowserCache}}' -eq 'true')\n$OldLogs = ('{{OldLogs}}' -eq 'true')\n$RunCleanmgr = ('{{RunCleanmgr}}' -eq 'true')\n\n$IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n\nfunction Get-FolderSize { param($Path)\n  if (-not (Test-Path $Path)) { return 0 }\n  (Get-ChildItem $Path -Recurse -Force -EA SilentlyContinue | Measure-Object -Property Length -Sum).Sum\n}\n\nfunction Clear-SafeFolder { param($Path)\n  if (-not (Test-Path $Path)) { return }\n  $before = Get-FolderSize $Path\n  Remove-Item \"$Path\\*\" -Recurse -Force -EA SilentlyContinue\n  $after = Get-FolderSize $Path\n  $freed = [math]::Max(0, $before - $after)\n  Write-Host \"  Freed: $([math]::Round($freed/1MB, 2)) MB\" -ForegroundColor Green\n}\n\nWrite-Host \"\"\nWrite-Host \"=== SMART DISK CLEANUP ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nif (-not $IsAdmin) {\n  Write-Host \"[!] Not running as Admin - some options skipped (Windows Temp, WU cache, etc.)\" -ForegroundColor Yellow\n  Write-Host \"\"\n}\n\nif ($UserTemp) {\n  Write-Host \"[1] User Temp...\" -ForegroundColor Cyan\n  Clear-SafeFolder $env:TEMP\n  Write-Host \"\"\n}\n\nif ($WindowsTemp -and $IsAdmin) {\n  Write-Host \"[2] Windows Temp...\" -ForegroundColor Cyan\n  Clear-SafeFolder \"$env:SystemRoot\\Temp\"\n  Write-Host \"\"\n}\n\nif ($RecycleBin) {\n  Write-Host \"[3] Recycle Bin...\" -ForegroundColor Cyan\n  Clear-RecycleBin -Force -ErrorAction SilentlyContinue\n  Write-Host \"  Cleared\" -ForegroundColor Green\n  Write-Host \"\"\n}\n\nif ($ThumbnailCache) {\n  Write-Host \"[4] Thumbnail cache...\" -ForegroundColor Cyan\n  $thumb = \"$env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer\"\n  if (Test-Path $thumb) {\n    Get-ChildItem $thumb -Filter \"thumbcache_*.db\" -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue\n    Write-Host \"  Cleared\" -ForegroundColor Green\n  } else { Write-Host \"  (not found)\" -ForegroundColor Gray }\n  Write-Host \"\"\n}\n\nif ($DeliveryOptimization -and $IsAdmin) {\n  Write-Host \"[5] Delivery Optimization cache...\" -ForegroundColor Cyan\n  $do = \"$env:SystemRoot\\SoftwareDistribution\\DeliveryOptimization\"\n  Clear-SafeFolder $do\n  Write-Host \"\"\n}\n\nif ($WindowsUpdateCache -and $IsAdmin) {\n  Write-Host \"[6] Windows Update cache...\" -ForegroundColor Cyan\n  Stop-Service wuauserv -Force -EA SilentlyContinue\n  Stop-Service bits -Force -EA SilentlyContinue\n  $wuPath = \"$env:SystemRoot\\SoftwareDistribution\\Download\"\n  if (Test-Path $wuPath) { Remove-Item \"$wuPath\\*\" -Recurse -Force -EA SilentlyContinue }\n  Start-Service wuauserv -EA SilentlyContinue\n  Start-Service bits -EA SilentlyContinue\n  Write-Host \"  Cleared (WU will re-download on next check)\" -ForegroundColor Green\n  Write-Host \"\"\n}\n\nif ($Prefetch -and $IsAdmin) {\n  Write-Host \"[7] Prefetch...\" -ForegroundColor Cyan\n  $pf = \"$env:SystemRoot\\Prefetch\"\n  Clear-SafeFolder $pf\n  Write-Host \"\"\n}\n\nif ($BrowserCache) {\n  Write-Host \"[8] Browser temp...\" -ForegroundColor Cyan\n  $paths = @(\n    \"$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default\\Cache\",\n    \"$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default\\Code Cache\",\n    \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Cache\",\n    \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Code Cache\",\n    \"$env:LOCALAPPDATA\\Packages\\Microsoft.MicrosoftEdge_*\\AC\\MicrosoftEdge\\Cache\"\n  )\n  foreach ($p in $paths) {\n    $resolved = Get-Item $p -EA SilentlyContinue | Select-Object -First 1\n    if ($resolved) { Clear-SafeFolder $resolved.FullName }\n  }\n  Write-Host \"\"\n}\n\nif ($OldLogs -and $IsAdmin) {\n  Write-Host \"[9] Old Windows logs (7+ days)...\" -ForegroundColor Cyan\n  $cutoff = (Get-Date).AddDays(-7)\n  $logPaths = @(\"$env:SystemRoot\\Logs\\CBS\", \"$env:SystemRoot\\Logs\\DISM\")\n  $removed = 0\n  foreach ($lp in $logPaths) {\n    if (Test-Path $lp) {\n      Get-ChildItem $lp -Recurse -File -EA SilentlyContinue | Where-Object { $_.LastWriteTime -lt $cutoff } | ForEach-Object { Remove-Item $_.FullName -Force -EA SilentlyContinue; $removed++ }\n    }\n  }\n  Write-Host \"  Removed $removed old log file(s)\" -ForegroundColor Green\n  Write-Host \"\"\n}\n\nif ($RunCleanmgr) {\n  Write-Host \"[10] Running Disk Cleanup (cleanmgr)...\" -ForegroundColor Cyan\n  Start-Process cleanmgr -ArgumentList \"/sagerun:1\" -Wait\n  Write-Host \"  Done\" -ForegroundColor Green\n  Write-Host \"\"\n}\n\nWrite-Host \"=== CLEANUP COMPLETE ===\" -ForegroundColor Green\nWrite-Host \"\"\n"
     },
     {
       "id": "check-services",
-      "name": "Check Critical Services",
-      "description": "Check status of critical Windows services",
+      "name": "Check / Restart Critical Services",
+      "description": "Check status or restart critical Windows services. Pick a preset, choose Check or Restart, then run. Restart requires Administrator.",
       "type": "powershell",
       "inputs": [
+        {
+          "variable": "mode",
+          "label": "Action",
+          "type": "select",
+          "placeholder": "Select action",
+          "defaultValue": "check",
+          "options": [
+            {
+              "value": "check",
+              "label": "Check status only"
+            },
+            {
+              "value": "restart",
+              "label": "Restart services"
+            }
+          ]
+        },
         {
           "variable": "services",
           "label": "Service names (comma-separated)",
@@ -983,23 +1079,7 @@
           "defaultValue": "Spooler,Bits,WinRM,Wuauserv"
         }
       ],
-      "template": "# Check Critical Services\n$svcs = '{{services}}' -split ',' | ForEach-Object { $_.Trim() }\nforeach ($s in $svcs) {\n    try {\n        $svc = Get-Service -Name $s -ErrorAction Stop\n        $status = if ($svc.Status -eq 'Running') { 'Running' } else { 'Stopped' }\n        Write-Host \"$s : $status\"\n    } catch { Write-Host \"$s : Not Found\" -ForegroundColor Yellow }\n}"
-    },
-    {
-      "id": "restart-service",
-      "name": "Restart Service",
-      "description": "Restart a Windows service",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "service_name",
-          "label": "Service Name",
-          "type": "text",
-          "placeholder": "Spooler",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Restart Service (run as admin)\nRestart-Service -Name '{{service_name}}' -Force"
+      "template": "# Check / Restart Critical Services\n# Action: {{mode}}\n\n$Mode = '{{mode}}'\n$svcs = '{{services}}' -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }\nif ($svcs.Count -eq 0) { Write-Host 'No services specified. Use a preset or enter names.' -ForegroundColor Yellow; exit 1 }\n\n$IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\nif ($Mode -eq 'restart' -and -not $IsAdmin) {\n  Write-Host '[!] Restart requires Administrator. Run as Admin.' -ForegroundColor Red\n  exit 1\n}\n\nWrite-Host \"\"\nWrite-Host \"=== $($Mode.ToUpper()) SERVICES ===\" -ForegroundColor Cyan\nWrite-Host \"  Services: $($svcs -join ', ')\" -ForegroundColor Gray\nWrite-Host \"\"\n\nforeach ($s in $svcs) {\n  try {\n    $svc = Get-Service -Name $s -ErrorAction Stop\n    if ($Mode -eq 'restart') {\n      Write-Host \"Restarting $s...\" -ForegroundColor Yellow\n      Restart-Service -Name $s -Force -ErrorAction Stop\n      Write-Host \"  $s : Restarted\" -ForegroundColor Green\n    } else {\n      $status = if ($svc.Status -eq 'Running') { 'Running' } else { 'Stopped' }\n      $color = if ($svc.Status -eq 'Running') { 'Green' } else { 'Yellow' }\n      Write-Host \"  $s : $status\" -ForegroundColor $color\n    }\n  } catch {\n    Write-Host \"  $s : $($_.Exception.Message)\" -ForegroundColor Red\n  }\n}\n\nWrite-Host \"\"\nWrite-Host \"Done.\" -ForegroundColor Green\nWrite-Host \"\"\n"
     },
     {
       "id": "clear-print-queue",
@@ -1016,6 +1096,14 @@
       "type": "powershell",
       "inputs": [],
       "template": "# Restart Scanner/WIA Service\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges\n\nWrite-Host \"=== RESTART SCANNER/WIA SERVICE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\nif (-not $IsAdmin) {\n    Write-Host \"[!] WARNING: This script is not running as Administrator\" -ForegroundColor Red\n    Write-Host \"    This operation requires admin privileges to work properly\" -ForegroundColor Yellow\n    Write-Host \"\"\n}\n\ntry {\n    Write-Host \"Stopping Windows Image Acquisition (WIA) service...\" -ForegroundColor Yellow\n    Stop-Service -Name stisvc -Force -ErrorAction Stop\n    Write-Host \"  [OK] WIA service stopped\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    Write-Host \"Checking for stuck scanner processes...\" -ForegroundColor Yellow\n    $ScannerProcesses = Get-Process | Where-Object { $_.Name -match 'scan|avision|wia|twain' }\n    if ($ScannerProcesses) {\n        $ProcessCount = ($ScannerProcesses | Measure-Object).Count\n        Write-Host \"  Found $ProcessCount scanner-related process(es)\" -ForegroundColor Cyan\n        foreach ($Process in $ScannerProcesses) {\n            Write-Host \"  Stopping: $($Process.Name) (PID: $($Process.Id))\" -ForegroundColor Gray\n        }\n        $ScannerProcesses | Stop-Process -Force -ErrorAction SilentlyContinue\n        Write-Host \"  [OK] Scanner processes terminated\" -ForegroundColor Green\n    } else {\n        Write-Host \"  No stuck scanner processes found\" -ForegroundColor Gray\n    }\n    Write-Host \"\"\n    \n    Write-Host \"Starting Windows Image Acquisition (WIA) service...\" -ForegroundColor Yellow\n    Start-Service -Name stisvc -ErrorAction Stop\n    Write-Host \"  [OK] WIA service started\" -ForegroundColor Green\n    Write-Host \"\"\n    \n    $ServiceStatus = (Get-Service -Name stisvc).Status\n    if ($ServiceStatus -eq 'Running') {\n        Write-Host \"✅ SUCCESS: Scanner service restarted successfully!\" -ForegroundColor Green\n        Write-Host \"Service Status: $ServiceStatus\" -ForegroundColor Cyan\n    } else {\n        Write-Host \"[WARNING] Service status: $ServiceStatus\" -ForegroundColor Yellow\n    }\n} catch {\n    Write-Host \"[ERROR] Failed to restart scanner service: $_\" -ForegroundColor Red\n    Write-Host \"Make sure you are running PowerShell as Administrator\" -ForegroundColor Yellow\n}"
+    },
+    {
+      "id": "repair-windows-image",
+      "name": "Repair Windows Image (DISM + SFC)",
+      "description": "Repair Windows image using DISM RestoreHealth, then run SFC to fix system files. Requires Administrator and internet. May take 15-30 minutes.",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Repair Windows Image - DISM + SFC\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges and internet connection\n\nWrite-Host \"=== REPAIR WINDOWS IMAGE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\n# Check if running as administrator\n$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n\nif (-not $IsAdmin) {\n    Write-Host \"[ERROR] This script must run as Administrator\" -ForegroundColor Red\n    Write-Host \"Please run PowerShell as Administrator and try again\" -ForegroundColor Yellow\n    exit 1\n}\n\nWrite-Host \"This process will:\" -ForegroundColor Yellow\nWrite-Host \"  1. Run DISM to repair the Windows image\" -ForegroundColor Gray\nWrite-Host \"  2. Run SFC to fix system files using the repaired image\" -ForegroundColor Gray\nWrite-Host \"  This may take 15-30 minutes...\" -ForegroundColor Gray\nWrite-Host \"\"\n\n# Step 1: DISM RestoreHealth\nWrite-Host \"[STEP 1/2] Running DISM /RestoreHealth...\" -ForegroundColor Cyan\nWrite-Host \"This repairs the Windows component store...\" -ForegroundColor Gray\nWrite-Host \"\"\n\ntry {\n    $dismResult = DISM /Online /Cleanup-Image /RestoreHealth\n    $dismResult | Out-String | Write-Host\n    \n    if ($LASTEXITCODE -eq 0) {\n        Write-Host \"DISM completed successfully\" -ForegroundColor Green\n    } else {\n        Write-Host \"[WARNING] DISM completed with exit code: $LASTEXITCODE\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] DISM failed: $_\" -ForegroundColor Red\n    exit 1\n}\n\nWrite-Host \"\"\nWrite-Host \"---\" -ForegroundColor DarkGray\nWrite-Host \"\"\n\n# Step 2: SFC Scan\nWrite-Host \"[STEP 2/2] Running SFC /scannow...\" -ForegroundColor Cyan\nWrite-Host \"This scans and repairs system files...\" -ForegroundColor Gray\nWrite-Host \"\"\n\ntry {\n    $sfcResult = sfc /scannow\n    $sfcResult | Out-String | Write-Host\n    \n    if ($LASTEXITCODE -eq 0) {\n        Write-Host \"SFC completed successfully\" -ForegroundColor Green\n    } else {\n        Write-Host \"[WARNING] SFC completed with exit code: $LASTEXITCODE\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] SFC failed: $_\" -ForegroundColor Red\n    exit 1\n}\n\nWrite-Host \"\"\nWrite-Host \"=== REPAIR COMPLETE ===\" -ForegroundColor Cyan\nWrite-Host \"Windows image repair finished\" -ForegroundColor Green\nWrite-Host \"\"\nWrite-Host \"Check the output above for details.\" -ForegroundColor Gray\nWrite-Host \"If issues persist, a system restart may be required.\" -ForegroundColor Yellow\n"
     }
   ],
   "windows_updates": [
@@ -1089,11 +1177,36 @@
   "browser_tools": [
     {
       "id": "clear-ie-cache",
-      "name": "Clear IE/Edge Cache",
-      "description": "Clear Internet Explorer and Edge cache",
+      "name": "Clear Browser Cache",
+      "description": "Clear cache for IE/Edge, Chrome, and Firefox. Close browsers first.",
       "type": "powershell",
-      "inputs": [],
-      "template": "# Clear IE/Edge cache\nRunDll32.exe InetCpl.cpl,ClearMyTracksByProcess 8"
+      "inputs": [
+        {
+          "variable": "IEEdge",
+          "label": "Clear IE/Edge cache",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Internet Explorer and Microsoft Edge"
+        },
+        {
+          "variable": "Chrome",
+          "label": "Clear Chrome cache",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Google Chrome cache"
+        },
+        {
+          "variable": "Firefox",
+          "label": "Clear Firefox cache",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Mozilla Firefox cache"
+        }
+      ],
+      "template": "# Clear Browser Cache\n# Generated: $(Get-Date)\n# Close browsers first for best results\n\n$IEEdge = ('{{IEEdge}}' -eq 'true')\n$Chrome = ('{{Chrome}}' -eq 'true')\n$Firefox = ('{{Firefox}}' -eq 'true')\n\nfunction Clear-SafeFolder { param($Path)\n  if (-not (Test-Path $Path)) { return 0 }\n  $before = (Get-ChildItem $Path -Recurse -Force -EA SilentlyContinue | Measure-Object -Property Length -Sum).Sum\n  Remove-Item \"$Path\\*\" -Recurse -Force -EA SilentlyContinue\n  return [math]::Max(0, $before)\n}\n\nWrite-Host \"\"\nWrite-Host \"=== CLEAR BROWSER CACHE ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nif ($IEEdge) {\n  Write-Host \"[1] IE/Edge cache...\" -ForegroundColor Cyan\n  RunDll32.exe InetCpl.cpl,ClearMyTracksByProcess 8\n  $edgePaths = @(\n    \"$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default\\Cache\",\n    \"$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default\\Code Cache\",\n    \"$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default\\GPUCache\"\n  )\n  $freed = 0\n  foreach ($p in $edgePaths) { $freed += Clear-SafeFolder $p }\n  Write-Host \"  Freed: $([math]::Round($freed/1MB, 2)) MB\" -ForegroundColor Green\n  Write-Host \"\"\n}\n\nif ($Chrome) {\n  Write-Host \"[2] Chrome cache...\" -ForegroundColor Cyan\n  $chromePaths = @(\n    \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Cache\",\n    \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Code Cache\",\n    \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\GPUCache\",\n    \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\ShaderCache\"\n  )\n  $freed = 0\n  foreach ($p in $chromePaths) { $freed += Clear-SafeFolder $p }\n  Write-Host \"  Freed: $([math]::Round($freed/1MB, 2)) MB\" -ForegroundColor Green\n  Write-Host \"\"\n}\n\nif ($Firefox) {\n  Write-Host \"[3] Firefox cache...\" -ForegroundColor Cyan\n  $ffProfiles = \"$env:APPDATA\\Mozilla\\Firefox\\Profiles\"\n  $freed = 0\n  if (Test-Path $ffProfiles) {\n    Get-ChildItem $ffProfiles -Directory -EA SilentlyContinue | ForEach-Object {\n      $cache2 = Join-Path $_.FullName \"cache2\"\n      $startup = Join-Path $_.FullName \"startupCache\"\n      $freed += Clear-SafeFolder $cache2\n      $freed += Clear-SafeFolder $startup\n    }\n  }\n  Write-Host \"  Freed: $([math]::Round($freed/1MB, 2)) MB\" -ForegroundColor Green\n  Write-Host \"\"\n}\n\nWrite-Host \"=== DONE ===\" -ForegroundColor Green\nWrite-Host \"\"\n"
     }
   ],
   "troubleshooting": [
@@ -1122,20 +1235,20 @@
       "template": "ipconfig /registerdns"
     },
     {
-      "id": "sfc-scan",
-      "name": "SFC System File Check",
-      "description": "Scan and repair system files (run as admin)",
-      "type": "cmd",
-      "inputs": [],
-      "template": "sfc /scannow"
-    },
-    {
       "id": "repair-winsock",
       "name": "Repair Winsock",
       "description": "Reset Winsock catalog",
       "type": "cmd",
       "inputs": [],
       "template": "netsh winsock reset"
+    },
+    {
+      "id": "reset-network-stack",
+      "name": "Reset Network Stack",
+      "description": "Reset TCP/IP, Winsock, flush DNS, release and renew IP. Requires Administrator. Restart required after.",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Reset Network Stack\n# Generated: $(Get-Date)\n# NOTE: This script requires Administrator privileges and will require restart\n\nWrite-Host \"=== RESET NETWORK STACK ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"Resetting TCP/IP stack...\" -ForegroundColor Yellow\nnetsh int ip reset\n\nWrite-Host \"Resetting Winsock catalog...\" -ForegroundColor Yellow\nnetsh winsock reset\n\nWrite-Host \"Flushing DNS cache...\" -ForegroundColor Yellow\nipconfig /flushdns\n\nWrite-Host \"Releasing IP address...\" -ForegroundColor Yellow\nipconfig /release\n\nWrite-Host \"Renewing IP address...\" -ForegroundColor Yellow\nipconfig /renew\n\nWrite-Host \"\"\nWrite-Host \"Network stack reset complete\" -ForegroundColor Green\nWrite-Host \"A system restart is required for changes to take effect\" -ForegroundColor Red\n"
     }
   ],
   "microsoft_office": [

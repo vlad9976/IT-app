@@ -5,6 +5,12 @@ import ScriptManager from './components/ScriptManager';
 import UpdateNotification from './components/UpdateNotification';
 import M365Dashboard from './components/M365DashboardNew';
 import ErrorBoundary from './components/ErrorBoundary';
+import EventDocsModal from './components/EventDocsModal';
+import ServiceDocsModal from './components/ServiceDocsModal';
+import PortDocsModal from './components/PortDocsModal';
+import M365LicenseDocsModal from './components/M365LicenseDocsModal';
+import BackupDocsModal from './components/BackupDocsModal';
+import { FavoritesProvider } from './contexts/FavoritesContext';
 import { findScriptInCategory, isSectionedCategory } from './utils/scriptStructure';
 
 // Fallback when not in Electron (e.g. Vite dev without Electron)
@@ -17,6 +23,7 @@ function App() {
   const [viewMode, setViewMode] = useState('scripts');
   const [showScriptManager, setShowScriptManager] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [openDoc, setOpenDoc] = useState(null); // 'event'|'service'|'port'|'m365'|'backup'
 
   useEffect(() => {
     async function loadScripts() {
@@ -65,6 +72,7 @@ function App() {
 
   return (
     <ErrorBoundary>
+      <FavoritesProvider>
       <div className="flex h-screen bg-dark-bg">
         <Sidebar
           categories={categories}
@@ -72,6 +80,7 @@ function App() {
           onScriptSelect={handleScriptSelect}
           onM365Select={handleM365Select}
           onManageScripts={() => setShowScriptManager(true)}
+          onOpenDoc={setOpenDoc}
           selectedScript={selectedScript}
           viewMode={viewMode}
           loading={loading}
@@ -84,13 +93,20 @@ function App() {
               onClose={() => setShowScriptManager(false)}
             />
           ) : viewMode === 'scripts' ? (
-            <ScriptPanel script={selectedScript} />
+            <ScriptPanel script={selectedScript} onOpenDoc={setOpenDoc} />
           ) : (
             <M365Dashboard />
           )}
         </div>
         <UpdateNotification />
+        {/* Documentation modals - quick access from anywhere */}
+        <EventDocsModal isOpen={openDoc === 'event'} onClose={() => setOpenDoc(null)} />
+        <ServiceDocsModal isOpen={openDoc === 'service'} onClose={() => setOpenDoc(null)} />
+        <PortDocsModal isOpen={openDoc === 'port'} onClose={() => setOpenDoc(null)} />
+        <M365LicenseDocsModal isOpen={openDoc === 'm365'} onClose={() => setOpenDoc(null)} />
+        <BackupDocsModal isOpen={openDoc === 'backup'} onClose={() => setOpenDoc(null)} />
       </div>
+      </FavoritesProvider>
     </ErrorBoundary>
   );
 }

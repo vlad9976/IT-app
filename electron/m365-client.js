@@ -10,6 +10,8 @@ class M365Client {
     this.accessToken = null;
     this.account = null;
     this.config = null;
+    this.onSessionExpired = null;
+    this.tokenAcquiredAt = null; // skip silent refresh for 2 min after device code
   }
 
   initialize(clientId, tenantId = 'common') {
@@ -57,6 +59,7 @@ class M365Client {
       
       this.accessToken = response.accessToken;
       this.account = response.account;
+      this.tokenAcquiredAt = Date.now();
 
       this.graphClient = Client.init({
         authProvider: (done) => {
@@ -118,6 +121,7 @@ class M365Client {
 
       const response = await this.msalClient.acquireTokenSilent(silentRequest);
       this.accessToken = response.accessToken;
+      this.tokenAcquiredAt = Date.now();
       
       this.graphClient = Client.init({
         authProvider: (done) => {
@@ -127,8 +131,20 @@ class M365Client {
 
       return true;
     } catch (error) {
-      log.warn('Silent token acquisition failed:', error.message);
-      return false;
+      const msg = error.message || '';
+      if (msg.includes('AADSTS65001') || msg.includes('InteractionRequired') || msg.includes('consent')) {
+        log.warn('Silent token failed - interactive re-auth required');
+        this.disconnect();
+        if (typeof this.onSessionExpired === 'function') this.onSessionExpired();
+        const friendly = new Error(
+          'Your session must be refreshed. Admin consent was granted, but you need to sign in again. ' +
+          'Click Disconnect, then Connect to complete a new sign-in with device code.'
+        );
+        friendly.name = error.name;
+        throw friendly;
+      }
+      log.warn('Silent token acquisition failed:', msg);
+      throw error;
     }
   }
 
@@ -151,6 +167,7 @@ class M365Client {
     this.accessToken = null;
     this.account = null;
     this.graphClient = null;
+    this.tokenAcquiredAt = null;
     log.info('Disconnected from Microsoft 365');
   }
 
@@ -370,10 +387,13 @@ class M365Client {
       throw new Error('Not authenticated. Please connect to Microsoft 365 first.');
     }
 
-    const renewed = await this.acquireTokenSilent();
-    if (!renewed && !this.accessToken) {
-      throw new Error('Token expired. Please reconnect to Microsoft 365.');
+    // Skip silent refresh for 2 min after device code - use the fresh token directly
+    const graceMs = 2 * 60 * 1000;
+    if (this.tokenAcquiredAt && (Date.now() - this.tokenAcquiredAt) < graceMs) {
+      return;
     }
+
+    await this.acquireTokenSilent();
   }
 
   // ============================================
@@ -570,7 +590,11 @@ class M365Client {
 
       return { success: true, users: users.value || [] };
     } catch (error) {
-      log.error('Search users error:', error);
+      if (error.message?.includes('fetch failed') && error.cause) {
+        log.error('Search users network error:', error.message, 'cause:', error.cause?.message || error.cause?.code || error.cause);
+      } else {
+        log.error('Search users error:', error);
+      }
       return this.handleError(error);
     }
   }
@@ -1228,7 +1252,21 @@ class M365Client {
     let message = 'An unknown error occurred';
     let code = 'UNKNOWN_ERROR';
 
-    if (error.statusCode) {
+    const errMsg = (error.message || '').toString();
+    const cause = error.cause ? (error.cause.message || String(error.cause)) : '';
+
+    if (errMsg.includes('fetch failed') || cause.includes('fetch') || cause.includes('ECONNREFUSED') || cause.includes('ENOTFOUND') || cause.includes('ETIMEDOUT')) {
+      message = 'Network error: Could not reach Microsoft Graph. ' +
+        'Check your internet connection, firewall, and proxy settings. ' +
+        'Ensure https://graph.microsoft.com is not blocked.';
+      if (cause) message += ` (${cause})`;
+      code = 'NETWORK_ERROR';
+    } else if (errMsg.includes('AADSTS65001') || errMsg.includes('consent')) {
+      message = 'Admin consent required: Your tenant admin has not granted this app permission. ' +
+        'Ask your admin to grant consent in Azure Portal (App registrations → IT Admin Toolkit → API permissions → Grant admin consent), ' +
+        'or disconnect and reconnect to try interactive sign-in.';
+      code = 'AADSTS65001';
+    } else if (error.statusCode) {
       code = `HTTP_${error.statusCode}`;
       
       if (error.statusCode === 401) {

@@ -1,11 +1,29 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Terminal, FolderOpen, Search, X, Plug, Cloud, Settings } from 'lucide-react';
-import { getScriptsFromCategory, getCategoryStructure, isSectionedCategory } from '../utils/scriptStructure';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { ChevronDown, ChevronRight, Terminal, FolderOpen, Search, X, Plug, Cloud, Settings, Star, BookOpen } from 'lucide-react';
+import { getScriptsFromCategory, getCategoryStructure, isSectionedCategory, findScriptLocation } from '../utils/scriptStructure';
+import { useFavorites } from '../contexts/FavoritesContext';
 
-const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onManageScripts, selectedScript, viewMode, loading }) => {
+const DOCS = [
+  { id: 'event', label: 'Event IDs', desc: 'Windows Event Log' },
+  { id: 'service', label: 'Services', desc: 'Windows Services' },
+  { id: 'port', label: 'Ports', desc: 'Common TCP/UDP ports' },
+  { id: 'm365', label: 'M365 Licenses', desc: 'Microsoft 365 SKUs' },
+  { id: 'backup', label: 'Backup Guide', desc: 'Domain Migration' },
+];
+
+const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onManageScripts, onOpenDoc, selectedScript, viewMode, loading }) => {
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const [showDocsMenu, setShowDocsMenu] = useState(false);
+  const docsMenuRef = useRef(null);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [expandedSections, setExpandedSections] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
+
+  const favoritedScripts = useMemo(() => {
+    return favorites
+      .map(id => findScriptLocation(scriptsData, id))
+      .filter(Boolean);
+  }, [favorites, scriptsData]);
 
   const toggleCategory = (category) => {
     setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
@@ -78,6 +96,16 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onMana
     setSearchQuery('');
   };
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (docsMenuRef.current && !docsMenuRef.current.contains(e.target)) {
+        setShowDocsMenu(false);
+      }
+    };
+    if (showDocsMenu) document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showDocsMenu]);
+
   return (
     <div className="w-80 bg-dark-surface border-r border-dark-border flex flex-col">
       {/* Header */}
@@ -117,6 +145,30 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onMana
         )}
       </div>
 
+      {/* Favorites */}
+      {favoritedScripts.length > 0 && (
+        <div className="px-4 mb-2">
+          <div className="flex items-center gap-2 px-2 py-1.5 mb-1">
+            <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+            <span className="text-xs font-medium text-gray-400">Favorites</span>
+          </div>
+          <div className="space-y-0.5">
+            {favoritedScripts.map(({ category, script }) => (
+              <button
+                key={script.id}
+                onClick={() => onScriptSelect(category, script.id)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                  selectedScript?.id === script.id ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-dark-hover'
+                }`}
+              >
+                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />
+                <span className="flex-1 truncate">{script.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Microsoft 365 Integration */}
       <div className="px-4 mb-2">
         <button
@@ -134,6 +186,34 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onMana
           </div>
         </button>
       </div>
+
+      {/* Documentation - Quick Access */}
+      {onOpenDoc && (
+        <div ref={docsMenuRef} className="px-4 mb-2 relative">
+          <button
+            onClick={() => setShowDocsMenu(!showDocsMenu)}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-amber-700/50 bg-amber-900/20 hover:bg-amber-900/30 text-amber-200 transition-colors"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span className="text-sm font-medium flex-1 text-left">Documentation</span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showDocsMenu ? 'rotate-180' : ''}`} />
+          </button>
+          {showDocsMenu && (
+            <div className="absolute left-4 right-4 top-full mt-1 py-1 bg-dark-surface border border-dark-border rounded-lg shadow-xl z-50">
+              {DOCS.map((doc) => (
+                <button
+                  key={doc.id}
+                  onClick={() => { onOpenDoc(doc.id); setShowDocsMenu(false); }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-dark-hover hover:text-white flex flex-col gap-0.5"
+                >
+                  <span className="font-medium">{doc.label}</span>
+                  <span className="text-xs text-gray-500">{doc.desc}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Manage Scripts */}
       {onManageScripts && (
@@ -168,6 +248,7 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onMana
             const structure = getCategoryStructure(filteredData.scriptsData, category);
             const renderScript = (script) => {
               const isM365Connect = script.id === 'm365-connect';
+              const fav = isFavorite(script.id);
               return (
                 <button
                   key={script.id}
@@ -183,12 +264,19 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onMana
                   }`}
                 >
                   {isM365Connect && <Plug className="w-4 h-4 flex-shrink-0" />}
-                  <span className={isM365Connect ? 'font-semibold' : ''}>{script.name}</span>
+                  <span className={`flex-1 truncate ${isM365Connect ? 'font-semibold' : ''}`}>{script.name}</span>
                   {isM365Connect && (
-                    <span className="ml-auto text-xs bg-orange-500/30 px-2 py-0.5 rounded-full border border-orange-500/50">
+                    <span className="text-xs bg-orange-500/30 px-2 py-0.5 rounded-full border border-orange-500/50">
                       Connect First
                     </span>
                   )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite(script.id); }}
+                    className={`p-0.5 rounded hover:bg-white/10 flex-shrink-0 ${fav ? 'text-amber-400' : 'text-gray-500 hover:text-amber-400/70'}`}
+                    title={fav ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    <Star className={`w-3.5 h-3.5 ${fav ? 'fill-amber-400' : ''}`} />
+                  </button>
                 </button>
               );
             };
