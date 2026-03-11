@@ -1,5 +1,6 @@
 {
-  "active_directory": [
+  "active_directory": {
+    "User Scripts": [
     {
       "id": "ad-reset-password",
       "name": "Reset AD User Password",
@@ -72,52 +73,6 @@
       "template": "# Enable AD User\nEnable-ADAccount -Identity '{{username}}'"
     },
     {
-      "id": "ad-add-to-group",
-      "name": "Add User to AD Group",
-      "description": "Add a user to an Active Directory security group",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username/UPN",
-          "type": "text",
-          "placeholder": "user@domain.com",
-          "defaultValue": ""
-        },
-        {
-          "variable": "group_name",
-          "label": "Group Name",
-          "type": "text",
-          "placeholder": "Sales_Team",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Add User to AD Group\nAdd-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}'"
-    },
-    {
-      "id": "ad-remove-from-group",
-      "name": "Remove User from AD Group",
-      "description": "Remove a user from an Active Directory security group",
-      "type": "powershell",
-      "inputs": [
-        {
-          "variable": "username",
-          "label": "Username/UPN",
-          "type": "text",
-          "placeholder": "user@domain.com",
-          "defaultValue": ""
-        },
-        {
-          "variable": "group_name",
-          "label": "Group Name",
-          "type": "text",
-          "placeholder": "Sales_Team",
-          "defaultValue": ""
-        }
-      ],
-      "template": "# Remove User from AD Group\nRemove-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}' -Confirm:$false"
-    },
-    {
       "id": "ad-bulk-create-users-csv",
       "name": "Bulk Create AD Users from CSV",
       "description": "Create multiple AD users from a CSV file",
@@ -164,6 +119,114 @@
       "template": "# Get AD User Info\nGet-ADUser -Identity '{{username}}' -Properties * | Format-List"
     },
     {
+      "id": "ad-create-user",
+      "name": "Create New AD User",
+      "description": "Create a new Active Directory user with first/last name, username, password, and OU path",
+      "type": "powershell",
+      "inputs": [
+        {
+          "variable": "username",
+          "label": "Username (sAMAccountName)",
+          "type": "text",
+          "placeholder": "jdoe",
+          "defaultValue": ""
+        },
+        {
+          "variable": "firstname",
+          "label": "First name",
+          "type": "text",
+          "placeholder": "John",
+          "defaultValue": ""
+        },
+        {
+          "variable": "lastname",
+          "label": "Last name",
+          "type": "text",
+          "placeholder": "Doe",
+          "defaultValue": ""
+        },
+        {
+          "variable": "password",
+          "label": "Initial password",
+          "type": "password",
+          "placeholder": "TempPassword123!",
+          "defaultValue": ""
+        },
+        {
+          "variable": "ou_path",
+          "label": "OU Path",
+          "type": "text",
+          "placeholder": "OU=Users,DC=company,DC=com",
+          "defaultValue": ""
+        }
+      ],
+      "template": "# Create New Active Directory User\n#Requires -Modules ActiveDirectory\n# Generated: $(Get-Date)\n\n$Username = \"{{username}}\"\n$FirstName = \"{{firstname}}\"\n$LastName = \"{{lastname}}\"\n$Password = ConvertTo-SecureString \"{{password}}\" -AsPlainText -Force\n$OUPath = \"{{ou_path}}\"\n\nWrite-Host \"=== CREATE ACTIVE DIRECTORY USER ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\ntry {\n    New-ADUser -Name \"$FirstName $LastName\" `\n        -GivenName $FirstName `\n        -Surname $LastName `\n        -SamAccountName $Username `\n        -UserPrincipalName \"$Username@company.com\" `\n        -Path $OUPath `\n        -AccountPassword $Password `\n        -Enabled $true `\n        -ChangePasswordAtLogon $true\n    \n    Write-Host \"✅ User $Username created successfully!\" -ForegroundColor Green\n    Write-Host \"Full Name: $FirstName $LastName\" -ForegroundColor Gray\n    Write-Host \"OU Path: $OUPath\" -ForegroundColor Gray\n    Write-Host \"User must change password at next logon\" -ForegroundColor Yellow\n}\ncatch {\n    Write-Host \"[ERROR] Failed to create user: $_\" -ForegroundColor Red\n}"
+    },
+    {
+      "id": "ad-add-domain-to-local-admins",
+      "name": "Add Domain User to Local Administrators",
+      "description": "Add a domain user or group to the local Administrators group on this computer",
+      "type": "powershell",
+      "inputs": [
+        {
+          "variable": "account",
+          "label": "Domain account (user or group)",
+          "type": "text",
+          "placeholder": "DOMAIN\\\\user or DOMAIN\\\\Group",
+          "defaultValue": ""
+        }
+      ],
+      "template": "# Add domain user/group to local Administrators\nAdd-LocalGroupMember -Group \"Administrators\" -Member \"{{account}}\""
+    }
+    ],
+    "Group Scripts": [
+    {
+      "id": "ad-add-to-group",
+      "name": "Add User to AD Group",
+      "description": "Add a user to an Active Directory security group",
+      "type": "powershell",
+      "inputs": [
+        {
+          "variable": "username",
+          "label": "Username/UPN",
+          "type": "text",
+          "placeholder": "user@domain.com",
+          "defaultValue": ""
+        },
+        {
+          "variable": "group_name",
+          "label": "Group Name",
+          "type": "text",
+          "placeholder": "Sales_Team",
+          "defaultValue": ""
+        }
+      ],
+      "template": "# Add User to AD Group\nAdd-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}'"
+    },
+    {
+      "id": "ad-remove-from-group",
+      "name": "Remove User from AD Group",
+      "description": "Remove a user from an Active Directory security group",
+      "type": "powershell",
+      "inputs": [
+        {
+          "variable": "username",
+          "label": "Username/UPN",
+          "type": "text",
+          "placeholder": "user@domain.com",
+          "defaultValue": ""
+        },
+        {
+          "variable": "group_name",
+          "label": "Group Name",
+          "type": "text",
+          "placeholder": "Sales_Team",
+          "defaultValue": ""
+        }
+      ],
+      "template": "# Remove User from AD Group\nRemove-ADGroupMember -Identity '{{group_name}}' -Members '{{username}}' -Confirm:$false"
+    },
+    {
       "id": "ad-list-group-members",
       "name": "List AD Group Members",
       "description": "List all members of an Active Directory group",
@@ -178,47 +241,154 @@
         }
       ],
       "template": "# List AD Group Members\nGet-ADGroupMember -Identity '{{group_name}}' | Format-Table Name, SamAccountName, objectClass -AutoSize"
-    },
+    }
+    ],
+    "System": [
     {
-      "id": "ad-add-local-group-member",
-      "name": "Add to Local Administrators",
-      "description": "Add a user or group to the local Administrators group on a computer",
+      "id": "ad-dc-basic-hardening",
+      "name": "Domain Controller Basic Hardening",
+      "description": "Lockout, password policy, SMBv1, firewall, auditing, RDP security, disable Guest and risky services",
       "type": "powershell",
       "inputs": [
         {
-          "variable": "account",
-          "label": "Account (user or group)",
+          "variable": "LockoutThreshold",
+          "label": "Lockout threshold (attempts)",
           "type": "text",
-          "placeholder": "DOMAIN\\user",
-          "defaultValue": ""
+          "placeholder": "5",
+          "defaultValue": "5"
+        },
+        {
+          "variable": "LockoutDuration",
+          "label": "Lockout duration (minutes)",
+          "type": "text",
+          "placeholder": "30",
+          "defaultValue": "30"
+        },
+        {
+          "variable": "MinPasswordLength",
+          "label": "Minimum password length",
+          "type": "text",
+          "placeholder": "14",
+          "defaultValue": "14"
+        },
+        {
+          "variable": "MaxPasswordAge",
+          "label": "Maximum password age (days)",
+          "type": "text",
+          "placeholder": "90",
+          "defaultValue": "90"
+        },
+        {
+          "variable": "PasswordHistory",
+          "label": "Password history (prevent reuse)",
+          "type": "text",
+          "placeholder": "24",
+          "defaultValue": "24"
         }
       ],
-      "template": "Add-LocalGroupMember -Group \"Administrators\" -Member \"{{account}}\""
+      "template": "# Domain Controller Basic Hardening\n# Generated: $(Get-Date)\n# NOTE: Requires Domain Admin privileges\n\n$LockoutThreshold = if ('{{LockoutThreshold}}' -match '^\\d+$') { [int]'{{LockoutThreshold}}' } else { 5 }\n$LockoutDuration = if ('{{LockoutDuration}}' -match '^\\d+$') { [int]'{{LockoutDuration}}' } else { 30 }\n$MinPasswordLength = if ('{{MinPasswordLength}}' -match '^\\d+$') { [int]'{{MinPasswordLength}}' } else { 14 }\n$MaxPasswordAge = if ('{{MaxPasswordAge}}' -match '^\\d+$') { [int]'{{MaxPasswordAge}}' } else { 90 }\n$PasswordHistory = if ('{{PasswordHistory}}' -match '^\\d+$') { [int]'{{PasswordHistory}}' } else { 24 }\n\nWrite-Host \"=== DC BASIC HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\nWrite-Host \"Config: Lockout=$LockoutThreshold attempts, Duration=$LockoutDuration min, MinPwd=$MinPasswordLength chars\" -ForegroundColor Yellow\nWrite-Host \"\"\n\nWrite-Host \"[1/8] Account Lockout Policy...\" -ForegroundColor Cyan\nnet accounts /lockoutthreshold:$LockoutThreshold /lockoutduration:$LockoutDuration /lockoutwindow:$LockoutDuration\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[2/8] Password Policy...\" -ForegroundColor Cyan\nnet accounts /minpwlen:$MinPasswordLength /maxpwage:$MaxPasswordAge /minpwage:1 /uniquepw:$PasswordHistory\nWrite-Host \"  ✅ Done\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[3/8] Disable SMBv1...\" -ForegroundColor Cyan\nSet-SmbServerConfiguration -EnableSMB1Protocol $false -Force\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[4/8] Enable Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[5/8] Audit Policies...\" -ForegroundColor Cyan\nauditpol /set /category:\"Account Logon\" /success:enable /failure:enable\nauditpol /set /category:\"Account Management\" /success:enable /failure:enable\nauditpol /set /category:\"Logon/Logoff\" /success:enable /failure:enable\nWrite-Host \"  ✅ Auditing enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[6/8] Disable Guest...\" -ForegroundColor Cyan\nnet user guest /active:no\nWrite-Host \"  ✅ Guest disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[7/8] RDP Security...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'MinEncryptionLevel' -Value 3\nWrite-Host \"  ✅ RDP hardened\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[8/8] Disable Services...\" -ForegroundColor Cyan\n@('RemoteRegistry', 'SSDPSRV', 'upnphost') | ForEach-Object { Stop-Service $_ -Force -EA SilentlyContinue; Set-Service $_ -StartupType Disabled -EA SilentlyContinue }\nWrite-Host \"  ✅ Services disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE ===\" -ForegroundColor Green"
+    },
+    {
+      "id": "ad-dc-advanced-hardening",
+      "name": "Domain Controller Advanced Hardening",
+      "description": "LDAP signing, channel binding, Kerberos, NTLM restriction, AdminSDHolder, PrintNightmare, log size, Credential Guard",
+      "type": "powershell",
+      "inputs": [
+        {
+          "variable": "AdminSDProtectFrequency",
+          "label": "AdminSDHolder check interval (seconds)",
+          "type": "text",
+          "placeholder": "600",
+          "defaultValue": "600"
+        },
+        {
+          "variable": "SecurityLogSizeMB",
+          "label": "Security event log size (MB)",
+          "type": "text",
+          "placeholder": "4000",
+          "defaultValue": "4000"
+        }
+      ],
+      "template": "# DC Advanced Hardening\n# Generated: $(Get-Date)\n# NOTE: Requires Domain Admin privileges\n\n$AdminSDProtectFrequency = if ('{{AdminSDProtectFrequency}}' -match '^\\d+$') { [int]'{{AdminSDProtectFrequency}}' } else { 600 }\n$SecurityLogSizeMB = if ('{{SecurityLogSizeMB}}' -match '^\\d+$') { [int]'{{SecurityLogSizeMB}}' } else { 4000 }\n$SecurityLogSizeBytes = $SecurityLogSizeMB * 1024 * 1024\n\nWrite-Host \"=== DC ADVANCED HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nWrite-Host \"[1/10] LDAP Signing...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LDAPServerIntegrity' -Value 2 -Type DWord\nWrite-Host \"  ✅ LDAP signing enforced\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[2/10] LDAP Channel Binding...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'LdapEnforceChannelBinding' -Value 2 -Type DWord\nWrite-Host \"  ✅ Channel binding enforced\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[3/10] Kerberos Encryption (AES only)...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\Kerberos\\Parameters' -Name 'SupportedEncryptionTypes' -Value 0x18 -Type DWord -Force\nWrite-Host \"  ✅ Weak encryption disabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[4/10] Restrict NTLM...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictSendingNTLMTraffic' -Value 2 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LmCompatibilityLevel' -Value 5 -Type DWord\nWrite-Host \"  ✅ NTLM restricted\" -ForegroundColor Green\nWrite-Host \"  ⚠ Ensure Kerberos support\" -ForegroundColor Yellow\n\nWrite-Host \"\"\nWrite-Host \"[5/10] AdminSDHolder...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\NTDS\\Parameters' -Name 'AdminSDProtectFrequency' -Value $AdminSDProtectFrequency -Type DWord\nWrite-Host \"  ✅ Check interval: $($AdminSDProtectFrequency / 60) min\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[6/10] Disable Print Spooler...\" -ForegroundColor Cyan\nStop-Service Spooler -Force -EA SilentlyContinue\nSet-Service Spooler -StartupType Disabled\nWrite-Host \"  ✅ PrintNightmare protection\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[7/10] Security Log Size...\" -ForegroundColor Cyan\nwevtutil sl Security /ms:$SecurityLogSizeBytes\nWrite-Host \"  ✅ Log size: $SecurityLogSizeMB MB\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[8/10] Credential Guard...\" -ForegroundColor Cyan\nNew-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\nWrite-Host \"  ✅ Enabled (reboot required)\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[9/10] Restrict Anonymous...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymous' -Value 1 -Type DWord\nSet-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'RestrictAnonymousSAM' -Value 1 -Type DWord\nWrite-Host \"  ✅ Anonymous restricted\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"[10/10] Protected Users Group...\" -ForegroundColor Cyan\ntry {\n    Get-ADGroup -Identity 'Protected Users' | Out-Null\n    Write-Host \"  ✅ Available - add privileged accounts manually\" -ForegroundColor Green\n} catch {\n    Write-Host \"  ⚠ Not available (2012 R2+ required)\" -ForegroundColor Yellow\n}\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE - REBOOT REQUIRED ===\" -ForegroundColor Green"
+    },
+    {
+      "id": "ad-endpoint-hardening",
+      "name": "AD Endpoint Hardening",
+      "description": "Harden domain-joined endpoints: LLMNR, NetBIOS, WPAD, PowerShell logging, Defender, SMBv1, AutoRun, UAC, firewall",
+      "type": "powershell",
+      "inputs": [
+        {
+          "variable": "DisableLLMNR",
+          "label": "Disable LLMNR",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true"
+        },
+        {
+          "variable": "DisableNetBIOS",
+          "label": "Disable NetBIOS",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true"
+        },
+        {
+          "variable": "DisableWSH",
+          "label": "Disable Windows Script Host (WSH)",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true"
+        },
+        {
+          "variable": "EnableControlledFolder",
+          "label": "Enable Defender Controlled Folder Access",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true"
+        }
+      ],
+      "template": "# AD Endpoint Hardening\n# Generated: $(Get-Date)\n# NOTE: Run on domain-joined endpoints (preferably via GPO script)\n\n$DisableLLMNR = ('{{DisableLLMNR}}' -eq 'true')\n$DisableNetBIOS = ('{{DisableNetBIOS}}' -eq 'true')\n$DisableWSH = ('{{DisableWSH}}' -eq 'true')\n$EnableControlledFolder = ('{{EnableControlledFolder}}' -eq 'true')\n\nWrite-Host \"=== AD ENDPOINT HARDENING ===\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nif ($DisableLLMNR) {\n    Write-Host \"[1] Disable LLMNR...\" -ForegroundColor Cyan\n    New-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows NT\\DNSClient' -Name 'EnableMulticast' -Value 0 -Type DWord\n    Write-Host \"  ✅ LLMNR disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[1] LLMNR left as-is (not disabled)\" -ForegroundColor Yellow\n}\n\nif ($DisableNetBIOS) {\n    Write-Host \"[2] Disable NetBIOS...\" -ForegroundColor Cyan\n    Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled} | ForEach-Object { $_.SetTcpipNetbios(2) | Out-Null }\n    Write-Host \"  ✅ NetBIOS disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[2] NetBIOS left as-is (not disabled)\" -ForegroundColor Yellow\n}\n\nWrite-Host \"[3] Disable WPAD...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Wpad' -Name 'WpadOverride' -Value 1 -Type DWord -Force\nWrite-Host \"  ✅ WPAD disabled\" -ForegroundColor Green\n\nWrite-Host \"[4] Credential Guard...\" -ForegroundColor Cyan\nNew-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Lsa' -Name 'LsaCfgFlags' -Value 1 -PropertyType DWord -Force | Out-Null\nWrite-Host \"  ✅ Enabled\" -ForegroundColor Green\n\nif ($DisableWSH) {\n    Write-Host \"[5] Disable WSH...\" -ForegroundColor Cyan\n    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Force | Out-Null\n    Set-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows Script Host\\Settings' -Name 'Enabled' -Value 0 -Type DWord\n    Write-Host \"  ✅ WSH disabled\" -ForegroundColor Green\n} else {\n    Write-Host \"[5] WSH left enabled\" -ForegroundColor Yellow\n}\n\nWrite-Host \"[6] PowerShell Policy...\" -ForegroundColor Cyan\nSet-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force\nWrite-Host \"  ✅ RemoteSigned\" -ForegroundColor Green\n\nWrite-Host \"[7] PowerShell Logging...\" -ForegroundColor Cyan\nNew-Item -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Force | Out-Null\nSet-ItemProperty -Path 'HKLM:\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging' -Name 'EnableScriptBlockLogging' -Value 1 -Type DWord\nWrite-Host \"  ✅ Logging enabled\" -ForegroundColor Green\n\nWrite-Host \"[8] Disable SMBv1...\" -ForegroundColor Cyan\nDisable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart\nWrite-Host \"  ✅ SMBv1 disabled\" -ForegroundColor Green\n\nWrite-Host \"[9] Windows Defender...\" -ForegroundColor Cyan\nSet-MpPreference -DisableRealtimeMonitoring $false -DisableBehaviorMonitoring $false -DisableIOAVProtection $false\nif ($EnableControlledFolder) { Set-MpPreference -EnableControlledFolderAccess Enabled }\nWrite-Host \"  ✅ Defender enabled\" -ForegroundColor Green\n\nWrite-Host \"[10] Disable AutoRun...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'NoDriveTypeAutoRun' -Value 255 -Type DWord\nWrite-Host \"  ✅ AutoRun disabled\" -ForegroundColor Green\n\nWrite-Host \"[11] UAC...\" -ForegroundColor Cyan\nSet-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableLUA' -Value 1 -Type DWord\nWrite-Host \"  ✅ UAC enabled\" -ForegroundColor Green\n\nWrite-Host \"[12] Firewall...\" -ForegroundColor Cyan\nSet-NetFirewallProfile -Profile Domain,Public,Private -Enabled True\nWrite-Host \"  ✅ Firewall enabled\" -ForegroundColor Green\n\nWrite-Host \"\"\nWrite-Host \"=== COMPLETE - REBOOT REQUIRED ===\" -ForegroundColor Green"
     }
-  ],
-  "local_users": [
+    ]
+  },
+  "local_machine": [
     {
       "id": "local-create-user",
-      "name": "Create Local User",
-      "description": "Create a local user account on the computer",
+      "name": "Create Emergency Local Admin",
+      "description": "Create a local emergency IT administrator account on this computer",
       "type": "powershell",
       "inputs": [
         {
           "variable": "username",
-          "label": "Username",
+          "label": "Emergency admin username",
           "type": "text",
-          "placeholder": "newuser",
+          "placeholder": "IT-BreakGlass",
           "defaultValue": ""
         },
         {
           "variable": "password",
-          "label": "Password",
+          "label": "Initial password",
           "type": "password",
-          "placeholder": "Password123!",
+          "placeholder": "StrongTempPassword123!",
           "defaultValue": ""
         }
       ],
-      "template": "# Create Local User\nNew-LocalUser -Name '{{username}}' -Password (ConvertTo-SecureString '{{password}}' -AsPlainText -Force) -FullName '{{username}}' -Description 'Local user'"
+      "template": "# Create Emergency Local IT Administrator\n# Generated: $(Get-Date)\n\n$UserName = \"{{username}}\"\n$PlainPassword = \"{{password}}\"\n$SecurePassword = ConvertTo-SecureString $PlainPassword -AsPlainText -Force\n\nWrite-Host \"=== EMERGENCY LOCAL ADMIN CREATION ===\" -ForegroundColor Cyan\nWrite-Host \"Target account: $UserName\" -ForegroundColor Gray\n\ntry {\n    $existing = Get-LocalUser -Name $UserName -ErrorAction SilentlyContinue\n    if (-not $existing) {\n        New-LocalUser -Name $UserName -Password $SecurePassword -FullName $UserName -Description \"Emergency IT administrator\" -PasswordNeverExpires:$true -UserMayNotChangePassword:$true -AccountNeverExpires:$true | Out-Null\n        Write-Host \"✅ Local user $UserName created\" -ForegroundColor Green\n    } else {\n        Write-Host \"ℹ Local user $UserName already exists - updating password and flags\" -ForegroundColor Yellow\n        $existing | Set-LocalUser -Password $SecurePassword -Description \"Emergency IT administrator\" -AccountNeverExpires:$true\n    }\n\n    $isAdmin = Get-LocalGroupMember -Group \"Administrators\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like \"*\\\\$UserName\" -or $_.Name -eq $UserName }\n    if (-not $isAdmin) {\n        Add-LocalGroupMember -Group \"Administrators\" -Member $UserName\n        Write-Host \"✅ Added $UserName to local Administrators\" -ForegroundColor Green\n    } else {\n        Write-Host \"ℹ $UserName is already a member of local Administrators\" -ForegroundColor Yellow\n    }\n}\ncatch {\n    Write-Host \"[ERROR] Failed to create or update emergency admin: $_\" -ForegroundColor Red\n}"
+    },
+    {
+      "id": "ad-add-local-group-member",
+      "name": "Add Domain User to Local Administrators",
+      "description": "Add a domain user or group to the local Administrators group on this computer",
+      "type": "powershell",
+      "inputs": [
+        {
+          "variable": "account",
+          "label": "Domain account (user or group)",
+          "type": "text",
+          "placeholder": "DOMAIN\\\\user or DOMAIN\\\\Group",
+          "defaultValue": ""
+        }
+      ],
+      "template": "# Add domain user/group to local Administrators\nAdd-LocalGroupMember -Group \"Administrators\" -Member \"{{account}}\""
     },
     {
       "id": "local-delete-user",

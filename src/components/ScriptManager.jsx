@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FolderOpen, Plus, FileCode, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { isSectionedCategory } from '../utils/scriptStructure';
 
 function toCategoryKey(displayName) {
   return displayName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
@@ -8,6 +9,14 @@ function toCategoryKey(displayName) {
 function toScriptId(name) {
   return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 }
+
+function getScriptList(data, cat) {
+  const val = data[cat];
+  if (Array.isArray(val)) return val;
+  if (isSectionedCategory(val)) return Object.values(val).flat();
+  return [];
+}
+
 
 const ScriptManager = ({ scriptsData, onSave, onClose }) => {
   const [categories, setCategories] = useState(() => Object.keys(scriptsData || {}));
@@ -25,6 +34,7 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
   // Add Script form
   const [newScript, setNewScript] = useState({
     category: '',
+    section: '',
     name: '',
     description: '',
     type: 'powershell',
@@ -75,6 +85,11 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
       setMessage('Select or create a category first');
       return;
     }
+    const isSectioned = isSectionedCategory(data[cat]);
+    if (isSectioned && !newScript.section) {
+      setMessage('Select a subfolder for this category');
+      return;
+    }
     if (!newScript.name.trim()) {
       setMessage('Script name is required');
       return;
@@ -97,32 +112,62 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
       inputs: validInputs,
       template: (newScript.template || '').trim()
     };
+
+    const addToSection = (d, category, sect, s) => {
+      const copy = { ...d };
+      const catData = { ...copy[category] };
+      catData[sect] = [...(catData[sect] || []), s];
+      copy[category] = catData;
+      return copy;
+    };
+
+    const removeFromSection = (d, category, sect, scriptId) => {
+      const copy = { ...d };
+      const catData = { ...copy[category] };
+      catData[sect] = (catData[sect] || []).filter(x => x.id !== scriptId);
+      copy[category] = catData;
+      return copy;
+    };
+
     let updated;
     if (editingScript) {
-      const { category: oldCat, script: oldScript } = editingScript;
-      const list = (data[oldCat] || []).filter(s => s.id !== oldScript.id);
-      if (oldCat === cat) {
-        updated = { ...data, [cat]: [...list, script] };
+      const { category: oldCat, section: oldSection, script: oldScript } = editingScript;
+      const oldSectioned = isSectionedCategory(data[oldCat]);
+      const targetSection = isSectioned ? newScript.section : null;
+
+      if (oldSectioned) {
+        updated = removeFromSection(data, oldCat, oldSection, oldScript.id);
       } else {
-        updated = { ...data, [oldCat]: list, [cat]: [...(data[cat] || []), script] };
+        updated = { ...data, [oldCat]: (data[oldCat] || []).filter(s => s.id !== oldScript.id) };
+      }
+
+      if (isSectioned) {
+        updated = addToSection(updated, cat, targetSection, script);
+      } else {
+        updated = { ...updated, [cat]: [...(updated[cat] || []), script] };
       }
       setMessage('Script updated');
     } else {
-      updated = { ...data, [cat]: [...(data[cat] || []), script] };
+      if (isSectioned) {
+        updated = addToSection(data, cat, newScript.section, script);
+      } else {
+        updated = { ...data, [cat]: [...(data[cat] || []), script] };
+      }
       setMessage('Script added');
     }
     setData(updated);
     setEditingScript(null);
-    setNewScript({ category: cat, name: '', description: '', type: 'powershell', inputs: [], template: '' });
+    setNewScript({ category: cat, section: '', name: '', description: '', type: 'powershell', inputs: [], template: '' });
     setShowAddScript(false);
     setExpandedCategory(cat);
     setTimeout(() => setMessage(null), 2000);
   };
 
-  const handleEditScript = (catKey, script) => {
-    setEditingScript({ category: catKey, script });
+  const handleEditScript = (catKey, script, section = null) => {
+    setEditingScript({ category: catKey, section, script });
     setNewScript({
       category: catKey,
+      section: section || '',
       name: script.name || '',
       description: script.description || '',
       type: script.type || 'powershell',
@@ -140,10 +185,17 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
     setCategories(Object.keys(rest));
   };
 
-  const handleDeleteScript = (catKey, scriptId) => {
+  const handleDeleteScript = (catKey, scriptId, section = null) => {
     if (!confirm('Delete this script?')) return;
-    const list = (data[catKey] || []).filter(s => s.id !== scriptId);
-    setData({ ...data, [catKey]: list });
+    const val = data[catKey];
+    if (isSectionedCategory(val) && section) {
+      const copy = { ...data };
+      copy[catKey] = { ...val, [section]: (val[section] || []).filter(s => s.id !== scriptId) };
+      setData(copy);
+    } else {
+      const list = (data[catKey] || []).filter(s => s.id !== scriptId);
+      setData({ ...data, [catKey]: list });
+    }
   };
 
   const handleSave = async () => {
@@ -242,7 +294,7 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
                   <span className="text-sm font-medium text-gray-200 flex-1 capitalize">
                     {cat.replace(/_/g, ' ')}
                   </span>
-                  <span className="text-xs text-gray-500">{(data[cat] || []).length}</span>
+                  <span className="text-xs text-gray-500">{getScriptList(data, cat).length}</span>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat); }}
                     className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-900/50 text-red-400"
@@ -250,22 +302,46 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                {expandedCategory === cat && (data[cat] || []).map(script => (
-                  <div
-                    key={script.id}
-                    onClick={() => handleEditScript(cat, script)}
-                    className={`flex items-center gap-2 pl-10 pr-3 py-1.5 hover:bg-dark-hover group cursor-pointer ${editingScript?.script?.id === script.id ? 'bg-blue-900/30' : ''}`}
-                  >
-                    <FileCode className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-                    <span className="text-sm text-gray-300 flex-1 truncate">{script.name}</span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteScript(cat, script.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-900/50 text-red-400"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+                {expandedCategory === cat && (
+                  isSectionedCategory(data[cat]) ? (
+                    Object.entries(data[cat]).map(([secName, scripts]) =>
+                      (scripts || []).map(script => (
+                        <div
+                          key={script.id}
+                          onClick={() => handleEditScript(cat, script, secName)}
+                          className={`flex items-center gap-2 pl-10 pr-3 py-1.5 hover:bg-dark-hover group cursor-pointer ${editingScript?.script?.id === script.id ? 'bg-blue-900/30' : ''}`}
+                        >
+                          <FileCode className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                          <span className="text-xs text-gray-500 w-20 truncate">{secName}</span>
+                          <span className="text-sm text-gray-300 flex-1 truncate">{script.name}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteScript(cat, script.id, secName); }}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-900/50 text-red-400"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))
+                    ).flat()
+                  ) : (
+                    (data[cat] || []).map(script => (
+                      <div
+                        key={script.id}
+                        onClick={() => handleEditScript(cat, script)}
+                        className={`flex items-center gap-2 pl-10 pr-3 py-1.5 hover:bg-dark-hover group cursor-pointer ${editingScript?.script?.id === script.id ? 'bg-blue-900/30' : ''}`}
+                      >
+                        <FileCode className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                        <span className="text-sm text-gray-300 flex-1 truncate">{script.name}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteScript(cat, script.id); }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-900/50 text-red-400"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))
+                  )
+                )}
               </div>
             ))}
           </div>
@@ -303,7 +379,7 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
                   <label className="block text-sm text-gray-400 mb-1">Folder</label>
                   <select
                     value={newScript.category}
-                    onChange={(e) => setNewScript(prev => ({ ...prev, category: e.target.value }))}
+                    onChange={(e) => setNewScript(prev => ({ ...prev, category: e.target.value, section: '' }))}
                     className="w-full px-4 py-2 bg-dark-surface border border-dark-border rounded-lg text-white"
                   >
                     <option value="">Select folder</option>
@@ -312,6 +388,21 @@ const ScriptManager = ({ scriptsData, onSave, onClose }) => {
                     ))}
                   </select>
                 </div>
+                {newScript.category && isSectionedCategory(data[newScript.category]) && (
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Subfolder</label>
+                    <select
+                      value={newScript.section}
+                      onChange={(e) => setNewScript(prev => ({ ...prev, section: e.target.value }))}
+                      className="w-full px-4 py-2 bg-dark-surface border border-dark-border rounded-lg text-white"
+                    >
+                      <option value="">Select subfolder</option>
+                      {Object.keys(data[newScript.category] || {}).map(sec => (
+                        <option key={sec} value={sec}>{sec}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Type</label>
                   <select

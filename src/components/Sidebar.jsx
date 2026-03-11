@@ -1,15 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Terminal, FolderOpen, Search, X, Plug, Cloud, Settings } from 'lucide-react';
+import { getScriptsFromCategory, getCategoryStructure, isSectionedCategory } from '../utils/scriptStructure';
 
 const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onManageScripts, selectedScript, viewMode, loading }) => {
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [expandedSections, setExpandedSections] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
 
   const toggleCategory = (category) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [category]: !prev[category]
-    }));
+    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+  };
+
+  const toggleSection = (category, sectionName) => {
+    const key = `${category}::${sectionName}`;
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const getCategoryIcon = (category) => {
@@ -26,16 +30,30 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onMana
     const filtered = {};
 
     categories.forEach(category => {
-      const list = scriptsData[category];
-      if (!Array.isArray(list)) return;
-      const matchingScripts = list.filter(script => 
+      const scripts = getScriptsFromCategory(scriptsData, category);
+      const data = scriptsData[category];
+      const matchingScripts = scripts.filter(script =>
         script.name.toLowerCase().includes(query) ||
-        script.description.toLowerCase().includes(query) ||
+        (script.description || '').toLowerCase().includes(query) ||
         category.toLowerCase().replace(/_/g, ' ').includes(query)
       );
 
       if (matchingScripts.length > 0) {
-        filtered[category] = matchingScripts;
+        if (isSectionedCategory(data)) {
+          const bySection = {};
+          matchingScripts.forEach(script => {
+            for (const [secName, secScripts] of Object.entries(data)) {
+              if (secScripts.some(s => s.id === script.id)) {
+                if (!bySection[secName]) bySection[secName] = [];
+                bySection[secName].push(script);
+                break;
+              }
+            }
+          });
+          filtered[category] = bySection;
+        } else {
+          filtered[category] = matchingScripts;
+        }
       }
     });
 
@@ -93,7 +111,8 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onMana
         </div>
         {searchQuery && (
           <p className="text-xs text-gray-500 mt-2">
-            Found {Object.values(filteredData.scriptsData).reduce((sum, scripts) => sum + scripts.length, 0)} script(s)
+            Found {Object.values(filteredData.scriptsData).reduce((sum, v) =>
+              sum + (Array.isArray(v) ? v.length : Object.values(v).reduce((s, arr) => s + arr.length, 0)), 0)} script(s)
           </p>
         )}
       </div>
@@ -145,62 +164,89 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onMana
             <p className="text-gray-500 text-xs mt-1">Try a different search term</p>
           </div>
         ) : (
-          filteredData.categories.map(category => (
-            <div key={category} className="mb-2">
-              <button
-                onClick={() => toggleCategory(category)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition-colors text-left"
-              >
-                {expandedCategories[category] ? (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                )}
-                {getCategoryIcon(category)}
-                <span className="text-sm font-medium text-gray-200 capitalize">
-                  {category.replace(/_/g, ' ')}
-                </span>
-                <span className="ml-auto text-xs text-gray-500">
-                  {filteredData.scriptsData[category].length}
-                </span>
-              </button>
+          filteredData.categories.map(category => {
+            const structure = getCategoryStructure(filteredData.scriptsData, category);
+            const renderScript = (script) => {
+              const isM365Connect = script.id === 'm365-connect';
+              return (
+                <button
+                  key={script.id}
+                  onClick={() => onScriptSelect(category, script.id)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                    selectedScript?.id === script.id
+                      ? isM365Connect
+                        ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg'
+                        : 'bg-blue-600 text-white'
+                      : isM365Connect
+                        ? 'bg-gradient-to-r from-orange-900/50 to-orange-800/50 text-orange-200 border border-orange-700/50 hover:from-orange-800/60 hover:to-orange-700/60'
+                        : 'text-gray-300 hover:bg-dark-hover'
+                  }`}
+                >
+                  {isM365Connect && <Plug className="w-4 h-4 flex-shrink-0" />}
+                  <span className={isM365Connect ? 'font-semibold' : ''}>{script.name}</span>
+                  {isM365Connect && (
+                    <span className="ml-auto text-xs bg-orange-500/30 px-2 py-0.5 rounded-full border border-orange-500/50">
+                      Connect First
+                    </span>
+                  )}
+                </button>
+              );
+            };
 
-              {expandedCategories[category] && (
-                <div className="ml-6 mt-1 space-y-1">
-                  {filteredData.scriptsData[category].map(script => {
-                    const isM365Connect = script.id === 'm365-connect';
-                    return (
-                      <button
-                        key={script.id}
-                        onClick={() => onScriptSelect(category, script.id)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-                          selectedScript?.id === script.id
-                            ? isM365Connect
-                              ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg'
-                              : 'bg-blue-600 text-white'
-                            : isM365Connect
-                              ? 'bg-gradient-to-r from-orange-900/50 to-orange-800/50 text-orange-200 border border-orange-700/50 hover:from-orange-800/60 hover:to-orange-700/60'
-                              : 'text-gray-300 hover:bg-dark-hover'
-                        }`}
-                      >
-                        {isM365Connect && (
-                          <Plug className="w-4 h-4 flex-shrink-0" />
-                        )}
-                        <span className={isM365Connect ? 'font-semibold' : ''}>
-                          {script.name}
-                        </span>
-                        {isM365Connect && (
-                          <span className="ml-auto text-xs bg-orange-500/30 px-2 py-0.5 rounded-full border border-orange-500/50">
-                            Connect First
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ))
+            return (
+              <div key={category} className="mb-2">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition-colors text-left"
+                >
+                  {expandedCategories[category] ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
+                  {getCategoryIcon(category)}
+                  <span className="text-sm font-medium text-gray-200 capitalize">
+                    {category.replace(/_/g, ' ')}
+                  </span>
+                  <span className="ml-auto text-xs text-gray-500">{structure.totalCount}</span>
+                </button>
+
+                {expandedCategories[category] && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {structure.isSectioned ? (
+                      structure.sections.map(({ name, scripts }) => {
+                        const sectionKey = `${category}::${name}`;
+                        const isExpanded = expandedSections[sectionKey] === true;
+                        return (
+                          <div key={name}>
+                            <button
+                              onClick={() => toggleSection(category, name)}
+                              className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-dark-hover/50 text-left"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="w-3 h-3 text-gray-500" />
+                              ) : (
+                                <ChevronRight className="w-3 h-3 text-gray-500" />
+                              )}
+                              <span className="text-xs font-medium text-gray-400">{name}</span>
+                              <span className="text-xs text-gray-500">({scripts.length})</span>
+                            </button>
+                            {isExpanded && (
+                              <div className="ml-4 mt-0.5 space-y-0.5">
+                                {scripts.map(script => renderScript(script))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      structure.sections[0]?.scripts.map(script => renderScript(script))
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 

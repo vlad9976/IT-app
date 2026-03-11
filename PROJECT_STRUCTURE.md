@@ -156,7 +156,7 @@ window.electron = {
 ```json
 {
   "active_directory": [...],    // AD user management + DC hardening
-  "local_users": [...],         // Local user management + PC hardening
+  "local_machine": [...],       // Local user management + PC hardening
   "m365": [...],                // Microsoft 365 scripts
   "system_maintenance": [...],  // System optimization
   "network_tools": [...],       // Network diagnostics

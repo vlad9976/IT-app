@@ -5,9 +5,10 @@ import ScriptManager from './components/ScriptManager';
 import UpdateNotification from './components/UpdateNotification';
 import M365Dashboard from './components/M365DashboardNew';
 import ErrorBoundary from './components/ErrorBoundary';
+import { findScriptInCategory, isSectionedCategory } from './utils/scriptStructure';
 
 // Fallback when not in Electron (e.g. Vite dev without Electron)
-const defaultScripts = { active_directory: [], local_users: [], troubleshooting: [] };
+const defaultScripts = { active_directory: { "User Scripts": [], "Group Scripts": [], "System": [] }, local_machine: [], troubleshooting: [] };
 
 function App() {
   const [scriptsData, setScriptsData] = useState(defaultScripts);
@@ -41,12 +42,13 @@ function App() {
     loadScripts();
   }, []);
 
-  const categories = Object.keys(scriptsData).filter(k => Array.isArray(scriptsData[k]));
+  const categories = Object.keys(scriptsData).filter(k =>
+    Array.isArray(scriptsData[k]) || isSectionedCategory(scriptsData[k])
+  );
 
   const handleScriptSelect = (category, scriptId) => {
     setSelectedCategory(category);
-    const list = scriptsData[category];
-    const script = Array.isArray(list) ? list.find(s => s.id === scriptId) : null;
+    const script = findScriptInCategory(scriptsData, category, scriptId);
     setSelectedScript(script || null);
     setViewMode('scripts');
   };
