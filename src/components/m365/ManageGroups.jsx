@@ -13,6 +13,7 @@ const ManageGroups = ({ onSubmit, loading }) => {
   const [groups, setGroups] = useState([]);
   const [groupType, setGroupType] = useState('all');
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [errors, setErrors] = useState({});
 
@@ -53,15 +54,18 @@ const ManageGroups = ({ onSubmit, loading }) => {
     try {
       const result = await window.electron.m365.searchUsers(searchTerm, 20);
       if (result.success) {
+        setSearchError(null);
         const userOptions = result.users.map(u => ({
           value: u.userPrincipalName,
           label: u.displayName,
           description: u.userPrincipalName
         }));
         setUsers(userOptions);
+      } else {
+        setSearchError(result.error?.message || 'Failed to search users');
       }
     } catch (error) {
-      console.error('User search error:', error);
+      setSearchError(error?.message || 'Failed to search users');
     } finally {
       setSearchingUsers(false);
     }
@@ -123,6 +127,7 @@ const ManageGroups = ({ onSubmit, loading }) => {
         placeholder="Search by name, email, UPN..."
         loading={searchingUsers}
         onSearch={handleUserSearch}
+        searchError={searchError}
         required
         error={errors.userPrincipalName}
       />

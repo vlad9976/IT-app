@@ -15,6 +15,8 @@ const GrantMailboxPermissions = ({ onCopySuccess, onRunSuccess, onRunError }) =>
   const [grantUsers, setGrantUsers] = useState([]);
   const [searchingMailbox, setSearchingMailbox] = useState(false);
   const [searchingGrant, setSearchingGrant] = useState(false);
+  const [searchErrorMailbox, setSearchErrorMailbox] = useState(null);
+  const [searchErrorGrant, setSearchErrorGrant] = useState(null);
   const [generatedScript, setGeneratedScript] = useState('');
   const [errors, setErrors] = useState({});
 
@@ -43,14 +45,17 @@ const GrantMailboxPermissions = ({ onCopySuccess, onRunSuccess, onRunError }) =>
     try {
       const result = await window.electron.m365.searchUsers(searchTerm, 20);
       if (result.success) {
+        setSearchErrorGrant(null);
         setGrantUsers(result.users.map(u => ({
           value: u.userPrincipalName,
           label: u.displayName,
           description: u.userPrincipalName
         })));
+      } else {
+        setSearchErrorGrant(result.error?.message || 'Failed to search users');
       }
     } catch (err) {
-      console.error('Grant user search error:', err);
+      setSearchErrorGrant(err?.message || 'Failed to search users');
     } finally {
       setSearchingGrant(false);
     }
@@ -163,6 +168,7 @@ const GrantMailboxPermissions = ({ onCopySuccess, onRunSuccess, onRunError }) =>
           placeholder="Search by name, email, UPN..."
           loading={searchingMailbox}
           onSearch={handleMailboxSearch}
+          searchError={searchErrorMailbox}
           required
           error={errors.mailboxIdentity}
         />
@@ -175,6 +181,7 @@ const GrantMailboxPermissions = ({ onCopySuccess, onRunSuccess, onRunError }) =>
           placeholder="Search by name, email, UPN..."
           loading={searchingGrant}
           onSearch={handleGrantUserSearch}
+          searchError={searchErrorGrant}
           required
           error={errors.grantToUser}
         />

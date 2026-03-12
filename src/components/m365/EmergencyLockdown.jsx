@@ -7,6 +7,7 @@ const EmergencyLockdown = ({ onSubmit, loading }) => {
   const [userPrincipalName, setUserPrincipalName] = useState('');
   const [users, setUsers] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [lockdownResult, setLockdownResult] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -19,15 +20,18 @@ const EmergencyLockdown = ({ onSubmit, loading }) => {
     try {
       const result = await window.electron.m365.searchUsers(searchTerm, 20);
       if (result.success) {
+        setSearchError(null);
         const userOptions = result.users.map(u => ({
           value: u.userPrincipalName,
           label: u.displayName,
           description: u.userPrincipalName
         }));
         setUsers(userOptions);
+      } else {
+        setSearchError(result.error?.message || 'Failed to search users');
       }
     } catch (error) {
-      console.error('User search error:', error);
+      setSearchError(error?.message || 'Failed to search users');
     } finally {
       setSearchingUsers(false);
     }
@@ -84,6 +88,7 @@ const EmergencyLockdown = ({ onSubmit, loading }) => {
           placeholder="Search by name, email, UPN..."
           loading={searchingUsers}
           onSearch={handleUserSearch}
+          searchError={searchError}
           required
           error={errors.userPrincipalName}
         />

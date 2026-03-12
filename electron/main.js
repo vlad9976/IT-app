@@ -376,6 +376,10 @@ ipcMain.handle('m365:getUserDetails', async (event, userPrincipalName) => {
   return await m365Client.getUserDetails(userPrincipalName);
 });
 
+ipcMain.handle('m365:getMailboxInfo', async (event, userPrincipalName) => {
+  return await m365Client.getMailboxInfo(userPrincipalName);
+});
+
 // ============================================
 // ENHANCED LICENSE MANAGEMENT IPC HANDLERS
 // ============================================

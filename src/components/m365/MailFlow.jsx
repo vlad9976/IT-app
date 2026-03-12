@@ -14,6 +14,7 @@ const MailFlow = ({ onSubmit, loading }) => {
 
   const [users, setUsers] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const [results, setResults] = useState([]);
   const [error, setError] = useState('');
 
@@ -21,6 +22,7 @@ const MailFlow = ({ onSubmit, loading }) => {
     if (searchTerm.length < 2) return;
     setSearchingUsers(true);
     setError('');
+    setSearchError(null);
 
     try {
       const result = await window.electron.m365.searchUsers(searchTerm, 20);
@@ -31,10 +33,11 @@ const MailFlow = ({ onSubmit, loading }) => {
           description: u.userPrincipalName
         }));
         setUsers(userOptions);
+      } else {
+        setSearchError(result.error?.message || 'Failed to search users');
       }
     } catch (err) {
-      console.error('User search error:', err);
-      setError('Failed to search users.');
+      setSearchError(err?.message || 'Failed to search users');
     } finally {
       setSearchingUsers(false);
     }
@@ -93,6 +96,7 @@ const MailFlow = ({ onSubmit, loading }) => {
           placeholder="Search by name, email, UPN..."
           loading={searchingUsers}
           onSearch={handleUserSearch}
+          searchError={searchError}
           required
         />
 

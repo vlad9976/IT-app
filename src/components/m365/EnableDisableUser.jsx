@@ -15,6 +15,8 @@ const EnableDisableUser = ({ onSubmit, loading }) => {
   const [forwardToUsers, setForwardToUsers] = useState([]);
   const [searchingForwardTo, setSearchingForwardTo] = useState(false);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [forwardSearchError, setForwardSearchError] = useState(null);
   const [errors, setErrors] = useState({});
 
   const handleUserSearch = async (searchTerm) => {
@@ -24,15 +26,18 @@ const EnableDisableUser = ({ onSubmit, loading }) => {
     try {
       const result = await window.electron.m365.searchUsers(searchTerm, 20);
       if (result.success) {
+        setSearchError(null);
         const userOptions = result.users.map(u => ({
           value: u.userPrincipalName,
           label: u.displayName,
           description: `${u.userPrincipalName} - ${u.accountEnabled ? 'Enabled' : 'Disabled'}`
         }));
         setUsers(userOptions);
+      } else {
+        setSearchError(result.error?.message || 'Failed to search users');
       }
     } catch (error) {
-      console.error('User search error:', error);
+      setSearchError(error?.message || 'Failed to search users');
     } finally {
       setSearchingUsers(false);
     }
@@ -45,15 +50,18 @@ const EnableDisableUser = ({ onSubmit, loading }) => {
     try {
       const result = await window.electron.m365.searchUsers(searchTerm, 20);
       if (result.success) {
+        setForwardSearchError(null);
         const userOptions = result.users.map(u => ({
           value: u.userPrincipalName,
           label: u.displayName,
           description: u.userPrincipalName
         }));
         setForwardToUsers(userOptions);
+      } else {
+        setForwardSearchError(result.error?.message || 'Failed to search users');
       }
     } catch (error) {
-      console.error('User search error:', error);
+      setForwardSearchError(error?.message || 'Failed to search users');
     } finally {
       setSearchingForwardTo(false);
     }
@@ -87,6 +95,7 @@ const EnableDisableUser = ({ onSubmit, loading }) => {
         placeholder="Search by name, email, UPN..."
         loading={searchingUsers}
         onSearch={handleUserSearch}
+        searchError={searchError}
         required
         error={errors.userPrincipalName}
       />
@@ -137,6 +146,7 @@ const EnableDisableUser = ({ onSubmit, loading }) => {
               placeholder="Search by name, email, UPN..."
               loading={searchingForwardTo}
               onSearch={handleForwardToSearch}
+              searchError={forwardSearchError}
               error={errors.forwardEmailsTo}
             />
             <p className="text-xs text-slate-500 mt-1">

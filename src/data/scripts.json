@@ -1267,6 +1267,14 @@
       "type": "powershell",
       "inputs": [],
       "template": "# Clear Office Cache\nRemove-Item \"$env:LOCALAPPDATA\\Microsoft\\Office\\16.0\\OfficeFileCache\\*\" -Recurse -Force -ErrorAction SilentlyContinue\nRemove-Item \"$env:LOCALAPPDATA\\Microsoft\\Office\\UnsavedFiles\\*\" -Recurse -Force -ErrorAction SilentlyContinue\nWrite-Host 'Office cache cleared'"
+    },
+    {
+      "id": "office-increase-pst-limit",
+      "name": "Increase Outlook PST Size Limit",
+      "description": "Raise Outlook PST file size limits (100 GB max, 95 GB warning) via registry. Restart Outlook after.",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# Increase Outlook PST Size Limit\n# Generated: $(Get-Date)\n\n$k1 = 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\PST'\n$k2 = 'HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\PST'\n$m = 100 * 1024\n$w = 95 * 1024\nforeach ($k in @($k1, $k2)) {\n  if (!(Test-Path $k)) { New-Item $k -Force | Out-Null }\n  New-ItemProperty $k MaxLargeFileSize -Type DWord -Value $m -Force | Out-Null\n  New-ItemProperty $k WarnLargeFileSize -Type DWord -Value $w -Force | Out-Null\n}\nWrite-Host 'Done. Restart Outlook.' -ForegroundColor Green\n"
     }
   ]
 }

@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('electron', {
     searchUsers: (searchTerm, limit) => ipcRenderer.invoke('m365:searchUsers', searchTerm, limit),
     getUser: (userPrincipalName) => ipcRenderer.invoke('m365:getUser', userPrincipalName),
     getUserDetails: (userPrincipalName) => ipcRenderer.invoke('m365:getUserDetails', userPrincipalName),
+    getMailboxInfo: (userPrincipalName) => ipcRenderer.invoke('m365:getMailboxInfo', userPrincipalName),
     
     // License Management
     assignLicense: (userPrincipalName, skuId) => ipcRenderer.invoke('m365:assignLicense', userPrincipalName, skuId),

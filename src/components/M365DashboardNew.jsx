@@ -11,6 +11,7 @@ import CreateUser from './m365/CreateUser';
 import ResetPassword from './m365/ResetPassword';
 import EnableDisableUser from './m365/EnableDisableUser';
 import DeleteUser from './m365/DeleteUser';
+import GetMailboxInfo from './m365/GetMailboxInfo';
 import AssignLicense from './m365/AssignLicense';
 import RemoveLicense from './m365/RemoveLicense';
 import ViewLicenses from './m365/ViewLicenses';
@@ -163,6 +164,22 @@ const M365DashboardNew = () => {
         addActivity('Reset Password Failed', data.userPrincipalName, false, errMsg);
       }
       
+      return result;
+    } catch (err) {
+      showError(err.message);
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGetMailboxInfo = async (userPrincipalName) => {
+    setLoading(true);
+    try {
+      const result = await window.electron.m365.getMailboxInfo(userPrincipalName);
+      if (!result.success) {
+        showError(getErrorMessage(result));
+      }
       return result;
     } catch (err) {
       showError(err.message);
@@ -419,6 +436,7 @@ const M365DashboardNew = () => {
       actions: [
         { id: 'create-user', name: 'Create User', icon: UserPlus },
         { id: 'reset-password', name: 'Reset Password', icon: Key },
+        { id: 'get-mailbox-info', name: 'Get Mailbox Info', icon: Mail },
         { id: 'enable-disable', name: 'Enable / Disable', icon: UserCheck },
         { id: 'delete-user', name: 'Delete User', icon: Trash2 }
       ]
@@ -497,6 +515,8 @@ const M365DashboardNew = () => {
         return <CreateUser onSubmit={handleCreateUser} loading={loading} />;
       case 'reset-password':
         return <ResetPassword onSubmit={handleResetPassword} loading={loading} />;
+      case 'get-mailbox-info':
+        return <GetMailboxInfo onSubmit={handleGetMailboxInfo} loading={loading} />;
       case 'enable-disable':
         return <EnableDisableUser onSubmit={handleEnableDisable} loading={loading} />;
       case 'delete-user':

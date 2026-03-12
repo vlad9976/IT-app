@@ -11,6 +11,7 @@ const RemoveLicense = ({ onSubmit, loading }) => {
   const [users, setUsers] = useState([]);
   const [userLicenses, setUserLicenses] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const [loadingLicenses, setLoadingLicenses] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -21,15 +22,18 @@ const RemoveLicense = ({ onSubmit, loading }) => {
     try {
       const result = await window.electron.m365.searchUsers(searchTerm, 20);
       if (result.success) {
+        setSearchError(null);
         const userOptions = result.users.map(u => ({
           value: u.userPrincipalName,
           label: u.displayName,
           description: u.userPrincipalName
         }));
         setUsers(userOptions);
+      } else {
+        setSearchError(result.error?.message || 'Failed to search users');
       }
     } catch (error) {
-      console.error('User search error:', error);
+      setSearchError(error?.message || 'Failed to search users');
     } finally {
       setSearchingUsers(false);
     }
@@ -92,6 +96,7 @@ const RemoveLicense = ({ onSubmit, loading }) => {
         placeholder="Search by name, email, UPN..."
         loading={searchingUsers}
         onSearch={handleUserSearch}
+        searchError={searchError}
         required
         error={errors.userPrincipalName}
       />

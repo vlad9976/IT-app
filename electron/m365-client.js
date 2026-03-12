@@ -580,22 +580,25 @@ class M365Client {
         `startswith(surname,'${term}')`
       ].join(' or ');
 
-      const users = await this.graphClient
+      const result = await this.graphClient
         .api('/users')
         .filter(filter)
         .select('id,displayName,userPrincipalName,mail,givenName,surname,accountEnabled')
-        .orderby('displayName')
         .top(limit)
         .get();
 
-      return { success: true, users: users.value || [] };
+      // Sort client-side (Graph rejects orderby with this filter)
+      const list = result.value || [];
+      list.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+
+      return { success: true, users: list };
     } catch (error) {
-      if (error.message?.includes('fetch failed') && error.cause) {
-        log.error('Search users network error:', error.message, 'cause:', error.cause?.message || error.cause?.code || error.cause);
-      } else {
-        log.error('Search users error:', error);
+      const handled = this.handleError(error);
+      log.error('Search users failed:', error.message, handled.error?.message);
+      if (handled.error?.message === 'An unknown error occurred') {
+        log.error('Search users - raw error:', { message: error.message, code: error.code, statusCode: error.statusCode, body: error.body });
       }
-      return this.handleError(error);
+      return handled;
     }
   }
 
@@ -616,6 +619,63 @@ class M365Client {
     }
   }
 
+  async getMailboxInfo(userPrincipalName) {
+    try {
+      await this.ensureAuthenticated();
+      const userId = encodeURIComponent(userPrincipalName);
+
+      const [userResult, mailboxSettingsResult, licensesResult] = await Promise.all([
+        this.graphClient.api(`/users/${userId}`)
+          .select('id,displayName,userPrincipalName,mail,jobTitle,department,accountEnabled,assignedLicenses,signInActivity')
+          .get(),
+        this.graphClient.api(`/users/${userId}/mailboxSettings`).get().catch(() => null),
+        this.getUserLicenses(userPrincipalName)
+      ]);
+
+      const user = userResult;
+      const mailboxSettings = mailboxSettingsResult || {};
+      const autoReply = mailboxSettings.automaticRepliesSetting || {};
+      const hasMailbox = (user.assignedLicenses?.length || 0) > 0;
+      const licenses = licensesResult.success ? (licensesResult.licenses || []).map(l => l.skuPartNumber) : [];
+      const lastSignIn = user.signInActivity?.lastSignInDateTime || null;
+
+      const info = {
+        user: {
+          displayName: user.displayName,
+          userPrincipalName: user.userPrincipalName,
+          mail: user.mail || user.userPrincipalName,
+          jobTitle: user.jobTitle,
+          department: user.department,
+          accountEnabled: user.accountEnabled,
+          licenseCount: user.assignedLicenses?.length || 0,
+          licenses
+        },
+        lastSignIn,
+        forwarding: null,
+        mailbox: {
+          hasMailbox,
+          timeZone: mailboxSettings.timeZone,
+          language: mailboxSettings.language?.displayName || mailboxSettings.language?.locale,
+          dateFormat: mailboxSettings.dateFormat,
+          timeFormat: mailboxSettings.timeFormat
+        },
+        autoReply: {
+          status: autoReply.status || 'disabled',
+          internalMessage: autoReply.internalReplyMessage,
+          externalMessage: autoReply.externalReplyMessage,
+          externalAudience: autoReply.externalAudience,
+          scheduledStart: autoReply.scheduledStartDateTime?.dateTime,
+          scheduledEnd: autoReply.scheduledEndDateTime?.dateTime
+        }
+      };
+
+      return { success: true, info };
+    } catch (error) {
+      log.error('Get mailbox info error:', error);
+      return this.handleError(error);
+    }
+  }
+
   // ============================================
   // ENHANCED LICENSE MANAGEMENT
   // ============================================
@@ -629,10 +689,10 @@ class M365Client {
         .select('assignedLicenses')
         .get();
 
-      const licenses = await this.getAvailableLicenses();
-      
+      const licensesRes = await this.getAvailableLicenses();
+      const skuList = licensesRes.data || licensesRes.licenses || [];
       const userLicenses = user.assignedLicenses.map(assigned => {
-        const licenseInfo = licenses.licenses?.find(l => l.skuId === assigned.skuId);
+        const licenseInfo = skuList.find(l => l.skuId === assigned.skuId);
         return {
           skuId: assigned.skuId,
           skuPartNumber: licenseInfo?.skuPartNumber || 'Unknown',
@@ -852,11 +912,11 @@ class M365Client {
         .top(999)
         .get();
 
-      const licenses = await this.getAvailableLicenses();
-      
+      const licensesRes = await this.getAvailableLicenses();
+      const skuList = licensesRes.data || [];
       const report = users.value.map(user => {
         const userLicenses = user.assignedLicenses.map(assigned => {
-          const licenseInfo = licenses.licenses?.find(l => l.skuId === assigned.skuId);
+          const licenseInfo = skuList.find(l => l.skuId === assigned.skuId);
           return licenseInfo?.skuPartNumber || assigned.skuId;
         }).join(', ');
 
@@ -1253,38 +1313,39 @@ class M365Client {
     let code = 'UNKNOWN_ERROR';
 
     const errMsg = (error.message || '').toString();
-    const cause = error.cause ? (error.cause.message || String(error.cause)) : '';
+    const cause = error.cause ? (String(error.cause?.message || error.cause?.code || error.cause)) : '';
 
-    if (errMsg.includes('fetch failed') || cause.includes('fetch') || cause.includes('ECONNREFUSED') || cause.includes('ENOTFOUND') || cause.includes('ETIMEDOUT')) {
-      message = 'Network error: Could not reach Microsoft Graph. ' +
-        'Check your internet connection, firewall, and proxy settings. ' +
-        'Ensure https://graph.microsoft.com is not blocked.';
-      if (cause) message += ` (${cause})`;
-      code = 'NETWORK_ERROR';
-    } else if (errMsg.includes('AADSTS65001') || errMsg.includes('consent')) {
-      message = 'Admin consent required: Your tenant admin has not granted this app permission. ' +
-        'Ask your admin to grant consent in Azure Portal (App registrations → IT Admin Toolkit → API permissions → Grant admin consent), ' +
-        'or disconnect and reconnect to try interactive sign-in.';
-      code = 'AADSTS65001';
-    } else if (error.statusCode) {
-      code = `HTTP_${error.statusCode}`;
-      
-      if (error.statusCode === 401) {
-        message = 'Authentication failed. Please reconnect to Microsoft 365.';
-      } else if (error.statusCode === 403) {
-        message = 'Access denied. Check that your account has the required permissions.';
-      } else if (error.statusCode === 404) {
-        message = 'Resource not found. Check that the user/group exists.';
-      } else if (error.body) {
-        try {
-          const errorBody = JSON.parse(error.body);
-          message = errorBody.error?.message || message;
-        } catch (e) {
-          message = error.message || message;
+    // Try to extract Graph API error from body first
+    if (error.body) {
+      try {
+        const body = typeof error.body === 'string' ? JSON.parse(error.body) : error.body;
+        const graphErr = body?.error;
+        if (graphErr?.message) {
+          message = graphErr.message;
+          code = graphErr.code || `HTTP_${error.statusCode || 0}`;
         }
+      } catch (e) { /* ignore parse error */ }
+    }
+
+    if (message === 'An unknown error occurred' || !message) {
+      if (errMsg.includes('fetch failed') || /fetch|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|EAI_AGAIN/i.test(errMsg + cause)) {
+        message = 'Network error: Could not reach Microsoft Graph. Check internet, firewall, and proxy. Ensure https://graph.microsoft.com is not blocked.';
+        if (cause) message += ` (${cause})`;
+        code = 'NETWORK_ERROR';
+      } else if (errMsg.includes('AADSTS65001') || errMsg.includes('consent')) {
+        message = 'Admin consent required. Ask your tenant admin to grant consent in Azure Portal, or disconnect and reconnect.';
+        code = 'AADSTS65001';
+      } else if (error.statusCode) {
+        code = `HTTP_${error.statusCode}`;
+        if (error.statusCode === 401) message = 'Authentication failed. Please disconnect and reconnect.';
+        else if (error.statusCode === 403) message = 'Access denied. Check account permissions.';
+        else if (error.statusCode === 404) message = 'Resource not found.';
+        else if (message === 'An unknown error occurred') message = errMsg || `HTTP ${error.statusCode}`;
+      } else if (errMsg) {
+        message = errMsg;
+      } else if (cause) {
+        message = cause;
       }
-    } else if (error.message) {
-      message = error.message;
     }
 
     return {

@@ -11,13 +11,15 @@ const SearchSelect = ({
   required = false,
   disabled = false,
   onSearch,
-  error
+  error,
+  searchError
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredOptions, setFilteredOptions] = useState(options);
   const dropdownRef = useRef(null);
 
+  // Filter local options when searchTerm or options change (no API call)
   useEffect(() => {
     if (searchTerm) {
       const filtered = options.filter(opt => 
@@ -25,14 +27,19 @@ const SearchSelect = ({
         opt.value.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredOptions(filtered);
-      
-      if (onSearch) {
-        onSearch(searchTerm);
-      }
     } else {
       setFilteredOptions(options);
     }
-  }, [searchTerm, options, onSearch]);
+  }, [searchTerm, options]);
+
+  // Trigger API search only when searchTerm changes - exclude options/onSearch to avoid
+  // re-calling on every API response (which would cause infinite loop / app freeze)
+  const onSearchRef = useRef(onSearch);
+  onSearchRef.current = onSearch;
+  useEffect(() => {
+    if (!searchTerm || searchTerm.length < 2) return;
+    onSearchRef.current?.(searchTerm);
+  }, [searchTerm]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -113,7 +120,13 @@ const SearchSelect = ({
           </div>
 
           <div className="overflow-y-auto max-h-48">
-            {filteredOptions.length > 0 ? (
+            {searchError ? (
+              <div className="px-4 py-6 text-center">
+                <p className="text-red-400 text-sm font-medium">Search failed</p>
+                <p className="text-red-300/80 text-xs mt-1">{searchError}</p>
+                <p className="text-slate-500 text-xs mt-2">Check connectivity, firewall, proxy, and M365 permissions.</p>
+              </div>
+            ) : filteredOptions.length > 0 ? (
               filteredOptions.map((option) => (
                 <div
                   key={option.value}
@@ -132,7 +145,7 @@ const SearchSelect = ({
               ))
             ) : (
               <div className="px-4 py-8 text-center text-slate-400">
-                No results found
+                {loading ? 'Searching...' : 'No results found'}
               </div>
             )}
           </div>
