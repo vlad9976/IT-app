@@ -68,21 +68,15 @@ export default function ProjectDetails({
   const handleTasksChange = (nextTasks) => {
     const progress = progressFromTasks(nextTasks);
     const activity = appendActivity(data?.activity, 'Task checklist updated', 'Current User', { progress });
-    if (editing) {
-      updateLocal({ tasks: nextTasks, progress, activity });
-    } else {
-      save({ tasks: nextTasks, progress, activity });
-    }
+    updateLocal({ tasks: nextTasks, progress, activity });
+    save({ tasks: nextTasks, progress, activity });
   };
 
   const handleAddNote = (note) => {
     const notes = [...(data?.notes || []), note];
     const activity = appendActivity(data?.activity, 'Note added', note.author);
-    if (editing) {
-      updateLocal({ notes, activity });
-    } else {
-      save({ notes, activity });
-    }
+    updateLocal({ notes, activity });
+    save({ notes, activity });
   };
 
   const handleStatusChange = (newStatus) => {
