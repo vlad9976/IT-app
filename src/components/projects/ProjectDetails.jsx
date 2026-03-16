@@ -128,8 +128,11 @@ export default function ProjectDetails({
     }
     try {
       const res = await window.electron.m365.searchUsers(term, 10);
-      if (res?.value) {
-        setOptions(res.value.map((u) => ({ displayName: u.displayName, userPrincipalName: u.userPrincipalName })));
+      if (res && res.success && Array.isArray(res.users)) {
+        setOptions(res.users.map((u) => ({
+          displayName: u.displayName,
+          userPrincipalName: u.userPrincipalName || u.mail
+        })));
       } else {
         setOptions([]);
       }
@@ -149,16 +152,17 @@ export default function ProjectDetails({
   };
 
   const addAssigned = (user) => {
-    const current = data.assignedTo || [];
-    if (current.some((a) => (a.userPrincipalName || a.email) === (user.userPrincipalName || user.email))) return;
-    const next = [...current, user];
-    updateLocal({ assignedTo: next });
+    const label = `${user.displayName} (${user.userPrincipalName || ''})`.trim();
+    const current = (data.assignedTo || '').split('\n').filter(Boolean);
+    if (current.includes(label)) return;
+    current.push(label);
+    updateLocal({ assignedTo: current.join('\n') });
   };
 
   const removeAssigned = (index) => {
-    const current = data.assignedTo || [];
+    const current = (data.assignedTo || '').split('\n').filter(Boolean);
     const next = current.filter((_, i) => i !== index);
-    updateLocal({ assignedTo: next });
+    updateLocal({ assignedTo: next.join('\n') });
   };
 
   if (!project) return null;
@@ -246,10 +250,10 @@ export default function ProjectDetails({
                     />
                     {data.owner && (
                       <p className="mt-1 text-xs text-slate-400">
-                        Selected: {data.owner.displayName}
+                        Selected: {data.owner}
                         <button
                           type="button"
-                          onClick={() => updateLocal({ owner: null })}
+                          onClick={() => updateLocal({ owner: '' })}
                           className="ml-2 text-red-400"
                         >
                           Clear
@@ -263,7 +267,8 @@ export default function ProjectDetails({
                             <button
                               type="button"
                               onClick={() => {
-                                updateLocal({ owner: u });
+                                const label = `${u.displayName} (${u.userPrincipalName || ''})`.trim();
+                                updateLocal({ owner: label });
                                 setOwnerOptions([]);
                                 setOwnerSearch('');
                               }}
@@ -277,7 +282,7 @@ export default function ProjectDetails({
                     )}
                   </div>
                 ) : (
-                  <p className="text-slate-200">{data.owner?.displayName || '—'}</p>
+                  <p className="text-slate-200">{data.owner || '—'}</p>
                 )}
               </div>
               <div>
@@ -291,14 +296,14 @@ export default function ProjectDetails({
                       className="w-full px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-slate-200 text-sm"
                       placeholder="Search and add users..."
                     />
-                    {(data.assignedTo || []).length > 0 && (
+                    {(data.assignedTo || '').trim() && (
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {(data.assignedTo || []).map((u, i) => (
+                        {((data.assignedTo || '').split('\n').filter(Boolean)).map((label, i) => (
                           <span
                             key={i}
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-600 text-slate-200 text-xs"
                           >
-                            {u.displayName}
+                            {label}
                             <button
                               type="button"
                               onClick={() => removeAssigned(i)}
@@ -328,7 +333,7 @@ export default function ProjectDetails({
                   </div>
                 ) : (
                   <p className="text-slate-200">
-                    {(data.assignedTo || []).map((u) => u.displayName).join(', ') || '—'}
+                    {(data.assignedTo || '').split('\n').filter(Boolean).join(', ') || '—'}
                   </p>
                 )}
               </div>
@@ -390,10 +395,28 @@ export default function ProjectDetails({
               </div>
               <div>
                 <span className="text-slate-500">Start / Due</span>
-                <p className="text-slate-200">
-                  {data.startDate ? new Date(data.startDate).toLocaleDateString() : '—'} /{' '}
-                  {data.dueDate ? new Date(data.dueDate).toLocaleDateString() : '—'}
-                </p>
+                {isEditing ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={data.startDate ? String(data.startDate).slice(0, 10) : ''}
+                      onChange={(e) => updateLocal({ startDate: e.target.value || null })}
+                      className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-200 text-sm"
+                    />
+                    <span className="text-slate-500">/</span>
+                    <input
+                      type="date"
+                      value={data.dueDate ? String(data.dueDate).slice(0, 10) : ''}
+                      onChange={(e) => updateLocal({ dueDate: e.target.value || null })}
+                      className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-slate-200 text-sm"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-slate-200">
+                    {data.startDate ? new Date(data.startDate).toLocaleDateString() : '—'} /{' '}
+                    {data.dueDate ? new Date(data.dueDate).toLocaleDateString() : '—'}
+                  </p>
+                )}
               </div>
             </div>
             {data.description && (

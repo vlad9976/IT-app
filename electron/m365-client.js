@@ -1535,28 +1535,11 @@ class M365Client {
             return [];
           }
         };
-        const parseOwner = (raw) => {
-          if (!raw) return null;
-          if (typeof raw === 'object') return { displayName: raw.displayName, userPrincipalName: raw.userPrincipalName || raw.email };
-          const s = String(raw);
-          const m = s.match(/^(.+)\s*\(([^)]+)\)$/);
-          return m ? { displayName: m[1].trim(), userPrincipalName: m[2].trim() } : { displayName: s };
-        };
-        const parseAssignedTo = (raw) => {
-          if (!raw) return [];
-          if (Array.isArray(raw)) return raw.map(u => typeof u === 'object' ? { displayName: u.displayName, userPrincipalName: u.userPrincipalName || u.email } : { displayName: String(u) });
-          try {
-            const a = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            return Array.isArray(a) ? a.map(u => typeof u === 'object' ? { displayName: u.displayName, userPrincipalName: u.userPrincipalName || u.email } : { displayName: String(u) }) : [];
-          } catch (_) {
-            return [];
-          }
-        };
         return {
           id: item.id,
           projectName: f.ProjectName || f.Title || '',
-          owner: parseOwner(f.Owner),
-          assignedTo: parseAssignedTo(f.AssignedTo),
+          owner: f.Owner || '',
+          assignedTo: f.AssignedTo || '',
           status: f.Status || 'Planned',
           priority: f.Priority || 'Medium',
           startDate: f.StartDate || null,
@@ -1621,30 +1604,13 @@ class M365Client {
           return [];
         }
       };
-      const parseOwner = (raw) => {
-        if (!raw) return null;
-        if (typeof raw === 'object') return { displayName: raw.displayName, userPrincipalName: raw.userPrincipalName || raw.email };
-        const s = String(raw);
-        const m = s.match(/^(.+)\s*\(([^)]+)\)$/);
-        return m ? { displayName: m[1].trim(), userPrincipalName: m[2].trim() } : { displayName: s };
-      };
-      const parseAssignedTo = (raw) => {
-        if (!raw) return [];
-        if (Array.isArray(raw)) return raw.map(u => typeof u === 'object' ? { displayName: u.displayName, userPrincipalName: u.userPrincipalName || u.email } : { displayName: String(u) });
-        try {
-          const a = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          return Array.isArray(a) ? a.map(u => typeof u === 'object' ? { displayName: u.displayName, userPrincipalName: u.userPrincipalName || u.email } : { displayName: String(u) }) : [];
-        } catch (_) {
-          return [];
-        }
-      };
       return {
         success: true,
         item: {
           id: item.id,
           projectName: f.ProjectName || f.Title || '',
-          owner: parseOwner(f.Owner),
-          assignedTo: parseAssignedTo(f.AssignedTo),
+          owner: f.Owner || '',
+          assignedTo: f.AssignedTo || '',
           status: f.Status || 'Planned',
           priority: f.Priority || 'Medium',
           startDate: f.StartDate || null,
@@ -1723,10 +1689,21 @@ class M365Client {
       const tasksJson = project.tasks && typeof project.tasks === 'object' ? JSON.stringify(project.tasks) : (project.tasksJson || '{"tasks":[]}');
       const notesJson = project.notes && Array.isArray(project.notes) ? JSON.stringify(project.notes) : '[]';
       const activityJson = JSON.stringify([{ action: 'Project created', by: project.createdByDisplay || 'System', at: now }]);
-      const personFields = this._personToTextValues(project.owner, project.assignedTo);
+      const ownerText = project.owner && typeof project.owner === 'object'
+        ? `${project.owner.displayName || ''} (${project.owner.userPrincipalName || project.owner.email || ''})`.trim()
+        : (project.owner || '');
+      const assignedText = Array.isArray(project.assignedTo)
+        ? project.assignedTo.map((u) =>
+            typeof u === 'object'
+              ? `${u.displayName || ''} (${u.userPrincipalName || u.email || ''})`.trim()
+              : String(u)
+          ).join('\n')
+        : (project.assignedTo || '');
       const fields = {
         Title: project.projectName || 'Untitled Project',
         ProjectName: project.projectName || 'Untitled Project',
+        Owner: ownerText,
+        AssignedTo: assignedText,
         Status: project.status || 'Planned',
         Priority: project.priority || 'Medium',
         StartDate: project.startDate || null,
@@ -1737,8 +1714,7 @@ class M365Client {
         Notes: notesJson,
         ActivityLog: activityJson,
         CreatedDate: now,
-        LastUpdated: now,
-        ...personFields
+        LastUpdated: now
       };
       const created = await this.graphClient
         .api(`/sites/${siteId}/lists/${listId}/items`)
@@ -1775,8 +1751,22 @@ class M365Client {
       if (updates.tasks !== undefined) fields.Tasks = typeof updates.tasks === 'string' ? updates.tasks : JSON.stringify(updates.tasks);
       if (updates.notes !== undefined) fields.Notes = typeof updates.notes === 'string' ? updates.notes : JSON.stringify(updates.notes);
       if (updates.activity !== undefined) fields.ActivityLog = typeof updates.activity === 'string' ? updates.activity : JSON.stringify(updates.activity);
-      if (updates.owner !== undefined) Object.assign(fields, this._personToTextValues(updates.owner, null));
-      if (updates.assignedTo !== undefined) Object.assign(fields, this._personToTextValues(null, updates.assignedTo));
+      if (updates.owner !== undefined) {
+        const ownerText = updates.owner && typeof updates.owner === 'object'
+          ? `${updates.owner.displayName || ''} (${updates.owner.userPrincipalName || updates.owner.email || ''})`.trim()
+          : (updates.owner || '');
+        fields.Owner = ownerText;
+      }
+      if (updates.assignedTo !== undefined) {
+        const assignedText = Array.isArray(updates.assignedTo)
+          ? updates.assignedTo.map((u) =>
+              typeof u === 'object'
+                ? `${u.displayName || ''} (${u.userPrincipalName || u.email || ''})`.trim()
+                : String(u)
+            ).join('\n')
+          : (updates.assignedTo || '');
+        fields.AssignedTo = assignedText;
+      }
       await this.graphClient
         .api(`/sites/${siteId}/lists/${listId}/items/${itemId}/fields`)
         .patch(fields);

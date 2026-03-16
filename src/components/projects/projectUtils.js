@@ -20,8 +20,8 @@ export function projectsToCSV(projects) {
   };
   const row = (p) => [
     escape(p.projectName),
-    escape(p.owner?.displayName ?? p.owner ?? ''),
-    escape(Array.isArray(p.assignedTo) ? p.assignedTo.map((u) => u?.displayName ?? u).join('; ') : p.assignedTo ?? ''),
+    escape(p.owner ?? ''),
+    escape(String(p.assignedTo || '').split('\n').filter(Boolean).join('; ')),
     escape(p.status),
     escape(p.priority),
     escape(p.progress != null ? p.progress : ''),

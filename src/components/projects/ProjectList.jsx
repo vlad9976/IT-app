@@ -28,21 +28,13 @@ export default function ProjectList({
       list = list.filter(
         (p) =>
           (p.projectName || '').toLowerCase().includes(q) ||
-          (p.owner?.displayName || '').toLowerCase().includes(q)
+          String(p.owner || '').toLowerCase().includes(q) ||
+          String(p.assignedTo || '').toLowerCase().includes(q)
       );
     }
     if (filterStatus) list = list.filter((p) => p.status === filterStatus);
     if (filterPriority) list = list.filter((p) => p.priority === filterPriority);
-    if (filterOwner) {
-      const ownerUpn = typeof filterOwner === 'object' ? filterOwner.userPrincipalName : filterOwner;
-      list = list.filter((p) => (p.owner?.userPrincipalName || p.owner?.email) === ownerUpn);
-    }
-    if (filterAssignedTo) {
-      const upn = typeof filterAssignedTo === 'object' ? filterAssignedTo.userPrincipalName : filterAssignedTo;
-      list = list.filter((p) =>
-        (p.assignedTo || []).some((u) => (u.userPrincipalName || u.email) === upn)
-      );
-    }
+    // Owner / AssignedTo are stored as plain text labels now
     return list;
   }, [projects, search, filterStatus, filterPriority, filterOwner, filterAssignedTo]);
 
@@ -123,9 +115,9 @@ export default function ProjectList({
                     className="border-t border-slate-700 hover:bg-slate-700/50 cursor-pointer text-slate-200"
                   >
                     <td className="px-4 py-3 font-medium">{p.projectName || '—'}</td>
-                    <td className="px-4 py-3">{p.owner?.displayName || '—'}</td>
+                    <td className="px-4 py-3">{p.owner || '—'}</td>
                     <td className="px-4 py-3">
-                      {(p.assignedTo || []).map((u) => u.displayName).join(', ') || '—'}
+                      {String(p.assignedTo || '').split('\n').filter(Boolean).join(', ') || '—'}
                     </td>
                     <td className="px-4 py-3">{p.status || '—'}</td>
                     <td className="px-4 py-3">{p.priority || '—'}</td>
