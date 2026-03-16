@@ -177,6 +177,22 @@
           }
         ],
         "template": "# Add domain user/group to local Administrators\nAdd-LocalGroupMember -Group \"Administrators\" -Member \"{{account}}\""
+      },
+      {
+        "id": "ad-add-site-to-intranet-zone",
+        "name": "Add Website to Intranet Zone",
+        "description": "Add a domain to the user's Internet Settings Intranet zone (Zone Map). Run in user context or as logon script.",
+        "type": "powershell",
+        "inputs": [
+          {
+            "variable": "domain",
+            "label": "Website / Domain",
+            "type": "text",
+            "placeholder": "harel-group.co.il or company.com",
+            "defaultValue": ""
+          }
+        ],
+        "template": "# Add website to Intranet zone (HKCU)\n# Run in user context - applies to current user only\n# Generated: $(Get-Date)\n\n$domain = \"{{domain}}\".Trim()\nif (-not $domain) {\n  Write-Host \"Please enter a domain (e.g. company.com)\" -ForegroundColor Yellow\n  exit 1\n}\n\n$path = \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\Domains\\$domain\"\nNew-Item -Path $path -Force | Out-Null\nNew-ItemProperty -Path $path -Name \"*\" -Value 1 -PropertyType DWORD -Force | Out-Null\nWrite-Host \"Added $domain to Intranet zone\" -ForegroundColor Green\n"
       }
     ],
     "Group Scripts": [

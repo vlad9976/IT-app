@@ -78,6 +78,17 @@ contextBridge.exposeInMainWorld('electron', {
     traceMessages: (options) => ipcRenderer.invoke('m365:traceMessages', options)
   },
 
+  // SharePoint Projects (ITProjects list)
+  projects: {
+    getSiteRoot: () => ipcRenderer.invoke('projects:getSiteRoot'),
+    getListId: (siteId) => ipcRenderer.invoke('projects:getListId', siteId),
+    getAll: (options) => ipcRenderer.invoke('projects:getAll', options),
+    getOne: (siteId, listId, itemId) => ipcRenderer.invoke('projects:getOne', siteId, listId, itemId),
+    create: (project, options) => ipcRenderer.invoke('projects:create', project, options),
+    update: (siteId, listId, itemId, updates, options) => ipcRenderer.invoke('projects:update', siteId, listId, itemId, updates, options),
+    delete: (siteId, listId, itemId) => ipcRenderer.invoke('projects:delete', siteId, listId, itemId)
+  },
+
   // Scripts data (categories + scripts)
   getScriptsData: () => ipcRenderer.invoke('scripts:getData'),
   saveScriptsData: (data) => ipcRenderer.invoke('scripts:saveData', data),

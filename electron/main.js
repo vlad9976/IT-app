@@ -234,14 +234,15 @@ if (M365Client) {
   }
 }
 
-// IPC: Initialize M365 client
+// IPC: Initialize M365 client (with optional persistent cache in userData)
 ipcMain.handle('m365:initialize', async (event, clientId, tenantId) => {
   try {
     if (!m365Client) {
       log.error('M365Client not available');
       return { success: false, error: 'M365 module not loaded. Please check logs.' };
     }
-    m365Client.initialize(clientId, tenantId);
+    const cacheDir = app.getPath('userData');
+    await m365Client.initialize(clientId, tenantId, cacheDir);
     log.info('M365 initialized with clientId:', clientId);
     return { success: true };
   } catch (error) {
@@ -260,14 +261,7 @@ ipcMain.handle('m365:authenticate', async (event) => {
     
     log.info('Starting M365 authentication...');
     const result = await m365Client.authenticateWithDeviceCode(
-      [
-        'User.Read',
-        'User.ReadWrite.All',
-        'Directory.ReadWrite.All',
-        'Group.ReadWrite.All',
-        'AuditLog.Read.All',
-        'MailboxSettings.ReadWrite'
-      ],
+      null,
       (deviceCodeInfo) => {
         log.info('Sending device code to renderer:', deviceCodeInfo.userCode);
         event.sender.send('m365:device-code', deviceCodeInfo);
@@ -470,6 +464,45 @@ ipcMain.handle('m365:getMailboxInventory', async (event, options) => {
 
 ipcMain.handle('m365:traceMessages', async (event, options) => {
   return await m365Client.traceMessages(options);
+});
+
+// ============================================
+// SHAREPOINT PROJECTS (ITProjects list)
+// ============================================
+
+ipcMain.handle('projects:getSiteRoot', async () => {
+  if (!m365Client) return { success: false, error: { code: 'NO_CLIENT', message: 'M365 client not available' } };
+  return await m365Client.getSharePointSiteRoot();
+});
+
+ipcMain.handle('projects:getListId', async (event, siteId) => {
+  if (!m365Client) return { success: false, error: { code: 'NO_CLIENT', message: 'M365 client not available' } };
+  return await m365Client.getProjectsListId(siteId);
+});
+
+ipcMain.handle('projects:getAll', async (event, options) => {
+  if (!m365Client) return { success: false, error: { code: 'NO_CLIENT', message: 'M365 client not available' } };
+  return await m365Client.getProjects(options);
+});
+
+ipcMain.handle('projects:getOne', async (event, siteId, listId, itemId) => {
+  if (!m365Client) return { success: false, error: { code: 'NO_CLIENT', message: 'M365 client not available' } };
+  return await m365Client.getProject(siteId, listId, itemId);
+});
+
+ipcMain.handle('projects:create', async (event, project, options) => {
+  if (!m365Client) return { success: false, error: { code: 'NO_CLIENT', message: 'M365 client not available' } };
+  return await m365Client.createProject(project, options);
+});
+
+ipcMain.handle('projects:update', async (event, siteId, listId, itemId, updates, options) => {
+  if (!m365Client) return { success: false, error: { code: 'NO_CLIENT', message: 'M365 client not available' } };
+  return await m365Client.updateProject(siteId, listId, itemId, updates, options);
+});
+
+ipcMain.handle('projects:delete', async (event, siteId, listId, itemId) => {
+  if (!m365Client) return { success: false, error: { code: 'NO_CLIENT', message: 'M365 client not available' } };
+  return await m365Client.deleteProject(siteId, listId, itemId);
 });
 
 // ============================================

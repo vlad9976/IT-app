@@ -4,6 +4,7 @@ import ScriptPanel from './components/ScriptPanel';
 import ScriptManager from './components/ScriptManager';
 import UpdateNotification from './components/UpdateNotification';
 import M365Dashboard from './components/M365DashboardNew';
+import ProjectManagement from './components/projects/ProjectManagement';
 import ErrorBoundary from './components/ErrorBoundary';
 import EventDocsModal from './components/EventDocsModal';
 import ServiceDocsModal from './components/ServiceDocsModal';
@@ -22,6 +23,7 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [viewMode, setViewMode] = useState('scripts');
   const [showScriptManager, setShowScriptManager] = useState(false);
+  const [projectContext, setProjectContext] = useState({ siteId: null, listId: null });
   const [loading, setLoading] = useState(true);
   const [openDoc, setOpenDoc] = useState(null); // 'event'|'service'|'port'|'m365'|'backup'
 
@@ -65,6 +67,11 @@ function App() {
     setSelectedScript(null);
   };
 
+  const handleProjectsSelect = () => {
+    setViewMode('projects');
+    setSelectedScript(null);
+  };
+
   const handleScriptsSaved = (data) => {
     if (data) setScriptsData(data);
     setShowScriptManager(false);
@@ -79,6 +86,7 @@ function App() {
           scriptsData={scriptsData}
           onScriptSelect={handleScriptSelect}
           onM365Select={handleM365Select}
+          onProjectsSelect={handleProjectsSelect}
           onManageScripts={() => setShowScriptManager(true)}
           onOpenDoc={setOpenDoc}
           selectedScript={selectedScript}
@@ -94,6 +102,8 @@ function App() {
             />
           ) : viewMode === 'scripts' ? (
             <ScriptPanel script={selectedScript} onOpenDoc={setOpenDoc} />
+          ) : viewMode === 'projects' ? (
+            <ProjectManagement projectContext={projectContext} setProjectContext={setProjectContext} />
           ) : (
             <M365Dashboard />
           )}

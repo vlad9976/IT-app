@@ -55,6 +55,7 @@ const M365DashboardNew = () => {
 
   const checkAuthStatus = async () => {
     if (window.electron?.m365) {
+      await window.electron.m365.initialize(clientId, tenantId);
       const status = await window.electron.m365.getAuthStatus();
       setAuthStatus(status);
     }

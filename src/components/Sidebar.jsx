@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { ChevronDown, ChevronRight, Terminal, FolderOpen, Search, X, Plug, Cloud, Settings, Star, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronRight, Terminal, FolderOpen, Search, X, Plug, Cloud, Settings, Star, BookOpen, FolderKanban } from 'lucide-react';
 import { getScriptsFromCategory, getCategoryStructure, isSectionedCategory, findScriptLocation } from '../utils/scriptStructure';
 import { useFavorites } from '../contexts/FavoritesContext';
 
@@ -11,7 +11,7 @@ const DOCS = [
   { id: 'backup', label: 'Backup Guide', desc: 'Domain Migration' },
 ];
 
-const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onManageScripts, onOpenDoc, selectedScript, viewMode, loading }) => {
+const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onProjectsSelect, onManageScripts, onOpenDoc, selectedScript, viewMode, loading }) => {
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const [showDocsMenu, setShowDocsMenu] = useState(false);
   const docsMenuRef = useRef(null);
@@ -186,6 +186,26 @@ const Sidebar = ({ categories, scriptsData, onScriptSelect, onM365Select, onMana
           </div>
         </button>
       </div>
+
+      {/* Project Management */}
+      {onProjectsSelect && (
+        <div className="px-4 mb-2">
+          <button
+            onClick={onProjectsSelect}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              viewMode === 'projects'
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+            }`}
+          >
+            <FolderKanban className="w-5 h-5" />
+            <div className="flex-1 text-left">
+              <p className="font-semibold text-sm">Project Management</p>
+              <p className="text-xs opacity-80">SharePoint · IT Team</p>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Documentation - Quick Access */}
       {onOpenDoc && (

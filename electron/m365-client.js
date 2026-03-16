@@ -1,7 +1,35 @@
+const path = require('path');
 const { Client } = require('@microsoft/microsoft-graph-client');
 const { PublicClientApplication } = require('@azure/msal-node');
 const log = require('electron-log');
 require('isomorphic-fetch');
+
+let DataProtectionScope;
+let PersistenceCreator;
+let PersistenceCachePlugin;
+try {
+  const ext = require('@azure/msal-node-extensions');
+  DataProtectionScope = ext.DataProtectionScope;
+  PersistenceCreator = ext.PersistenceCreator;
+  PersistenceCachePlugin = ext.PersistenceCachePlugin;
+} catch (e) {
+  log.warn('MSAL node extensions not available, token cache will not persist:', e.message);
+}
+
+const SCOPES = [
+  'User.Read',
+  'User.ReadWrite.All',
+  'User-PasswordProfile.ReadWrite.All',
+  'Directory.ReadWrite.All',
+  'Group.ReadWrite.All',
+  'AuditLog.Read.All',
+  'MailboxSettings.ReadWrite',
+  'Mail.Read',
+  'Sites.ReadWrite.All',
+  'Sites.Manage.All'
+];
+
+const REFRESH_INTERVAL_MS = 50 * 60 * 1000;
 
 class M365Client {
   constructor() {
@@ -11,10 +39,14 @@ class M365Client {
     this.account = null;
     this.config = null;
     this.onSessionExpired = null;
-    this.tokenAcquiredAt = null; // skip silent refresh for 2 min after device code
+    this.tokenAcquiredAt = null;
+    this.refreshIntervalId = null;
   }
 
-  initialize(clientId, tenantId = 'common') {
+  async initialize(clientId, tenantId = 'common', cacheDir = null) {
+    if (this.msalClient) {
+      return;
+    }
     this.config = {
       auth: {
         clientId: clientId,
@@ -22,8 +54,79 @@ class M365Client {
       }
     };
 
+    if (cacheDir && PersistenceCreator && PersistenceCachePlugin && DataProtectionScope) {
+      try {
+        const cachePath = path.join(cacheDir, 'msal-cache.json');
+        const persistence = await PersistenceCreator.createPersistence({
+          cachePath,
+          dataProtectionScope: DataProtectionScope.CurrentUser,
+          serviceName: 'IT Script Generator',
+          accountName: 'M365',
+          usePlaintextFileOnLinux: false
+        });
+        this.config.cache = { cachePlugin: new PersistenceCachePlugin(persistence) };
+        log.info('M365 cache persistence enabled:', cachePath);
+      } catch (e) {
+        log.warn('Cache persistence setup failed, using in-memory cache:', e.message);
+      }
+    }
+
     this.msalClient = new PublicClientApplication(this.config);
     log.info('M365 Client initialized');
+
+    if (this.config.cache) {
+      try {
+        const restored = await this.tryRestoreSession();
+        if (restored) log.info('M365 session restored from cache');
+      } catch (e) {
+        log.warn('Session restore failed:', e.message);
+      }
+    }
+  }
+
+  startRefreshTimer() {
+    this.stopRefreshTimer();
+    this.refreshIntervalId = setInterval(() => {
+      if (!this.account) return;
+      this.acquireTokenSilent().then(() => {
+        log.info('Token refreshed proactively');
+      }).catch((e) => {
+        if (/InteractionRequired|consent|AADSTS65001/i.test(e.message || '')) {
+          this.stopRefreshTimer();
+          this.disconnect();
+          if (typeof this.onSessionExpired === 'function') this.onSessionExpired();
+        }
+        log.warn('Proactive token refresh failed:', e.message);
+      });
+    }, REFRESH_INTERVAL_MS);
+  }
+
+  stopRefreshTimer() {
+    if (this.refreshIntervalId) {
+      clearInterval(this.refreshIntervalId);
+      this.refreshIntervalId = null;
+    }
+  }
+
+  async tryRestoreSession() {
+    if (!this.msalClient) return false;
+    try {
+      const accounts = await this.msalClient.getAllAccounts();
+      if (!accounts || accounts.length === 0) return false;
+      this.account = accounts[0];
+      await this.acquireTokenSilent();
+      this.graphClient = Client.init({
+        authProvider: (done) => { done(null, this.accessToken); }
+      });
+      this.startRefreshTimer();
+      return true;
+    } catch (e) {
+      log.warn('Could not restore session from cache:', e.message);
+      this.account = null;
+      this.accessToken = null;
+      this.graphClient = null;
+      return false;
+    }
   }
 
   async authenticateWithDeviceCode(scopes, deviceCodeCallback) {
@@ -43,16 +146,7 @@ class M365Client {
             });
           }
         },
-        scopes: scopes || [
-          'User.Read',
-          'User.ReadWrite.All',
-          'User-PasswordProfile.ReadWrite.All',
-          'Directory.ReadWrite.All',
-          'Group.ReadWrite.All',
-          'AuditLog.Read.All',
-          'MailboxSettings.ReadWrite',
-          'Mail.Read'
-        ]
+        scopes: scopes || SCOPES
       };
 
       const response = await this.msalClient.acquireTokenByDeviceCode(deviceCodeRequest);
@@ -67,6 +161,7 @@ class M365Client {
         }
       });
 
+      this.startRefreshTimer();
       log.info('Authentication successful for:', this.account.username);
       
       return {
@@ -107,16 +202,7 @@ class M365Client {
     try {
       const silentRequest = {
         account: this.account,
-        scopes: [
-          'User.Read',
-          'User.ReadWrite.All',
-          'User-PasswordProfile.ReadWrite.All',
-          'Directory.ReadWrite.All',
-          'Group.ReadWrite.All',
-          'AuditLog.Read.All',
-          'MailboxSettings.ReadWrite',
-          'Mail.Read'
-        ]
+        scopes: SCOPES
       };
 
       const response = await this.msalClient.acquireTokenSilent(silentRequest);
@@ -164,6 +250,7 @@ class M365Client {
   }
 
   disconnect() {
+    this.stopRefreshTimer();
     this.accessToken = null;
     this.account = null;
     this.graphClient = null;
@@ -387,9 +474,10 @@ class M365Client {
       throw new Error('Not authenticated. Please connect to Microsoft 365 first.');
     }
 
-    // Skip silent refresh for 2 min after device code - use the fresh token directly
+    // Skip silent refresh for 2 min after device code, and if token was refreshed recently (< 45 min)
     const graceMs = 2 * 60 * 1000;
-    if (this.tokenAcquiredAt && (Date.now() - this.tokenAcquiredAt) < graceMs) {
+    const refreshThresholdMs = 45 * 60 * 1000;
+    if (this.tokenAcquiredAt && (Date.now() - this.tokenAcquiredAt) < Math.max(graceMs, refreshThresholdMs)) {
       return;
     }
 
@@ -1308,6 +1396,419 @@ class M365Client {
     }
   }
 
+  // ============================================
+  // SHAREPOINT PROJECTS (ITProjects list)
+  // ============================================
+
+  async getSharePointSiteRoot() {
+    try {
+      await this.ensureAuthenticated();
+      const site = await this.graphClient.api('/sites/root').get();
+      return { success: true, site: { id: site.id, name: site.displayName } };
+    } catch (error) {
+      log.error('Get SharePoint site root error:', error);
+      return this.handleError(error);
+    }
+  }
+
+  async getProjectsListId(siteId) {
+    try {
+      await this.ensureAuthenticated();
+      const res = await this.graphClient
+        .api(`/sites/${siteId}/lists`)
+        .filter("displayName eq 'ITProjects'")
+        .select('id,displayName')
+        .get();
+      const list = res.value && res.value[0];
+      if (list) {
+        return { success: true, listId: list.id };
+      }
+      const created = await this.createITProjectsList(siteId);
+      if (created.success) {
+        return { success: true, listId: created.listId };
+      }
+      return { success: false, error: created.error || { code: 'LIST_NOT_FOUND', message: 'SharePoint list "ITProjects" not found. Create it in your SharePoint site first.' } };
+    } catch (error) {
+      log.error('Get projects list id error:', error);
+      return this.handleError(error);
+    }
+  }
+
+  async createITProjectsList(siteId) {
+    try {
+      await this.ensureAuthenticated();
+      const body = {
+        displayName: 'ITProjects',
+        columns: [
+          { name: 'ProjectName', text: {} },
+          { name: 'Owner', text: {} },
+          { name: 'AssignedTo', text: {} },
+          { name: 'Status', choice: { choices: ['Planned', 'In Progress', 'Blocked', 'Completed'], displayAs: 'dropDownMenu' } },
+          { name: 'Priority', choice: { choices: ['Low', 'Medium', 'High', 'Critical'], displayAs: 'dropDownMenu' } },
+          { name: 'StartDate', dateTime: { format: 'dateOnly' } },
+          { name: 'DueDate', dateTime: { format: 'dateOnly' } },
+          { name: 'Progress', number: {} },
+          { name: 'Description', text: {} },
+          { name: 'Tasks', text: {} },
+          { name: 'Notes', text: {} },
+          { name: 'ActivityLog', text: {} },
+          { name: 'CreatedDate', dateTime: { format: 'dateTime' } },
+          { name: 'LastUpdated', dateTime: { format: 'dateTime' } }
+        ],
+        list: { template: 'genericList' }
+      };
+      const created = await this.graphClient
+        .api(`/sites/${siteId}/lists`)
+        .post(body);
+      log.info('Created ITProjects list:', created.id);
+      return { success: true, listId: created.id };
+    } catch (error) {
+      log.error('Create ITProjects list error:', error);
+      const handled = this.handleError(error);
+      if (error.statusCode === 403) {
+        return {
+          success: false,
+          error: {
+            code: 'LIST_CREATE_DENIED',
+            message: 'Cannot create the ITProjects list: permission denied. Either grant Sites.Manage.All (admin consent) in Azure for this app, or create the list manually: in SharePoint go to Site contents → New → List → Blank, name it exactly "ITProjects", then add columns (ProjectName, Owner, AssignedTo, Status, Priority, StartDate, DueDate, Progress, Description, Tasks, Notes, ActivityLog, CreatedDate, LastUpdated). See docs/SharePoint-ITProjects-List-Schema.md for details.'
+          },
+          listId: null
+        };
+      }
+      return { success: false, error: handled.error, listId: null };
+    }
+  }
+
+  _listIdCache(siteId, listId) {
+    if (!this._projectListCache) this._projectListCache = { siteId: null, listId: null };
+    if (this._projectListCache.siteId === siteId) return this._projectListCache.listId;
+    this._projectListCache = { siteId, listId };
+    return listId;
+  }
+
+  async getProjects(options = {}) {
+    const { siteId: optSiteId, listId: optListId, top = 200, skipToken } = options;
+    try {
+      await this.ensureAuthenticated();
+      let siteId = optSiteId;
+      let listId = optListId;
+      if (!siteId) {
+        const siteRes = await this.getSharePointSiteRoot();
+        if (!siteRes.success) return siteRes;
+        siteId = siteRes.site.id;
+      }
+      if (!listId) {
+        const listRes = await this.getProjectsListId(siteId);
+        if (!listRes.success) return listRes;
+        listId = listRes.listId;
+        this._listIdCache(siteId, listId);
+      }
+      let url = `/sites/${siteId}/lists/${listId}/items?expand=fields&$top=${Math.min(top, 999)}`;
+      if (skipToken) url += `&$skiptoken=${encodeURIComponent(skipToken)}`;
+      const res = await this.graphClient.api(url).get();
+      const items = (res.value || []).map((item) => {
+        const f = item.fields || {};
+        const parseTasks = (raw) => {
+          if (!raw) return { tasks: [] };
+          try {
+            const o = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return Array.isArray(o.tasks) ? o : { tasks: [] };
+          } catch (_) {
+            return { tasks: [] };
+          }
+        };
+        const parseNotes = (raw) => {
+          if (!raw) return [];
+          try {
+            const a = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return Array.isArray(a) ? a : [];
+          } catch (_) {
+            return [];
+          }
+        };
+        const parseActivity = (raw) => {
+          if (!raw) return [];
+          try {
+            const a = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return Array.isArray(a) ? a : [];
+          } catch (_) {
+            return [];
+          }
+        };
+        const parseOwner = (raw) => {
+          if (!raw) return null;
+          if (typeof raw === 'object') return { displayName: raw.displayName, userPrincipalName: raw.userPrincipalName || raw.email };
+          const s = String(raw);
+          const m = s.match(/^(.+)\s*\(([^)]+)\)$/);
+          return m ? { displayName: m[1].trim(), userPrincipalName: m[2].trim() } : { displayName: s };
+        };
+        const parseAssignedTo = (raw) => {
+          if (!raw) return [];
+          if (Array.isArray(raw)) return raw.map(u => typeof u === 'object' ? { displayName: u.displayName, userPrincipalName: u.userPrincipalName || u.email } : { displayName: String(u) });
+          try {
+            const a = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return Array.isArray(a) ? a.map(u => typeof u === 'object' ? { displayName: u.displayName, userPrincipalName: u.userPrincipalName || u.email } : { displayName: String(u) }) : [];
+          } catch (_) {
+            return [];
+          }
+        };
+        return {
+          id: item.id,
+          projectName: f.ProjectName || f.Title || '',
+          owner: parseOwner(f.Owner),
+          assignedTo: parseAssignedTo(f.AssignedTo),
+          status: f.Status || 'Planned',
+          priority: f.Priority || 'Medium',
+          startDate: f.StartDate || null,
+          dueDate: f.DueDate || null,
+          progress: typeof f.Progress === 'number' ? f.Progress : (parseInt(f.Progress, 10) || 0),
+          description: f.Description || '',
+          tasks: parseTasks(f.Tasks),
+          notes: parseNotes(f.Notes),
+          activity: parseActivity(f.ActivityLog || f.Activity),
+          createdBy: f.CreatedBy ? (typeof f.CreatedBy === 'object' ? { displayName: f.CreatedBy.displayName } : { displayName: String(f.CreatedBy) }) : null,
+          createdDate: f.CreatedDate || f.Created || null,
+          lastUpdated: f.LastUpdated || f.Modified || null
+        };
+      });
+      return { success: true, items, nextSkipToken: res['@odata.nextLink'] ? (res['@odata.nextLink'].match(/\$skiptoken=([^&]+)/) || [])[1] : null };
+    } catch (error) {
+      log.error('Get projects error:', error);
+      return this.handleError(error);
+    }
+  }
+
+  async getProject(siteId, listId, itemId) {
+    try {
+      await this.ensureAuthenticated();
+      if (!siteId || !listId) {
+        const siteRes = await this.getSharePointSiteRoot();
+        if (!siteRes.success) return siteRes;
+        siteId = siteId || siteRes.site.id;
+        const listRes = await this.getProjectsListId(siteId);
+        if (!listRes.success) return listRes;
+        listId = listId || listRes.listId;
+      }
+      const item = await this.graphClient
+        .api(`/sites/${siteId}/lists/${listId}/items/${itemId}`)
+        .expand('fields')
+        .get();
+      const f = item.fields || {};
+      const parseTasks = (raw) => {
+        if (!raw) return { tasks: [] };
+        try {
+          const o = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return Array.isArray(o.tasks) ? o : { tasks: [] };
+        } catch (_) {
+          return { tasks: [] };
+        }
+      };
+      const parseNotes = (raw) => {
+        if (!raw) return [];
+        try {
+          const a = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return Array.isArray(a) ? a : [];
+        } catch (_) {
+          return [];
+        }
+      };
+      const parseActivity = (raw) => {
+        if (!raw) return [];
+        try {
+          const a = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return Array.isArray(a) ? a : [];
+        } catch (_) {
+          return [];
+        }
+      };
+      const parseOwner = (raw) => {
+        if (!raw) return null;
+        if (typeof raw === 'object') return { displayName: raw.displayName, userPrincipalName: raw.userPrincipalName || raw.email };
+        const s = String(raw);
+        const m = s.match(/^(.+)\s*\(([^)]+)\)$/);
+        return m ? { displayName: m[1].trim(), userPrincipalName: m[2].trim() } : { displayName: s };
+      };
+      const parseAssignedTo = (raw) => {
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw.map(u => typeof u === 'object' ? { displayName: u.displayName, userPrincipalName: u.userPrincipalName || u.email } : { displayName: String(u) });
+        try {
+          const a = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return Array.isArray(a) ? a.map(u => typeof u === 'object' ? { displayName: u.displayName, userPrincipalName: u.userPrincipalName || u.email } : { displayName: String(u) }) : [];
+        } catch (_) {
+          return [];
+        }
+      };
+      return {
+        success: true,
+        item: {
+          id: item.id,
+          projectName: f.ProjectName || f.Title || '',
+          owner: parseOwner(f.Owner),
+          assignedTo: parseAssignedTo(f.AssignedTo),
+          status: f.Status || 'Planned',
+          priority: f.Priority || 'Medium',
+          startDate: f.StartDate || null,
+          dueDate: f.DueDate || null,
+          progress: typeof f.Progress === 'number' ? f.Progress : (parseInt(f.Progress, 10) || 0),
+          description: f.Description || '',
+          tasks: parseTasks(f.Tasks),
+          notes: parseNotes(f.Notes),
+          activity: parseActivity(f.ActivityLog || f.Activity),
+          createdBy: f.CreatedBy ? (typeof f.CreatedBy === 'object' ? { displayName: f.CreatedBy.displayName } : { displayName: String(f.CreatedBy) }) : null,
+          createdDate: f.CreatedDate || f.Created || null,
+          lastUpdated: f.LastUpdated || f.Modified || null
+        }
+      };
+    } catch (error) {
+      log.error('Get project error:', error);
+      return this.handleError(error);
+    }
+  }
+
+  _personToFields(owner, assignedTo) {
+    const toLookup = (u) => {
+      if (!u) return null;
+      if (typeof u === 'object' && (u.id || u.lookupId)) return { LookupId: u.lookupId || u.id };
+      if (typeof u === 'object' && (u.userPrincipalName || u.email)) {
+        return {
+          '@odata.type': '#sharepoint.user',
+          displayName: u.displayName || u.userPrincipalName || u.email,
+          userPrincipalName: u.userPrincipalName || u.email
+        };
+      }
+      return typeof u === 'string' ? u : null;
+    };
+    const fields = {};
+    if (owner != null) fields.Owner = toLookup(owner);
+    if (assignedTo != null) {
+      const arr = Array.isArray(assignedTo) ? assignedTo : [assignedTo];
+      fields.AssignedTo = arr.map(toLookup).filter(Boolean);
+    }
+    return fields;
+  }
+
+  _personToTextValues(owner, assignedTo) {
+    const fields = {};
+    if (owner != null) {
+      fields.Owner = typeof owner === 'object'
+        ? `${owner.displayName || ''} (${owner.userPrincipalName || owner.email || ''})`.trim() || ''
+        : String(owner || '');
+    }
+    if (assignedTo != null) {
+      const arr = Array.isArray(assignedTo) ? assignedTo : [assignedTo];
+      fields.AssignedTo = JSON.stringify(arr.map((u) => (typeof u === 'object'
+        ? { displayName: u.displayName, userPrincipalName: u.userPrincipalName || u.email }
+        : { displayName: String(u), userPrincipalName: '' })));
+    }
+    return fields;
+  }
+
+  async createProject(project, options = {}) {
+    const { siteId: optSiteId, listId: optListId } = options;
+    try {
+      await this.ensureAuthenticated();
+      let siteId = optSiteId;
+      let listId = optListId;
+      if (!siteId) {
+        const siteRes = await this.getSharePointSiteRoot();
+        if (!siteRes.success) return siteRes;
+        siteId = siteRes.site.id;
+      }
+      if (!listId) {
+        const listRes = await this.getProjectsListId(siteId);
+        if (!listRes.success) return listRes;
+        listId = listRes.listId;
+      }
+      const now = new Date().toISOString();
+      const tasksJson = project.tasks && typeof project.tasks === 'object' ? JSON.stringify(project.tasks) : (project.tasksJson || '{"tasks":[]}');
+      const notesJson = project.notes && Array.isArray(project.notes) ? JSON.stringify(project.notes) : '[]';
+      const activityJson = JSON.stringify([{ action: 'Project created', by: project.createdByDisplay || 'System', at: now }]);
+      const personFields = this._personToTextValues(project.owner, project.assignedTo);
+      const fields = {
+        Title: project.projectName || 'Untitled Project',
+        ProjectName: project.projectName || 'Untitled Project',
+        Status: project.status || 'Planned',
+        Priority: project.priority || 'Medium',
+        StartDate: project.startDate || null,
+        DueDate: project.dueDate || null,
+        Progress: project.progress != null ? project.progress : 0,
+        Description: project.description || '',
+        Tasks: tasksJson,
+        Notes: notesJson,
+        ActivityLog: activityJson,
+        CreatedDate: now,
+        LastUpdated: now,
+        ...personFields
+      };
+      const created = await this.graphClient
+        .api(`/sites/${siteId}/lists/${listId}/items`)
+        .post({ fields });
+      const id = created.id;
+      const getRes = await this.getProject(siteId, listId, id);
+      return getRes.success ? { success: true, item: getRes.item } : { success: true, item: { id, ...project } };
+    } catch (error) {
+      log.error('Create project error:', error);
+      return this.handleError(error);
+    }
+  }
+
+  async updateProject(siteId, listId, itemId, updates, options = {}) {
+    try {
+      await this.ensureAuthenticated();
+      if (!siteId || !listId) {
+        const siteRes = await this.getSharePointSiteRoot();
+        if (!siteRes.success) return siteRes;
+        siteId = siteId || siteRes.site.id;
+        const listRes = await this.getProjectsListId(siteId);
+        if (!listRes.success) return listRes;
+        listId = listId || listRes.listId;
+      }
+      const fields = { LastUpdated: new Date().toISOString() };
+      if (updates.projectName !== undefined) fields.ProjectName = updates.projectName;
+      if (updates.title !== undefined) fields.Title = updates.projectName || updates.title;
+      if (updates.status !== undefined) fields.Status = updates.status;
+      if (updates.priority !== undefined) fields.Priority = updates.priority;
+      if (updates.startDate !== undefined) fields.StartDate = updates.startDate;
+      if (updates.dueDate !== undefined) fields.DueDate = updates.dueDate;
+      if (updates.progress !== undefined) fields.Progress = updates.progress;
+      if (updates.description !== undefined) fields.Description = updates.description;
+      if (updates.tasks !== undefined) fields.Tasks = typeof updates.tasks === 'string' ? updates.tasks : JSON.stringify(updates.tasks);
+      if (updates.notes !== undefined) fields.Notes = typeof updates.notes === 'string' ? updates.notes : JSON.stringify(updates.notes);
+      if (updates.activity !== undefined) fields.ActivityLog = typeof updates.activity === 'string' ? updates.activity : JSON.stringify(updates.activity);
+      if (updates.owner !== undefined) Object.assign(fields, this._personToTextValues(updates.owner, null));
+      if (updates.assignedTo !== undefined) Object.assign(fields, this._personToTextValues(null, updates.assignedTo));
+      await this.graphClient
+        .api(`/sites/${siteId}/lists/${listId}/items/${itemId}/fields`)
+        .patch(fields);
+      const getRes = await this.getProject(siteId, listId, itemId);
+      return getRes.success ? { success: true, item: getRes.item } : { success: true };
+    } catch (error) {
+      log.error('Update project error:', error);
+      return this.handleError(error);
+    }
+  }
+
+  async deleteProject(siteId, listId, itemId) {
+    try {
+      await this.ensureAuthenticated();
+      if (!siteId || !listId) {
+        const siteRes = await this.getSharePointSiteRoot();
+        if (!siteRes.success) return siteRes;
+        siteId = siteId || siteRes.site.id;
+        const listRes = await this.getProjectsListId(siteId);
+        if (!listRes.success) return listRes;
+        listId = listRes.listId;
+      }
+      await this.graphClient
+        .api(`/sites/${siteId}/lists/${listId}/items/${itemId}`)
+        .delete();
+      return { success: true };
+    } catch (error) {
+      log.error('Delete project error:', error);
+      return this.handleError(error);
+    }
+  }
+
   handleError(error) {
     let message = 'An unknown error occurred';
     let code = 'UNKNOWN_ERROR';
@@ -1338,8 +1839,12 @@ class M365Client {
       } else if (error.statusCode) {
         code = `HTTP_${error.statusCode}`;
         if (error.statusCode === 401) message = 'Authentication failed. Please disconnect and reconnect.';
-        else if (error.statusCode === 403) message = 'Access denied. Check account permissions.';
-        else if (error.statusCode === 404) message = 'Resource not found.';
+        else if (error.statusCode === 403) {
+          message = 'SharePoint access denied. The app needs delegated permissions (Sites.ReadWrite.All and, to auto-create the list, Sites.Manage.All). '
+            + 'Ask your tenant admin to add these in Azure Portal (App registration → API permissions) and grant admin consent. '
+            + 'Your account must also have access to the SharePoint site. Alternatively, create the "ITProjects" list manually on your SharePoint site.';
+          code = 'ACCESS_DENIED';
+        } else if (error.statusCode === 404) message = 'Resource not found.';
         else if (message === 'An unknown error occurred') message = errMsg || `HTTP ${error.statusCode}`;
       } else if (errMsg) {
         message = errMsg;
