@@ -21,6 +21,10 @@ export default function ProjectDetails({
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [local, setLocal] = useState(null);
+  const [ownerSearch, setOwnerSearch] = useState('');
+  const [ownerOptions, setOwnerOptions] = useState([]);
+  const [assignedSearch, setAssignedSearch] = useState('');
+  const [assignedOptions, setAssignedOptions] = useState([]);
 
   const data = local || project;
   const isEditing = editing && local;
@@ -53,6 +57,8 @@ export default function ProjectDetails({
     if (!local) return;
     save({
       projectName: local.projectName,
+      owner: local.owner,
+      assignedTo: local.assignedTo,
       status: local.status,
       priority: local.priority,
       startDate: local.startDate,
@@ -113,6 +119,46 @@ export default function ProjectDetails({
     } finally {
       setSaving(false);
     }
+  };
+
+  const searchUsers = useCallback(async (term, setOptions) => {
+    if (!window.electron?.m365?.searchUsers || term.length < 2) {
+      setOptions([]);
+      return;
+    }
+    try {
+      const res = await window.electron.m365.searchUsers(term, 10);
+      if (res?.value) {
+        setOptions(res.value.map((u) => ({ displayName: u.displayName, userPrincipalName: u.userPrincipalName })));
+      } else {
+        setOptions([]);
+      }
+    } catch {
+      setOptions([]);
+    }
+  }, []);
+
+  const handleOwnerSearchChange = (value) => {
+    setOwnerSearch(value);
+    searchUsers(value, setOwnerOptions);
+  };
+
+  const handleAssignedSearchChange = (value) => {
+    setAssignedSearch(value);
+    searchUsers(value, setAssignedOptions);
+  };
+
+  const addAssigned = (user) => {
+    const current = data.assignedTo || [];
+    if (current.some((a) => (a.userPrincipalName || a.email) === (user.userPrincipalName || user.email))) return;
+    const next = [...current, user];
+    updateLocal({ assignedTo: next });
+  };
+
+  const removeAssigned = (index) => {
+    const current = data.assignedTo || [];
+    const next = current.filter((_, i) => i !== index);
+    updateLocal({ assignedTo: next });
   };
 
   if (!project) return null;
@@ -189,13 +235,102 @@ export default function ProjectDetails({
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-slate-500">Owner</span>
-                <p className="text-slate-200">{data.owner?.displayName || '—'}</p>
+                {isEditing ? (
+                  <div className="mt-1">
+                    <input
+                      type="text"
+                      value={ownerSearch}
+                      onChange={(e) => handleOwnerSearchChange(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-slate-200 text-sm"
+                      placeholder="Search user..."
+                    />
+                    {data.owner && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        Selected: {data.owner.displayName}
+                        <button
+                          type="button"
+                          onClick={() => updateLocal({ owner: null })}
+                          className="ml-2 text-red-400"
+                        >
+                          Clear
+                        </button>
+                      </p>
+                    )}
+                    {ownerOptions.length > 0 && (
+                      <ul className="mt-1 border border-slate-600 rounded-lg overflow-hidden bg-slate-800">
+                        {ownerOptions.map((u, i) => (
+                          <li key={i}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateLocal({ owner: u });
+                                setOwnerOptions([]);
+                                setOwnerSearch('');
+                              }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-600"
+                            >
+                              {u.displayName} ({u.userPrincipalName})
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-slate-200">{data.owner?.displayName || '—'}</p>
+                )}
               </div>
               <div>
                 <span className="text-slate-500">Assigned To</span>
-                <p className="text-slate-200">
-                  {(data.assignedTo || []).map((u) => u.displayName).join(', ') || '—'}
-                </p>
+                {isEditing ? (
+                  <div className="mt-1">
+                    <input
+                      type="text"
+                      value={assignedSearch}
+                      onChange={(e) => handleAssignedSearchChange(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-slate-700 border border-slate-600 rounded text-slate-200 text-sm"
+                      placeholder="Search and add users..."
+                    />
+                    {(data.assignedTo || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(data.assignedTo || []).map((u, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-600 text-slate-200 text-xs"
+                          >
+                            {u.displayName}
+                            <button
+                              type="button"
+                              onClick={() => removeAssigned(i)}
+                              className="text-red-400"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {assignedOptions.length > 0 && (
+                      <ul className="mt-1 border border-slate-600 rounded-lg overflow-hidden bg-slate-800">
+                        {assignedOptions.map((u, i) => (
+                          <li key={i}>
+                            <button
+                              type="button"
+                              onClick={() => addAssigned(u)}
+                              className="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-600"
+                            >
+                              {u.displayName} ({u.userPrincipalName})
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-slate-200">
+                    {(data.assignedTo || []).map((u) => u.displayName).join(', ') || '—'}
+                  </p>
+                )}
               </div>
               <div>
                 <span className="text-slate-500">Status</span>

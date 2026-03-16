@@ -1,6 +1,6 @@
 {
     "name": "it-script-generator",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "description": "IT Administrator Script Generator",
     "main": "electron/main.js",
     "scripts": {
