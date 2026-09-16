@@ -17,7 +17,7 @@ if (!Array.isArray(scripts.microsoft_office)) {
 const script = {
   id: 'office-uninstall-all',
   name: 'Uninstall Microsoft 365 / Office',
-  description: 'Uninstall all detected Microsoft 365 Apps, Office Click-to-Run, MSI Office, Visio, and Project. Optional official Microsoft scrub of every Office version. Requires Administrator. Restart after.',
+  description: 'Uninstall Microsoft 365 Apps in every language (he-il, en-us, and more), Click-to-Run, MSI Office, Visio, Project, and Store Office apps. Optional official Microsoft scrub. Requires Administrator. Restart after.',
   type: 'powershell',
   inputs: [
     {
@@ -26,7 +26,7 @@ const script = {
       type: 'checkbox',
       placeholder: '',
       defaultValue: 'true',
-      description: 'Silent uninstall via OfficeClickToRun.exe'
+      description: 'Removes each language (he-il, en-us, ...) then ODT Remove All'
     },
     {
       variable: 'UninstallMsiOffice',
@@ -37,12 +37,20 @@ const script = {
       description: 'Classic msiexec uninstall for MSI-based Office'
     },
     {
+      variable: 'UninstallStoreOffice',
+      label: 'Store Office / Microsoft 365 apps',
+      type: 'checkbox',
+      placeholder: '',
+      defaultValue: 'true',
+      description: 'Removes Microsoft Store Office Hub and 365 apps'
+    },
+    {
       variable: 'RunMicrosoftScrub',
       label: 'Microsoft complete scrub (all versions)',
       type: 'checkbox',
       placeholder: '',
       defaultValue: 'true',
-      description: 'Official Get Help OfficeScrubScenario -OfficeVersion All'
+      description: 'Official Get Help OfficeScrubScenario for M365 then All'
     },
     {
       variable: 'RemoveLeftovers',
