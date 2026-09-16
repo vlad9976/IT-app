@@ -7,6 +7,7 @@ const DOCS = [
   { id: 'event', label: 'Event IDs', desc: 'Windows Event Log' },
   { id: 'service', label: 'Services', desc: 'Windows Services' },
   { id: 'port', label: 'Ports', desc: 'Common TCP/UDP ports' },
+  { id: 'network', label: 'Network Concepts', desc: 'IP, DNS, VLAN, VPN and examples' },
   { id: 'm365', label: 'M365 Licenses', desc: 'Microsoft 365 SKUs' },
   { id: 'backup', label: 'Backup Guide', desc: 'Domain Migration' },
 ];

@@ -10,6 +10,7 @@ import ServiceDocsModal from './components/ServiceDocsModal';
 import PortDocsModal from './components/PortDocsModal';
 import M365LicenseDocsModal from './components/M365LicenseDocsModal';
 import BackupDocsModal from './components/BackupDocsModal';
+import NetworkDocsModal from './components/NetworkDocsModal';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import { findScriptInCategory, isSectionedCategory, mergeScriptsData } from './utils/scriptStructure';
 
@@ -23,7 +24,7 @@ function App() {
   const [viewMode, setViewMode] = useState('scripts');
   const [showScriptManager, setShowScriptManager] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [openDoc, setOpenDoc] = useState(null); // 'event'|'service'|'port'|'m365'|'backup'
+  const [openDoc, setOpenDoc] = useState(null); // 'event'|'service'|'port'|'network'|'m365'|'backup'
 
   useEffect(() => {
     async function loadScripts() {
@@ -98,6 +99,7 @@ function App() {
         <EventDocsModal isOpen={openDoc === 'event'} onClose={() => setOpenDoc(null)} />
         <ServiceDocsModal isOpen={openDoc === 'service'} onClose={() => setOpenDoc(null)} />
         <PortDocsModal isOpen={openDoc === 'port'} onClose={() => setOpenDoc(null)} />
+        <NetworkDocsModal isOpen={openDoc === 'network'} onClose={() => setOpenDoc(null)} />
         <M365LicenseDocsModal isOpen={openDoc === 'm365'} onClose={() => setOpenDoc(null)} />
         <BackupDocsModal isOpen={openDoc === 'backup'} onClose={() => setOpenDoc(null)} />
       </div>
