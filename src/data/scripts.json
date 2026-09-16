@@ -1368,5 +1368,55 @@
       "inputs": [],
       "template": "# Increase Outlook PST Size Limit\n# Generated: $(Get-Date)\n\n$k1 = 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\PST'\n$k2 = 'HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\PST'\n$m = 100 * 1024\n$w = 95 * 1024\nforeach ($k in @($k1, $k2)) {\n  if (!(Test-Path $k)) { New-Item $k -Force | Out-Null }\n  New-ItemProperty $k MaxLargeFileSize -Type DWord -Value $m -Force | Out-Null\n  New-ItemProperty $k WarnLargeFileSize -Type DWord -Value $w -Force | Out-Null\n}\nWrite-Host 'Done. Restart Outlook.' -ForegroundColor Green\n"
     }
+  ],
+  "exchange_online": [
+    {
+      "id": "exo-connect",
+      "name": "Connect to Exchange Online",
+      "description": "Install ExchangeOnlineManagement if needed and run Connect-ExchangeOnline.",
+      "type": "powershell",
+      "inputs": [],
+      "template": "# ================================================================\n# CONNECT TO EXCHANGE ONLINE\n# ================================================================\n\nWrite-Host \"\"\nWrite-Host \"====================================================\" -ForegroundColor Cyan\nWrite-Host \" CONNECT TO EXCHANGE ONLINE\" -ForegroundColor Cyan\nWrite-Host \"====================================================\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nif (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {\n    Write-Host \"Installing ExchangeOnlineManagement module...\" -ForegroundColor Yellow\n    Install-Module ExchangeOnlineManagement -Scope CurrentUser -Force\n}\n\nImport-Module ExchangeOnlineManagement\n\ntry {\n    Get-OrganizationConfig -ErrorAction Stop | Out-Null\n    Write-Host \"Already connected to Exchange Online.\" -ForegroundColor Green\n}\ncatch {\n    Write-Host \"Sign in when the browser / device prompt appears.\" -ForegroundColor Yellow\n    Connect-ExchangeOnline\n}\n\nWrite-Host \"\"\nWrite-Host \"[OK] Connected to Exchange Online.\" -ForegroundColor Green\nWrite-Host \"\"\n"
+    },
+    {
+      "id": "exo-archive-quota",
+      "name": "Mailbox Archive Quota",
+      "description": "Connect to Exchange Online, check the current archive quota, and enable AutoExpandingArchive for a mailbox.",
+      "type": "powershell",
+      "inputs": [
+        {
+          "variable": "mailbox",
+          "label": "Mailbox UPN",
+          "type": "text",
+          "placeholder": "user@domain.co.il",
+          "defaultValue": ""
+        },
+        {
+          "variable": "ConnectExchange",
+          "label": "Connect to Exchange Online",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Connect-ExchangeOnline"
+        },
+        {
+          "variable": "CheckQuota",
+          "label": "Check current archive quota",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "DisplayName, ArchiveStatus, ArchiveQuota, ArchiveWarningQuota"
+        },
+        {
+          "variable": "EnableAutoExpand",
+          "label": "Extend quota (AutoExpandingArchive)",
+          "type": "checkbox",
+          "placeholder": "",
+          "defaultValue": "true",
+          "description": "Enable-Mailbox -AutoExpandingArchive"
+        }
+      ],
+      "template": "# ================================================================\n# EXCHANGE ONLINE - MAILBOX ARCHIVE QUOTA\n# 1) Connect-ExchangeOnline\n# 2) Check current archive quota\n# 3) Enable AutoExpandingArchive\n# ================================================================\n\n$Mailbox = '{{mailbox}}'.Trim()\n$DoConnect = ('{{ConnectExchange}}' -eq 'true')\n$DoCheck   = ('{{CheckQuota}}' -eq 'true')\n$DoExtend  = ('{{EnableAutoExpand}}' -eq 'true')\n\nif (-not $Mailbox -or $Mailbox -match '^\\{\\{') {\n    Write-Host \"\"\n    Write-Host \"Enter a mailbox UPN (user@domain.com) and generate the script again.\" -ForegroundColor Yellow\n    Write-Host \"\"\n    exit 1\n}\n\nfunction Connect-ExoIfNeeded {\n    if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {\n        Write-Host \"Installing ExchangeOnlineManagement module...\" -ForegroundColor Yellow\n        Install-Module ExchangeOnlineManagement -Scope CurrentUser -Force\n    }\n\n    Import-Module ExchangeOnlineManagement\n\n    try {\n        Get-OrganizationConfig -ErrorAction Stop | Out-Null\n        Write-Host \"Already connected to Exchange Online.\" -ForegroundColor Green\n    }\n    catch {\n        Write-Host \"Sign in when the browser / device prompt appears.\" -ForegroundColor Yellow\n        Connect-ExchangeOnline\n    }\n}\n\nfunction Show-ArchiveQuota {\n    param([string]$Identity)\n\n    Get-Mailbox -Identity $Identity |\n        Format-List DisplayName, PrimarySmtpAddress, ArchiveStatus, ArchiveQuota, ArchiveWarningQuota, AutoExpandingArchiveEnabled\n}\n\nWrite-Host \"\"\nWrite-Host \"====================================================\" -ForegroundColor Cyan\nWrite-Host \" MAILBOX ARCHIVE QUOTA\" -ForegroundColor Cyan\nWrite-Host \" Mailbox: $Mailbox\" -ForegroundColor Cyan\nWrite-Host \"====================================================\" -ForegroundColor Cyan\nWrite-Host \"\"\n\nif ($DoConnect) {\n    Write-Host \"[1] CONNECT TO EXCHANGE ONLINE\" -ForegroundColor Yellow\n    Write-Host \"====================================================\"\n    Connect-ExoIfNeeded\n    Write-Host \"\"\n}\n\nif ($DoCheck) {\n    Write-Host \"[2] CURRENT ARCHIVE QUOTA\" -ForegroundColor Yellow\n    Write-Host \"====================================================\"\n    Show-ArchiveQuota -Identity $Mailbox\n    Write-Host \"\"\n}\n\nif ($DoExtend) {\n    Write-Host \"[3] ENABLE AUTO-EXPANDING ARCHIVE\" -ForegroundColor Yellow\n    Write-Host \"====================================================\"\n\n    $mbx = Get-Mailbox -Identity $Mailbox -ErrorAction Stop\n\n    if ($mbx.ArchiveStatus -ne 'Active') {\n        Write-Host \"Archive is not active. Enabling archive mailbox first...\" -ForegroundColor Yellow\n        Enable-Mailbox -Identity $Mailbox -Archive | Out-Null\n        Write-Host \"[OK] Archive mailbox enabled.\" -ForegroundColor Green\n        $mbx = Get-Mailbox -Identity $Mailbox\n    }\n\n    if ($mbx.AutoExpandingArchiveEnabled) {\n        Write-Host \"Auto-expanding archive is already enabled.\" -ForegroundColor Green\n    }\n    else {\n        Enable-Mailbox -Identity $Mailbox -AutoExpandingArchive\n        Write-Host \"[OK] Auto-expanding archive enabled.\" -ForegroundColor Green\n    }\n\n    Write-Host \"\"\n    Write-Host \"Quota after change:\" -ForegroundColor Yellow\n    Show-ArchiveQuota -Identity $Mailbox\n}\n\nWrite-Host \"\"\nWrite-Host \"====================================================\" -ForegroundColor Cyan\nWrite-Host \" DONE\" -ForegroundColor Green\nWrite-Host \"====================================================\" -ForegroundColor Cyan\nWrite-Host \"\"\n"
+    }
   ]
 }

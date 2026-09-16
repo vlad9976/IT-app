@@ -11,11 +11,13 @@ const CHECKBOX_GRID_SCRIPT_IDS = [
   'clear-ie-cache',
   'standard-apps-installer',
   'office-uninstall-all',
+  'exo-archive-quota',
 ];
 
 const SELECT_ALL_SCRIPT_IDS = [
   'standard-apps-installer',
   'office-uninstall-all',
+  'exo-archive-quota',
 ];
 
 const ScriptPanel = ({ script, onOpenDoc }) => {
