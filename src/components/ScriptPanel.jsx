@@ -10,6 +10,12 @@ const CHECKBOX_GRID_SCRIPT_IDS = [
   'disk-cleanup',
   'clear-ie-cache',
   'standard-apps-installer',
+  'office-uninstall-all',
+];
+
+const SELECT_ALL_SCRIPT_IDS = [
+  'standard-apps-installer',
+  'office-uninstall-all',
 ];
 
 const ScriptPanel = ({ script, onOpenDoc }) => {
@@ -262,7 +268,7 @@ const ScriptPanel = ({ script, onOpenDoc }) => {
                   )}
                 </div>
               )}
-              {script.id === 'standard-apps-installer' && script.inputs.some(i => i.type === 'checkbox') && (
+              {SELECT_ALL_SCRIPT_IDS.includes(script.id) && script.inputs.some(i => i.type === 'checkbox') && (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
