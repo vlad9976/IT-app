@@ -1,6 +1,6 @@
 # ================================================================
 # STANDARD APPS INSTALLER
-# Google Chrome + Adobe Acrobat Reader 64-bit + WinRAR
+# Google Chrome + Adobe Acrobat Reader 64-bit + WinRAR + Microsoft 365 Apps (Hebrew)
 #
 # No WinGet required
 # Run as Administrator
@@ -9,9 +9,10 @@
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-$InstallChrome = ('{{InstallChrome}}' -eq 'true')
-$InstallAdobe  = ('{{InstallAdobe}}' -eq 'true')
-$InstallWinRAR = ('{{InstallWinRAR}}' -eq 'true')
+$InstallChrome     = ('{{InstallChrome}}' -eq 'true')
+$InstallAdobe      = ('{{InstallAdobe}}' -eq 'true')
+$InstallWinRAR     = ('{{InstallWinRAR}}' -eq 'true')
+$InstallOffice365  = ('{{InstallOffice365}}' -eq 'true')
 
 $TempDir = Join-Path $env:TEMP "StandardAppsInstaller"
 
@@ -44,7 +45,7 @@ if (-not $IsAdmin) {
 }
 
 
-if (-not ($InstallChrome -or $InstallAdobe -or $InstallWinRAR)) {
+if (-not ($InstallChrome -or $InstallAdobe -or $InstallWinRAR -or $InstallOffice365)) {
 
     Write-Host ""
     Write-Host "No applications selected. Check at least one app and generate the script again." -ForegroundColor Yellow
@@ -131,6 +132,34 @@ function Test-WinRARInstalled {
 }
 
 
+function Test-Office365Installed {
+
+    $Word = @(
+        "$env:ProgramFiles\Microsoft Office\root\Office16\WINWORD.EXE",
+        "${env:ProgramFiles(x86)}\Microsoft Office\root\Office16\WINWORD.EXE",
+        "$env:ProgramFiles\Microsoft Office\Office16\WINWORD.EXE",
+        "${env:ProgramFiles(x86)}\Microsoft Office\Office16\WINWORD.EXE"
+    ) | Where-Object { Test-Path $_ }
+
+    if ($Word) { return $true }
+
+    $Office = Get-ItemProperty `
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", `
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*" `
+        -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.DisplayName -match 'Microsoft 365' -or
+            $_.DisplayName -match 'Microsoft365' -or
+            $_.DisplayName -match 'Office 365' -or
+            $_.DisplayName -match 'יישומי Microsoft' -or
+            $_.DisplayName -match 'Microsoft Office'
+        } |
+        Select-Object -First 1
+
+    return ($null -ne $Office)
+}
+
+
 # ================================================================
 # RESULTS
 # ================================================================
@@ -138,15 +167,17 @@ function Test-WinRARInstalled {
 $ChromeOK = $false
 $AdobeOK  = $false
 $WinRAROK = $false
+$Office365OK = $false
 
-$Total = @($InstallChrome, $InstallAdobe, $InstallWinRAR) | Where-Object { $_ } | Measure-Object | Select-Object -ExpandProperty Count
+$Total = @($InstallChrome, $InstallAdobe, $InstallWinRAR, $InstallOffice365) | Where-Object { $_ } | Measure-Object | Select-Object -ExpandProperty Count
 $Step = 0
 
 
 $SelectedNames = @()
-if ($InstallChrome) { $SelectedNames += 'Chrome' }
-if ($InstallAdobe)  { $SelectedNames += 'Acrobat Reader' }
-if ($InstallWinRAR) { $SelectedNames += 'WinRAR' }
+if ($InstallChrome)    { $SelectedNames += 'Chrome' }
+if ($InstallAdobe)     { $SelectedNames += 'Acrobat Reader' }
+if ($InstallWinRAR)    { $SelectedNames += 'WinRAR' }
+if ($InstallOffice365) { $SelectedNames += 'Microsoft 365 Apps (Hebrew)' }
 
 Write-Host ""
 Write-Host "====================================================" -ForegroundColor Cyan
@@ -462,6 +493,121 @@ if ($InstallWinRAR) {
 
 
 # ================================================================
+# MICROSOFT 365 APPS (HEBREW)
+# ================================================================
+
+if ($InstallOffice365) {
+
+    $Step++
+
+    Write-Host ""
+    Write-Host "===================================================="
+    Write-Host "[$Step/$Total] MICROSOFT 365 APPS (HEBREW he-il)" -ForegroundColor Yellow
+    Write-Host "===================================================="
+
+    try {
+
+        if (Test-Office365Installed) {
+
+            Write-Host "Microsoft 365 / Office is already installed." -ForegroundColor Green
+            $Office365OK = $true
+
+        }
+        else {
+
+            $OdtExe = Join-Path $TempDir "officedeploymenttool.exe"
+            $OdtDir = Join-Path $TempDir "ODT"
+            Remove-Item $OdtExe, $OdtDir -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -Path $OdtDir -ItemType Directory -Force | Out-Null
+
+            Write-Host "Downloading Microsoft Office Deployment Tool..."
+
+            Invoke-WebRequest `
+                -Uri "https://aka.ms/ODT" `
+                -OutFile $OdtExe `
+                -UseBasicParsing
+
+            Write-Host "Checking Microsoft digital signature..."
+
+            Test-VendorSignature `
+                -File $OdtExe `
+                -Vendor "Microsoft" | Out-Null
+
+            Write-Host "[OK] Microsoft signature verified." -ForegroundColor Green
+            Write-Host "Extracting Office Deployment Tool..."
+
+            $Extract = Start-Process `
+                -FilePath $OdtExe `
+                -ArgumentList @("/quiet", "/extract:$OdtDir") `
+                -Wait `
+                -PassThru
+
+            Write-Host "ODT extract exit code: $($Extract.ExitCode)"
+
+            $Setup = Get-ChildItem $OdtDir -Filter "setup.exe" -Recurse -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+
+            if (-not $Setup) {
+                throw "ODT setup.exe was not found after extract."
+            }
+
+            Test-VendorSignature `
+                -File $Setup.FullName `
+                -Vendor "Microsoft" | Out-Null
+
+            $ConfigXml = @"
+<Configuration>
+  <Add OfficeClientEdition="64" Channel="Current">
+    <Product ID="O365ProPlusRetail">
+      <Language ID="he-il" />
+    </Product>
+  </Add>
+  <Display Level="None" AcceptEULA="TRUE" />
+  <Property Name="FORCEAPPSHUTDOWN" Value="TRUE" />
+  <Updates Enabled="TRUE" />
+</Configuration>
+"@
+
+            $ConfigPath = Join-Path $OdtDir "install-m365-he-il.xml"
+            $Utf8NoBom = New-Object System.Text.UTF8Encoding $false
+            [System.IO.File]::WriteAllText($ConfigPath, $ConfigXml, $Utf8NoBom)
+
+            Write-Host "Installing Microsoft 365 Apps (Hebrew he-il)..."
+            Write-Host "This can take several minutes..." -ForegroundColor Gray
+
+            $OfficeProcess = Start-Process `
+                -FilePath $Setup.FullName `
+                -ArgumentList @("/configure", "`"$ConfigPath`"") `
+                -Wait `
+                -PassThru
+
+            Write-Host "Installer exit code: $($OfficeProcess.ExitCode)"
+
+            Start-Sleep -Seconds 5
+
+            if (Test-Office365Installed) {
+
+                $Office365OK = $true
+                Write-Host "[OK] Microsoft 365 Apps installed (Hebrew)." -ForegroundColor Green
+
+            }
+            else {
+
+                throw "Office installer finished but Microsoft 365 / Office was not detected."
+            }
+        }
+
+    }
+    catch {
+
+        Write-Host ""
+        Write-Host "[FAIL] Microsoft 365 Apps" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Red
+    }
+}
+
+
+# ================================================================
 # CLEANUP
 # ================================================================
 
@@ -510,6 +656,16 @@ if ($InstallWinRAR) {
     }
     else {
         Write-Host "[FAIL] WinRAR" -ForegroundColor Red
+        $AllSelectedOk = $false
+    }
+}
+
+if ($InstallOffice365) {
+    if ($Office365OK) {
+        Write-Host "[OK]   Microsoft 365 Apps (Hebrew)" -ForegroundColor Green
+    }
+    else {
+        Write-Host "[FAIL] Microsoft 365 Apps (Hebrew)" -ForegroundColor Red
         $AllSelectedOk = $false
     }
 }

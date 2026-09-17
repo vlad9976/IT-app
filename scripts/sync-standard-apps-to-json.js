@@ -17,7 +17,7 @@ if (!scripts.local_machine || Array.isArray(scripts.local_machine)) {
 const script = {
   id: 'standard-apps-installer',
   name: 'Install Standard Apps',
-  description: 'Download and silently install Google Chrome, Adobe Acrobat Reader 64-bit, and/or WinRAR from official vendors. No WinGet. Requires Administrator. Signature-checked.',
+  description: 'Download and silently install Google Chrome, Adobe Acrobat Reader 64-bit, WinRAR, and/or Microsoft 365 Apps in Hebrew (he-il). No WinGet. Requires Administrator. Signature-checked.',
   type: 'powershell',
   inputs: [
     {
@@ -43,6 +43,14 @@ const script = {
       placeholder: '',
       defaultValue: 'true',
       description: 'WinRAR x64 latest stable from rarlab.com'
+    },
+    {
+      variable: 'InstallOffice365',
+      label: 'Microsoft 365 Apps (Hebrew)',
+      type: 'checkbox',
+      placeholder: '',
+      defaultValue: 'false',
+      description: 'Official ODT install of Microsoft 365 Apps (O365ProPlusRetail) with language he-il'
     }
   ],
   template

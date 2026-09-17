@@ -17,7 +17,7 @@ if (!Array.isArray(scripts.microsoft_office)) {
 const script = {
   id: 'office-uninstall-all',
   name: 'Uninstall Microsoft 365 / Office',
-  description: 'Uninstall Microsoft 365 Apps in every language (he-il, en-us, and more), Click-to-Run, MSI Office, Visio, Project, and Store Office apps. Optional official Microsoft scrub. Requires Administrator. Restart after.',
+  description: 'Uninstall Microsoft 365 Apps and perpetual Office 2019 / 2021 / 2024 / LTSC (every language, Click-to-Run, MSI, Visio, Project, Store apps). Optional official Microsoft scrub. Requires Administrator. Restart after.',
   type: 'powershell',
   inputs: [
     {
@@ -26,7 +26,7 @@ const script = {
       type: 'checkbox',
       placeholder: '',
       defaultValue: 'true',
-      description: 'Removes each language (he-il, en-us, ...) then ODT Remove All'
+      description: 'Removes M365 and Office 2019/2021/2024/LTSC Click-to-Run (each language), then ODT Remove All'
     },
     {
       variable: 'UninstallMsiOffice',
@@ -50,7 +50,7 @@ const script = {
       type: 'checkbox',
       placeholder: '',
       defaultValue: 'true',
-      description: 'Official Get Help OfficeScrubScenario for M365 then All'
+      description: 'Official Get Help OfficeScrubScenario for M365, 2024, 2021, 2019, then All'
     },
     {
       variable: 'RemoveLeftovers',

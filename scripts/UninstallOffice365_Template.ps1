@@ -1,7 +1,7 @@
 # ================================================================
 # UNINSTALL MICROSOFT 365 / OFFICE
-# Removes Microsoft 365 Apps in every language (he-il, en-us, ...),
-# Click-to-Run, MSI Office, Visio, Project, and Store Office apps.
+# Removes Microsoft 365 Apps and perpetual Office 2019 / 2021 / 2024 / LTSC
+# in every language (he-il, en-us, ...), plus MSI, Visio, Project, Store apps.
 #
 # No WinGet required
 # Run as Administrator
@@ -70,7 +70,7 @@ function Test-OfficeDisplayName {
         $Name -match 'O365' -or
         $Name -match 'Microsoft Office' -or
         $Name -match 'יישומי Microsoft' -or
-        $Name -match 'Office (16|15|19|21|24|LTSC)' -or
+        $Name -match 'Office (16|15|19|21|24|2016|2019|2021|2024|LTSC)' -or
         $Name -match 'Click-to-Run' -or
         $Name -match 'Microsoft Visio' -or
         $Name -match 'Microsoft Project'
@@ -141,6 +141,23 @@ function Get-ClickToRunProductRemoves {
                 if ($cult -match '^[a-z]{2}-[a-z]{2}$') {
                     $removes.Add("$prod.16_${cult}_x-none") | Out-Null
                 }
+            }
+        }
+    }
+
+    $installedText = ((Get-InstalledOfficeProducts).DisplayName -join ' ')
+    if ($installedText -match '2019|2021|2024|LTSC') {
+        $knownPerpetual = @(
+            'ProPlus2019Retail', 'ProPlus2019Volume', 'Standard2019Retail', 'Standard2019Volume',
+            'ProPlus2021Retail', 'ProPlus2021Volume', 'Standard2021Retail', 'Standard2021Volume',
+            'ProPlus2024Retail', 'ProPlus2024Volume', 'Standard2024Retail', 'Standard2024Volume',
+            'HomeBusiness2019Retail', 'HomeBusiness2021Retail', 'HomeBusiness2024Retail',
+            'Professional2019Retail', 'Professional2021Retail', 'Professional2024Retail'
+        )
+        $cultures = @($culture, 'en-us', 'he-il') | Sort-Object -Unique
+        foreach ($id in $knownPerpetual) {
+            foreach ($c in $cultures) {
+                $removes.Add("$id.16_${c}_x-none") | Out-Null
             }
         }
     }
@@ -471,7 +488,7 @@ if ($RunMicrosoftScrub) {
 
         Write-Host "[OK] Microsoft signature verified." -ForegroundColor Green
 
-        foreach ($ver in @('M365', 'All')) {
+        foreach ($ver in @('M365', '2024', '2021', '2019', 'All')) {
             Write-Host "Running: GetHelpCmd.exe -S OfficeScrubScenario -AcceptEula -OfficeVersion $ver"
             $scrub = Start-Process `
                 -FilePath $HelpCmd.FullName `
